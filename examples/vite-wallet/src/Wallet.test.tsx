@@ -2,7 +2,7 @@
 // page on a test client; a switch of account, or a sign-out, remounts the
 // account's sections, so a transfer's outcome (which can carry the account's
 // balance) or a refusal shown to one account is not shown to the next.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { act, cleanup, fireEvent, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 import { Wallet } from "./App.tsx"

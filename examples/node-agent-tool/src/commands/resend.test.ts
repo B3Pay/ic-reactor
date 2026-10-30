@@ -1,6 +1,6 @@
 // Scenario 5: after an outcome nobody knows, the same argument is re-sent,
 // never a new transfer, and the ledger's deduplication tells what happened.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { describe, expect, it } from "vitest"
 import type { MockLedger } from "../mock-ledger.ts"
 import {

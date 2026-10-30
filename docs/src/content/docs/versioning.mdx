@@ -1,6 +1,6 @@
 ---
 title: "Versioning and support"
-description: "What a 4.x patch or minor may change, the unions that may grow, the interfaces to consume rather than implement, the candid-core pins, and the oldest Node, TypeScript, React, TanStack Query, Vite and @icp-sdk/core supported"
+description: "What a 4.x patch or minor may change, the unions that may grow, the interfaces to consume rather than implement, the Meant pins, and the oldest Node, TypeScript, React, TanStack Query, Vite and @icp-sdk/core supported"
 ---
 
 From 4.0.0 on, ic-reactor follows semantic versioning. `@ic-reactor/core`,
@@ -45,21 +45,21 @@ and build test doubles with `@ic-reactor/core/testing` (see
 `AuthLike` is the interface you implement, to bring an auth other than
 `@icp-sdk/auth`'s `AuthClient`. A minor adds only optional members to it.
 
-## candid-core
+## Meant
 
-`@ic-reactor/core` pins `@candid-core/schema` exactly, and
-`@ic-reactor/vite-plugin` pins `@candid-core/cli` exactly; each package page
-names the version. The module `candid-core-cli gen` writes is what core's types
-describe, so a candid-core release reaches your app only through an ic-reactor
+`@ic-reactor/core` pins `@meantjs/schema` exactly, and
+`@ic-reactor/vite-plugin` pins `@meantjs/cli` exactly; each package page
+names the version. The module `meant gen` writes is what core's types
+describe, so a Meant release reaches your app only through an ic-reactor
 release that was tested with it:
 
-- A candid-core patch ships in an ic-reactor patch.
-- A new candid-core minor ships in an ic-reactor minor. Its CHANGELOG entry
-  says whether to regenerate your modules (run `candid-core-cli gen` again, or
+- A Meant patch ships in an ic-reactor patch.
+- A new Meant minor ships in an ic-reactor minor. Its CHANGELOG entry
+  says whether to regenerate your modules (run `meant gen` again, or
   restart the dev server with the Vite plugin).
 
-Install the candid-core versions your ic-reactor version names, so that the
-app holds one copy of `@candid-core/schema`.
+Install the Meant versions your ic-reactor version names, so that the
+app holds one copy of `@meantjs/schema`.
 
 ## The dehydrated cache
 

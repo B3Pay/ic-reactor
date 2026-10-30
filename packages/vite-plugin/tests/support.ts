@@ -109,7 +109,7 @@ export interface App {
 
 /**
  * A temporary app with `files` (relative path to text) and a CLI installed in
- * its `node_modules` the way an app installs it: the real `@candid-core/cli`
+ * its `node_modules` the way an app installs it: the real `@meantjs/cli`
  * this package depends on (`"real"`), or a stand-in that crashes or hangs on a
  * `.did` that says TRAP or HANG (`"fake"`), or none (`"none"`).
  */
@@ -135,10 +135,10 @@ export function createApp(
     fs.writeFileSync(path.join(root, file), text)
   }
 
-  const installed = path.join(root, "node_modules", "@candid-core", "cli")
+  const installed = path.join(root, "node_modules", "@meantjs", "cli")
   if (cli === "real") {
     const manifest = createRequire(import.meta.url).resolve(
-      "@candid-core/cli/package.json"
+      "@meantjs/cli/package.json"
     )
     fs.mkdirSync(path.dirname(installed), { recursive: true })
     fs.symlinkSync(path.dirname(manifest), installed, "junction")
@@ -193,7 +193,7 @@ export function recordingLogger(): RecordingLogger {
 
 /**
  * Run `run` with `NODE_PATH` unset. Under `pnpm test`, pnpm sets it to its own
- * `node_modules`, where the real `@candid-core/cli` is installed, so an app
+ * `node_modules`, where the real `@meantjs/cli` is installed, so an app
  * with no CLI of its own would find one all the same. Node reads `NODE_PATH`
  * once at startup, so it has to be read again after the change.
  */

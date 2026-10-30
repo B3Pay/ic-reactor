@@ -8,7 +8,7 @@
  * `SkipToken` out of `queryFn` only when the variables' type cannot hold
  * `skipToken`: when it is not assignable to them. `useSuspenseQuery` takes
  * those options, and refuses every other. The variables here are what
- * `candid-core-cli gen` writes for `fixtures/skippable.did`, one method per
+ * `meant gen` writes for `fixtures/skippable.did`, one method per
  * shape `skipToken` might be assignable to, and one written by hand (`{}`, an
  * empty record as other generators write it). The refusals under a suspense
  * read are traps in `traps.test-d.ts`.

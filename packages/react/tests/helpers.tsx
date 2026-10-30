@@ -5,7 +5,7 @@
  */
 import { createClient, type AuthLike, type Client } from "@ic-reactor/core"
 import { createTestClient } from "@ic-reactor/core/testing"
-import { c } from "@candid-core/schema"
+import { c } from "@meantjs/schema"
 import { createRequire } from "node:module"
 import { pathToFileURL } from "node:url"
 import { vi, type Mock } from "vitest"

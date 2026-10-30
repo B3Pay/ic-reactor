@@ -267,7 +267,7 @@ describe("createClient options", () => {
     expect(host({ host: "127.0.0.1:4943" })).toBe("127.0.0.1:4943")
   })
 
-  it("passes maxDepth on, 256 unless given, and refuses one candid-core would refuse", () => {
+  it("passes maxDepth on, 256 unless given, and refuses one @meantjs/schema would refuse", () => {
     const at = (maxDepth?: number) =>
       internalsOf(
         createClient({ network: "ic", identity: "anonymous", maxDepth })
@@ -281,7 +281,7 @@ describe("createClient options", () => {
     }
   })
 
-  it("passes maxElements on, 1,000,000 unless given, and refuses one candid-core would refuse", () => {
+  it("passes maxElements on, 1,000,000 unless given, and refuses one @meantjs/schema would refuse", () => {
     const at = (maxElements?: number) =>
       internalsOf(
         createClient({ network: "ic", identity: "anonymous", maxElements })

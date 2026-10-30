@@ -5,7 +5,7 @@
 // message alone. Server-only code is imported inside the handlers, so the
 // client bundle never sees it. Call them through `serverResult`
 // (server-result.ts).
-import type { CompatibilityReport } from "@candid-core/cli"
+import type { CompatibilityReport } from "@meantjs/cli"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import { checkCanisterId } from "../lib/ids.ts"

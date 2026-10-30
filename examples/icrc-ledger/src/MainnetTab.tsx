@@ -1,4 +1,4 @@
-import { isPrincipal, principal } from "@candid-core/schema"
+import { isPrincipal, principal } from "@meantjs/schema"
 import { formatUnits, type Canister } from "@ic-reactor/core"
 import { ReactorProvider, useClient } from "@ic-reactor/react"
 import { skipToken, useQueries, useQuery } from "@tanstack/react-query"

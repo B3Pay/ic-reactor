@@ -854,7 +854,7 @@ A read that waits for a user uses `skipToken` (see
 [Reads](/v4/guides/reads/)):
 
 ```tsx
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { useClient, useAuth } from "@ic-reactor/react"
 import { skipToken, useQuery } from "@tanstack/react-query"
 import { actor, type Actor } from "./generated/icrc1"
@@ -1059,7 +1059,7 @@ export async function signInWithAttributes(app: Client) {
 ```
 
 This imports `./auth-client`, the module above, and `./generated/accounts`,
-the module `candid-core-cli gen` writes for the accounts canister's `.did`.
+the module `meant gen` writes for the accounts canister's `.did`.
 
 - Call it straight from a click handler, with no `await` before it:
   Internet Identity's window opens only inside a click. Catch it as you catch
@@ -1119,12 +1119,12 @@ email from `sso:<domain>:email` only for a domain the canister lists in
 Candid-encoded ICRC-3 `Value`: a `Map` of the requested keys, plus
 `implicit:nonce`, `implicit:origin` and `implicit:issued_at_timestamp_ns`. A
 scoped key stays scoped in the map. To show the user what they shared,
-describe that type with candid-core's schema builders and read it with
+describe that type with `@meantjs/schema`'s builders and read it with
 `decode`:
 
 ```ts
-import { c, type Schema } from "@candid-core/schema"
-import { decode } from "@candid-core/schema/codec"
+import { c, type Schema } from "@meantjs/schema"
+import { decode } from "@meantjs/schema/codec"
 
 type Icrc3Value =
   | { tag: "Nat"; value: bigint }

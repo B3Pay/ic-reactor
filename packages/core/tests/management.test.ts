@@ -13,7 +13,7 @@ import {
   resolveSchema,
   serviceMethods,
   type AnyFieldSchema,
-} from "@candid-core/schema"
+} from "@meantjs/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { EFFECTIVE_ID_FIELD } from "../src/management.js"
 import {

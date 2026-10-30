@@ -1,8 +1,8 @@
 ---
 // The three libraries on the docs home, each with its layer icon, status,
-// packages and first links. Candid Core's pages are served at /candid-core/,
-// built from its own repository (scripts/assemble-docs-site.mjs); Candid
-// Profile isn't published yet.
+// packages and first links. Meant's pages are served at /candid-core/, built
+// from its own repository (scripts/assemble-docs-site.mjs); Candid Profile
+// isn't published yet.
 import LibraryIcon from './LibraryIcon.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
@@ -36,7 +36,7 @@ const candidCore = '/candid-core/';
   <article>
     <header>
       <span class="icon"><LibraryIcon library="candid-core" size={22} /></span>
-      <h3>Candid Core</h3>
+      <h3>Meant</h3>
       <span class="status">Released</span>
     </header>
     <p>
@@ -45,11 +45,11 @@ const candidCore = '/candid-core/';
       field order change.
     </p>
     <ul class="packages">
-      <li>@candid-core/schema</li>
-      <li>@candid-core/cli</li>
-      <li>candid-core (Rust crate)</li>
+      <li>@meantjs/schema</li>
+      <li>@meantjs/cli</li>
+      <li>meant (Rust crate)</li>
     </ul>
-    <nav aria-label="Candid Core">
+    <nav aria-label="Meant">
       <a href={`${candidCore}quickstart-typescript.html`}>Quickstart: TypeScript →</a>
       <a href={`${candidCore}contract-graph.html`}>The Contract graph →</a>
       <a href={`${candidCore}identities.html`}>Content-addressed identities →</a>

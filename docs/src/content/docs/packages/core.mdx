@@ -4,7 +4,7 @@ description: "What @ic-reactor/core and @ic-reactor/core/testing export, their p
 ---
 
 `@ic-reactor/core` is the client of ic-reactor 4. It sits on a module that
-`candid-core-cli gen` writes from a `.did` file, and it has no React in it. It
+`meant gen` writes from a `.did` file, and it has no React in it. It
 gives you:
 
 - a client with query keys that carry the caller, TanStack Query options for
@@ -24,15 +24,15 @@ bundler (see
 
 ```sh
 npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
-npm install --save-exact @candid-core/schema@0.4.0
+npm install --save-exact @meantjs/schema@0.6.0
 npm install @icp-sdk/auth   # for Internet Identity
 ```
 
 The generator is a separate dev dependency, pinned to the version that pairs
-with `@candid-core/schema`:
+with `@meantjs/schema`:
 
 ```sh
-npm install --save-dev --save-exact @candid-core/cli@0.3.0
+npm install --save-dev --save-exact @meantjs/cli@0.5.0
 ```
 
 See [Getting started](/v4/guides/getting-started/) for the first read and write.
@@ -44,7 +44,7 @@ Node `>=22.12.0`, the first Node 22 that loads an ES module with `require()`
 
 | Peer                   | Range                                                                                                      |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `@candid-core/schema`  | exactly `0.4.0`: the module `candid-core-cli gen` writes imports it                                        |
+| `@meantjs/schema`      | exactly `0.6.0`: the module `meant gen` writes imports it                                                  |
 | `@icp-sdk/core`        | `^6.1.0`                                                                                                   |
 | `@tanstack/query-core` | `^5.62.0`                                                                                                  |
 | `@noble/curves`        | `^2.2.0`, optional: only `@ic-reactor/core/testing` signs with it, and `@icp-sdk/core` installs it already |
@@ -160,7 +160,7 @@ The package exports exactly these names, from exactly two subpaths: `.` and
 not re-export what lives elsewhere:
 
 - `principal`, `isPrincipal` and the `Principal` type come from
-  `@candid-core/schema`.
+  `@meantjs/schema`.
 - `skipToken`, `useQuery`, `useMutation`, `useSuspenseQuery`,
   `useInfiniteQuery`, `dehydrate` and `HydrationBoundary` come from TanStack
   Query (`@tanstack/react-query`, or `@tanstack/query-core` outside React).

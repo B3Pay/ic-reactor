@@ -3,7 +3,7 @@
 // and a mocked ckBTC minter on it. It runs in the page (nothing leaves it) and
 // in the Node tests (sandbox.test.ts), which is why it is plain TypeScript
 // with no React.
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import type { Canister, Client } from "@ic-reactor/core"
 import { createTestClient, type TestHandlers } from "@ic-reactor/core/testing"
 import {

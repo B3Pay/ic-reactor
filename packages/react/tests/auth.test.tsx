@@ -2,8 +2,8 @@
  * `useAuth` follows the client's state with `useSyncExternalStore`: a
  * component renders once for each change of who calls, and for nothing else.
  */
-import { c } from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
+import { c } from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient, type Client } from "@ic-reactor/core"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"

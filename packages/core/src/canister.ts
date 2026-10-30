@@ -12,7 +12,7 @@
  *
  * @module
  */
-import { serviceMethods, type AnyFieldSchema } from "@candid-core/schema"
+import { serviceMethods, type AnyFieldSchema } from "@meantjs/schema"
 import type { ClientInternals } from "./client.js"
 import {
   invoke,

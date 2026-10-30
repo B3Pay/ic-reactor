@@ -5,7 +5,7 @@
 // one object per (service, target), so asking again costs nothing.
 //
 // `--ledger icp|ckbtc|cketh|<canister id>`; the ids are the mainnet ledgers'.
-import { isPrincipal } from "@candid-core/schema"
+import { isPrincipal } from "@meantjs/schema"
 import type { Canister, Client } from "@ic-reactor/core"
 import { actor, type Actor } from "./canisters/icrc1.ts"
 import { UsageError } from "./input.ts"

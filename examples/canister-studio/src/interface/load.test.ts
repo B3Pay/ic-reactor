@@ -1,7 +1,7 @@
 // What route loaders and pages call. The server function and the browser
 // fallback are mocked: this file never reaches a network or a compiler (the
 // runtime payloads below carry the committed icrc1 envelope).
-import { serviceMethods } from "@candid-core/schema"
+import { serviceMethods } from "@meantjs/schema"
 import { renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import icrc1Did from "../../did/icrc1.did?raw"

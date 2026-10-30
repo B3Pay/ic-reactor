@@ -6,16 +6,15 @@ This is `main`, the line of ic-reactor 4. `v3` is the 3.x line and takes
 security fixes only, until 90 days after the 4.0 release. Open pull requests
 for ic-reactor 4 against `main`, and 3.x security fixes against `v3`.
 
-ic-reactor 4 is a thin layer over a module that `candid-core-cli gen`
-generates, plus one consumer guide. Its packages are written against the
-published stable candid-core releases, `@candid-core/schema` and
-`@candid-core/cli`, each pinned exactly.
+ic-reactor 4 is a thin layer over a module that `meant gen` generates, plus one
+consumer guide. Its packages are written against the published stable Meant
+releases, `@meantjs/schema` and `@meantjs/cli`, each pinned exactly.
 
 ### Packages
 
 - `@ic-reactor/core` (`packages/core`, `4.0.0`) — the 4 API of milestone 1: `createClient`, `ReactorError` and `isReactorError`, `parseUnits` and `formatUnits`, and their types (13 names, `scripts/export-budget.mjs`). `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
 - `@ic-reactor/react` (`packages/react`, `4.0.0`) — `'use client'` bindings over a core client: `ReactorProvider`, `useClient`, `useAuth` and the type `ReactorProviderProps`. It never re-exports core.
-- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
+- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0`) — generates the module by running `@meantjs/cli` (`meant gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
 
 `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli` and
 `@ic-reactor/candid` are not in this tree (the last stays at 3.x on `v3`).
@@ -34,7 +33,7 @@ published stable candid-core releases, `@candid-core/schema` and
 | Docs site (`/v4/`)            | `docs/`, `.github/workflows/docs.yml`, `scripts/assemble-docs-site.mjs`                     |
 | Consumer guide and skill      | `packages/core/llms.txt`, `skill-packages/ic-reactor/SKILL.md`                              |
 | Release lane                  | `scripts/release.js`, `scripts/release-tag.mjs`, `.github/workflows/release.yml`            |
-| candid-core pins              | `stack.json`, `scripts/check-stack.mjs`                                                     |
+| Meant pins                    | `stack.json`, `scripts/check-stack.mjs`                                                     |
 | CI gates and their tests      | `scripts/` (`check-exports.mjs`, `verify-traps.mjs`, `verify-faults.mjs`)                   |
 
 ## Verification commands
@@ -44,14 +43,14 @@ published stable candid-core releases, `@candid-core/schema` and
 - Lint (CI gate): `pnpm lint`. Run `pnpm build` first: the type-aware rules read core's emitted `.d.ts`.
 - Format (CI gate): `pnpm format:check`
 - AI context (CI gate): `pnpm check:ai-context` — version stamps, and docs links limited to the published bases (`/v2/`, `/v3/`, `/v4/`), with `/v4/` links resolved against `docs/src/content/docs/`.
-- Stack pins (CI gate): `pnpm check:stack` — each candid-core pin in a tracked `package.json`, each `@candid-core/<name>@<version>` in a `package.json` value or a `.md`, `.mdx` or `.txt` file, each docs peer-table row that says exactly `<version>`, and the two pins in code (`CANDID_CORE_CLI_VERSION`, the export budget's schema pin) must be exactly the version `stack.json` gives, outside the changelogs and the manifest's `frozen` paths; each listed package must be pinned by some `package.json` outside them, and each frozen path must hold a tracked file. Other files (`.ts`, `.yml`) are not read. A repin changes `stack.json`, freezes `examples/` until the release, and runs `pnpm sync:stack` (CONTRIBUTING.md, "The candid-core pins"); prose that says what one release does is checked by hand.
+- Stack pins (CI gate): `pnpm check:stack` — each Meant pin in a tracked `package.json`, each `@meantjs/<name>@<version>` in a `package.json` value or a `.md`, `.mdx` or `.txt` file, each docs peer-table row that says exactly `<version>`, and the two pins in code (`MEANT_CLI_VERSION`, the export budget's schema pin) must be exactly the version `stack.json` gives, outside the changelogs and the manifest's `frozen` paths; each listed package must be pinned by some `package.json` outside them, and each frozen path must hold a tracked file. Other files (`.ts`, `.yml`) are not read. A repin changes `stack.json`, moves the examples with the rest of the tree, and runs `pnpm sync:stack` (CONTRIBUTING.md, "The Meant pins"); prose that says what one release does is checked by hand.
 - Snippets (CI gate; build first): `pnpm check:snippets`, and `pnpm check:snippets:docs` for the docs pages.
 - Size (CI gate; build first): `pnpm size` — gzipped size-limit checks, each limit just above its measured size. `packages/core/.size-limit.js` and react's `size-limit` field measure each package's own code: size-limit leaves out every peer of the package it runs in. `scripts/size-app/` (a private workspace package that declares no peers, so nothing is left out) measures what an app pays with the peers included: `{ createClient }` from core, and `createClient` with `ReactorProvider` and `useClient` without React itself. A change that moves a number, a dependency bump included, states the delta in its pull request and raises that limit in the same change.
 - Published artifacts: `pnpm verify:packages`
 - Examples on the published packages: `pnpm test:examples:published` (needs only Node, npm and git) — each example's tracked files copied outside the repository and installed from npm with npm; it refuses a `workspace:` range, checks every installed @ic-reactor/* package is a real directory at the version of one npm dist-tag (with `--wait-for <version>`, as `release.yml` runs it after publishing, the tag that version publishes under; otherwise the tag of the branch's version in `packages/core/package.json`: `beta` for a prerelease and `latest` for a stable version), then runs the example's `typecheck`, `test` and `build` scripts, and its `.stackblitzrc` start command under a model of what StackBlitz's WebContainer lacks (no global `Iterator`; an `AsyncLocalStorage` that keeps no store across an await). Its own workflow, `.github/workflows/examples-published.yml`, runs it on pushes and pull requests to `main`. An example change that needs an unpublished API lands with the release that publishes it. A run without `--wait-for` whose examples all pin `^<the branch's own version>` while npm has no such version yet (a release pull request, or its merge before the tag), and no dependency uses a local protocol, runs the checks that need no registry (tracked config files, required scripts, and the `.stackblitzrc` start command, which must be a plain npm script command, `npm run <script>` with arguments after a bare `--`, naming a defined script), then defers to the release's run and passes, saying so; once that version is published, the same run tests its dist-tag.
 - Peer and TypeScript floors (CI gate; build first): `pnpm verify:peer-floors`
 - Docs: `pnpm docs:build`, `pnpm docs:check-links`. The site also serves Candid Core's pages at `/candid-core/`, built from B3Pay/Meant (`node website/build.mjs`); with `CANDID_CORE_SITE` set to that build's `website/dist`, the link check checks the links into it and crawls its pages, as CI does. Without it those links are skipped, and in CI the check fails.
-- Export budget (CI gate; build first): `pnpm check:exports` — the built declarations of core, `core/testing`, react and the Vite plugin against the plan in `scripts/export-budget.mjs`: no unplanned name, no more than the cap, no name exported twice or also exported by `@candid-core/schema` or TanStack Query (D35), no `exports` subpath or publishable package the file does not list, and the schema declared only at the pinned version. Adding a public name or subpath means adding it to that file in the same change.
+- Export budget (CI gate; build first): `pnpm check:exports` — the built declarations of core, `core/testing`, react and the Vite plugin against the plan in `scripts/export-budget.mjs`: no unplanned name, no more than the cap, no name exported twice or also exported by `@meantjs/schema` or TanStack Query (D35), no `exports` subpath or publishable package the file does not list, and the schema declared only at the pinned version. Adding a public name or subpath means adding it to that file in the same change.
 - Trap types (CI gate): `pnpm verify:traps` — every `@ts-expect-error` of `packages/core/tests/traps.test-d.ts` must be reported as unused (TS2578) once its fault fixture in `scripts/traps/` removes it. How to add a trap is in that file's header.
 - Fault-proof runtime tests (CI gate): `pnpm verify:faults` — every test listed in `scripts/faults.json` must fail with its fault applied to a copy of its package. A test that guards a regression somebody could reintroduce gets an entry.
 - Script tests (CI gate; build first): `pnpm test:scripts` — the gates above, `check:ai-context` and `check:snippets`, each run against repositories built for the purpose.
@@ -61,9 +60,9 @@ published stable candid-core releases, `@candid-core/schema` and
 
 Outputs under `dist`, `.icp`, `target`, `.astro` and `*.tsbuildinfo` are build
 artifacts. `docs/src/content/docs/libs/` is TypeDoc output written by
-`pnpm docs:build`. `e2e/src/declarations/` is committed: the module
-`candid-core-cli gen` writes from `e2e/src/actor/hello_actor.did` (`pnpm gen`
-in `e2e/`; `e2e/test.sh` fails a stale copy with `pnpm gen:check`).
+`pnpm docs:build`. `e2e/src/declarations/` is committed: the module `meant gen`
+writes from `e2e/src/actor/hello_actor.did` (`pnpm gen` in `e2e/`; `e2e/test.sh`
+fails a stale copy with `pnpm gen:check`).
 
 ## AI context files
 

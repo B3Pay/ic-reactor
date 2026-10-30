@@ -1,4 +1,4 @@
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { describe, expect, it } from "vitest"
 import type { TransferArg } from "../canisters/icrc1.ts"
 import { createMockLedger, LAB_FEE, labMethod } from "./mock-ledger.ts"

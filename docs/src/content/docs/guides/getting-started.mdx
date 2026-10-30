@@ -1,6 +1,6 @@
 ---
 title: "Getting started"
-description: "Install ic-reactor 4, generate a module from a .did file with candid-core-cli gen or the Vite plugin, and make a first read and write"
+description: "Install ic-reactor 4, generate a module from a .did file with Meant's CLI or the Vite plugin, and make a first read and write"
 ---
 
 import { Aside } from "@astrojs/starlight/components"
@@ -49,7 +49,7 @@ The core packages and the runtime they sit on:
 
 ```sh
 npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
-npm install --save-exact @candid-core/schema@0.4.0
+npm install --save-exact @meantjs/schema@0.6.0
 ```
 
 For React, add the provider and TanStack's React bindings. For Internet
@@ -69,10 +69,10 @@ With two copies, `client.queryOptions()` throws a `TypeError` for the hooks'
 The generator is a development tool:
 
 ```sh
-npm install --save-dev --save-exact @candid-core/cli@0.3.0
+npm install --save-dev --save-exact @meantjs/cli@0.5.0
 ```
 
-`@candid-core/schema` and `@candid-core/cli` are installed exactly
+`@meantjs/schema` and `@meantjs/cli` are installed exactly
 (`--save-exact`) because the generated module imports the schema runtime, and
 the CLI has to pair with that runtime. `@ic-reactor/core` lists the schema
 version it needs in its `peerDependencies`; `@ic-reactor/vite-plugin` lists the
@@ -81,11 +81,11 @@ CLI version.
 ## 2. Generate the module
 
 Everything the client knows about a canister comes from a module that
-`candid-core-cli gen` writes from the canister's `.did` file. With
-`icrc1.did` in the project's root:
+`meant gen` writes from the canister's `.did` file. With `icrc1.did` in the
+project's root:
 
 ```sh
-npx candid-core-cli gen icrc1.did -o src/generated
+npx @meantjs/cli gen icrc1.did -o src/generated
 ```
 
 The module is named after the `.did` file: this writes `src/generated/icrc1.ts`
@@ -96,13 +96,13 @@ signature, `(arg0: ...) => Promise<...>`, marked with its mode
 (`& $.WithMode<"query">`).
 
 Several files can be generated at once:
-`npx candid-core-cli gen a.did b.did -o src/canisters`.
+`npx @meantjs/cli gen a.did b.did -o src/canisters`.
 
 In CI, add `--check`. It writes nothing and exits 1 when the files on disk
 differ from what the generator would write:
 
 ```sh
-npx candid-core-cli gen icrc1.did -o src/generated --check
+npx @meantjs/cli gen icrc1.did -o src/generated --check
 ```
 
 ### Or generate with the Vite plugin
@@ -135,7 +135,7 @@ Commit `icrc1.did` and the generated module. Vite's `react-ts` template builds
 with `tsc -b && vite build`, so TypeScript checks `src/` before the plugin has
 generated anything, and a fresh clone without the module fails its first
 build. If you would rather not commit the module, run
-`npx candid-core-cli gen icrc1.did -o src/generated` before `tsc -b`, for
+`npx @meantjs/cli gen icrc1.did -o src/generated` before `tsc -b`, for
 example in a `prebuild` script.
 
 An app that only talks to mainnet has no local network for the plugin to
@@ -213,7 +213,7 @@ npx tsx scripts/fetch-did.ts ryjl3-tyaaa-aaaaa-aaaba-cai icp_ledger.did
 ```
 
 That saves the ICP ledger's full interface, which is not `icrc1.did`, and
-`npx candid-core-cli gen icp_ledger.did -o src/generated` names its module
+`npx @meantjs/cli gen icp_ledger.did -o src/generated` names its module
 `icp_ledger`: import from `./generated/icp_ledger` in place of this page's
 `./generated/icrc1`.
 
@@ -338,7 +338,7 @@ signed in. The factory runs once, in a browser only.
 import { createClient } from "@ic-reactor/core"
 import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
 import { AuthClient } from "@icp-sdk/auth/client"
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { useMutation } from "@tanstack/react-query"
 import { useState } from "react"
 import { actor, type Actor } from "./generated/icrc1"

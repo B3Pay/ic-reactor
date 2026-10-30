@@ -1,4 +1,4 @@
-import { isBoxedOpt, type AnyFieldSchema } from "@candid-core/schema"
+import { isBoxedOpt, type AnyFieldSchema } from "@meantjs/schema"
 import {
   armOf,
   childPath,

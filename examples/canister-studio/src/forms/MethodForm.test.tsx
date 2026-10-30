@@ -1,10 +1,5 @@
-import {
-  c,
-  principal,
-  serviceMethods,
-  type AnySchema,
-} from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
+import { c, principal, serviceMethods, type AnySchema } from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { hydrateRoot } from "react-dom/client"
 import { renderToString } from "react-dom/server"

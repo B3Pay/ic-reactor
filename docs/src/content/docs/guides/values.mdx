@@ -3,7 +3,7 @@ title: "Values and units"
 description: "How Candid values look in TypeScript, how to make principals, and how to convert token amounts with parseUnits and formatUnits"
 ---
 
-A module that `candid-core-cli gen` writes types every Candid value as plain
+A module that `meant gen` writes types every Candid value as plain
 TypeScript. There are no wrapper classes. This page lists the shapes, shows
 how to make arguments, and shows how to convert token amounts exactly.
 
@@ -34,7 +34,7 @@ Three consequences:
 An ICRC-1 transfer shows all three:
 
 ```ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import type { Account, TransferArg, TransferError } from "./generated/icrc1"
 
 const to: Account = {
@@ -68,12 +68,12 @@ export function describe(error: TransferError): string {
 ## Principals
 
 A `Principal` is principal text with a brand, so a plain `string` does not
-pass for one. Make one with `principal(text)` from `@candid-core/schema`. It
+pass for one. Make one with `principal(text)` from `@meantjs/schema`. It
 accepts only canonical text and throws a `TypeError` for anything else, so
 catch it where the text comes from a user:
 
 ```ts
-import { isPrincipal, principal, type Principal } from "@candid-core/schema"
+import { isPrincipal, principal, type Principal } from "@meantjs/schema"
 
 export function parseOwner(text: string): Principal | undefined {
   try {
@@ -94,7 +94,7 @@ it first in render, for example to pass `skipToken` until a typed owner is
 valid. Never cast text to `Principal`. A cast skips the check, and the value is
 refused later, when it is encoded.
 
-`principal` and `isPrincipal` come from `@candid-core/schema` only.
+`principal` and `isPrincipal` come from `@meantjs/schema` only.
 `@ic-reactor/core` and `@ic-reactor/react` do not re-export them.
 
 ## Arguments
@@ -106,7 +106,7 @@ refused later, when it is encoded.
   for one argument, and a tuple `[a, b]` for several.
 
 ```ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { client } from "./ledger"
 import { actor, type Actor } from "./generated/backend"
 

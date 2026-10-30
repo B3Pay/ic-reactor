@@ -29,7 +29,7 @@
  *      dist-tag names (asking npm, so its own semver decides);
  *   3. installs from registry.npmjs.org with npm (no workspace, no links, no
  *      lockfile of ours), the default registry and the @ic-reactor and
- *      @candid-core scopes all pinned to it on the command line, over any
+ *      @meantjs scopes all pinned to it on the command line, over any
  *      `.npmrc`, with an environment that holds nothing of the repository: no
  *      `npm_*` or `pnpm_*` variable a `pnpm run` set, and no PATH entry
  *      inside the repository;
@@ -147,7 +147,7 @@ export const LOCAL_PROTOCOLS = ["workspace:", "file:", "link:", "portal:"]
  * only the default registry: a `@scope:registry=` setting in any `.npmrc`
  * (the user's, or one in the project) still wins for its scope.
  */
-export const PINNED_SCOPES = ["@ic-reactor", "@candid-core"]
+export const PINNED_SCOPES = ["@ic-reactor", "@meantjs"]
 
 /** The registry flags of every npm command this script runs. */
 export const REGISTRY_ARGS = [

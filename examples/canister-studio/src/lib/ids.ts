@@ -1,5 +1,5 @@
-import { isPrincipal, principal, type Principal } from "@candid-core/schema"
-import { principalBytesFromText } from "@candid-core/schema/codec"
+import { isPrincipal, principal, type Principal } from "@meantjs/schema"
+import { principalBytesFromText } from "@meantjs/schema/codec"
 
 /**
  * Why a text is not a canister id the studio can open. The codes are the

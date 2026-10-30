@@ -7,7 +7,7 @@
  * `skipToken` keep it, and the suspense hooks refuse them, here and as a trap
  * of `packages/core/tests/traps.test-d.ts` that `pnpm verify:traps` proves.
  */
-import type { Principal, WithMode } from "@candid-core/schema"
+import type { Principal, WithMode } from "@meantjs/schema"
 import type { Canister, Client, ReactorError } from "@ic-reactor/core"
 import {
   QueryClient,
@@ -24,8 +24,7 @@ type Account = { owner: Principal; subaccount: Uint8Array | null }
 type Query = WithMode<"query">
 /**
  * What a generated module's `Actor` type looks like, cut down: each method is
- * its call signature marked with its mode, as `candid-core-cli gen` 0.3.0
- * writes it.
+ * its call signature marked with its mode, as `meant gen` 0.5.0 writes it.
  */
 type Ledger = {
   icrc1_fee: (() => Promise<bigint>) & Query
@@ -38,7 +37,7 @@ type Ledger = {
   pair: ((left: bigint, right: string) => Promise<string>) & Query
   /** A Candid `reserved` argument, which a generated module types `unknown`. */
   anything: ((value: unknown) => Promise<bigint>) & Query
-  /** `record {}`, as `candid-core-cli gen` writes it. */
+  /** `record {}`, as `meant gen` writes it. */
   empty: ((value: Record<string, never>) => Promise<bigint>) & Query
   /** A record of opts alone, an opt and `null`, as the generator writes them. */
   options: ((value: { limit: bigint | null }) => Promise<bigint>) & Query

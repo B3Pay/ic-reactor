@@ -1,9 +1,9 @@
-// Client only: the candid-core compiler in the browser, for a pasted .did
+// Client only: the Meant compiler in the browser, for a pasted .did
 // (the playground), for compatibility checks against pasted text, and for
 // reading a live canister when server functions cannot run (StackBlitz).
-// `@candid-core/cli` is imported lazily: its 1.9 MB WASM loads on first use
+// `@meantjs/cli` is imported lazily: its 1.9 MB WASM loads on first use
 // and never enters the main chunk.
-import type { CompatibilityReport } from "@candid-core/cli"
+import type { CompatibilityReport } from "@meantjs/cli"
 import { sha256Hex } from "../lib/hex.ts"
 import {
   compatibilityOf,
@@ -23,7 +23,7 @@ let cli: Promise<CandidCli> | undefined
 function browserCli(): Promise<CandidCli> {
   // A failed import or init (an interrupted WASM download) is not kept:
   // the next call tries again instead of failing until a reload.
-  cli ??= import("@candid-core/cli")
+  cli ??= import("@meantjs/cli")
     .then(async (lib) => {
       await lib.init()
       return lib

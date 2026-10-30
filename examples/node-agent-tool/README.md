@@ -30,7 +30,7 @@ pnpm gen:check   # fails if src/canisters/ is stale against icrc1.did
 `pnpm --silent cli <command>` is `node src/cli.ts` without Node's
 type-stripping warning (and, with `--silent`, without pnpm's banner on
 stdout). `src/canisters/icrc1.ts` is generated from `icrc1.did` by `pnpm gen`
-(`candid-core-cli gen`), committed, and never edited.
+(`meant gen`), committed, and never edited.
 
 ## Which identity
 

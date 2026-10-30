@@ -1,4 +1,4 @@
-import { isPrincipal } from "@candid-core/schema"
+import { isPrincipal } from "@meantjs/schema"
 import { useState } from "react"
 import { checkCanisterId, principalProblem } from "../lib/ids.ts"
 

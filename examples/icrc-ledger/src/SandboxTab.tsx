@@ -1,4 +1,4 @@
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { formatUnits, type ReactorError } from "@ic-reactor/core"
 import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
 import {

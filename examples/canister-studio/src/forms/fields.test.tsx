@@ -1,9 +1,4 @@
-import {
-  c,
-  principal,
-  serviceMethods,
-  type AnySchema,
-} from "@candid-core/schema"
+import { c, principal, serviceMethods, type AnySchema } from "@meantjs/schema"
 import {
   act,
   cleanup,

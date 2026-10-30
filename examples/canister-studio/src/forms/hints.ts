@@ -1,4 +1,4 @@
-import type { AnyFieldSchema } from "@candid-core/schema"
+import type { AnyFieldSchema } from "@meantjs/schema"
 import type { TokenUnits } from "../lib/format.ts"
 import { fieldsOf, resolve } from "./engine.ts"
 
