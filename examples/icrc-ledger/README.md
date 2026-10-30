@@ -67,7 +67,7 @@ pnpm --filter icrc-ledger gen:check  # fails if src/canisters/ is stale
 `src/canisters/` is generated from the `.did` files (`icrc1.did`; the ICP
 ledger's block reads, `icp_ledger.did`; the minter's `ckbtc_minter.did`) by
 `@ic-reactor/vite-plugin` on every `vite dev` and `vite build` (`pnpm gen` runs
-`candid-core-cli gen` by hand). It is committed, and never edited.
+`meant gen` by hand). It is committed, and never edited.
 `icp_ledger.did` and `ckbtc_minter.did` are projections of the mainnet
 canisters' interfaces to the methods the app calls (`methods` in
 `vite.config.ts`), as the plugin wrote them from the live canisters. They are
@@ -77,7 +77,7 @@ live canisters.
 
 ## Before and after
 
-The same explorer written on `@candid-core/schema` alone needed a 176-line
+The same explorer written on `@meantjs/schema` alone needed a 176-line
 `src/ledger.ts` (look the method up, encode, `agent.query`, decode, a query key
 from the encoded bytes, and its own error union) and a 53-line `useQuery`
 wrapper, and could only read. Here `src/ledger.ts` is 15 lines, 7 of them code:

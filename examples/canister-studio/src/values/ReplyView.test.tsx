@@ -3,7 +3,7 @@ import {
   principal,
   serviceMethods,
   type AnyFieldSchema,
-} from "@candid-core/schema"
+} from "@meantjs/schema"
 import {
   cleanup,
   fireEvent,

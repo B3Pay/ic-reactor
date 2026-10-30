@@ -1,9 +1,9 @@
 # Generated fixtures
 
-The `.ts` modules here are what `candid-core-cli gen` writes for the `.did`
-files next to them, kept byte for byte (Prettier skips them; see
-`.prettierignore`). The tests type against their `Actor` types and call
-through their `actor` schemas exactly as an app does.
+The `.ts` modules here are what `meant gen` writes for the `.did` files next to
+them, kept byte for byte (Prettier skips them; see `.prettierignore`). The tests
+type against their `Actor` types and call through their `actor` schemas exactly
+as an app does.
 
 | `.did`           | What it is for                                                                                                                                                                                                                                                   |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -16,11 +16,11 @@ through their `actor` schemas exactly as an app does.
 
 ## Regenerating
 
-With `@candid-core/cli@0.3.0` (the generator that pairs with
-`@candid-core/schema@0.4.0`), from this directory:
+With `@meantjs/cli@0.5.0` (the generator that pairs with
+`@meantjs/schema@0.6.0`), from this directory:
 
 ```sh
-npx -y @candid-core/cli@0.3.0 gen icrc1.did shapes.did archive.did management.did skippable.did accounts.did -o .
+npx -y @meantjs/cli@0.5.0 gen icrc1.did shapes.did archive.did management.did skippable.did accounts.did -o .
 ```
 
 Add `--check` to the same command to verify that nothing drifted. Each

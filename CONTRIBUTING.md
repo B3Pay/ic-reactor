@@ -58,7 +58,7 @@ CI gate operate on exactly the same set of files.
 
 ```bash
 pnpm check:ai-context  # versions, package stamps and docs links in the AI guides
-pnpm check:stack       # candid-core pins and mentions against stack.json
+pnpm check:stack       # Meant pins and mentions against stack.json
 pnpm check:snippets    # compiles the ts/tsx snippets of the guides and READMEs
 pnpm check:snippets:docs  # the same, plus the docs site's pages (needs the examples installed)
 pnpm lint              # ESLint over packages/*/src and packages/*/tests
@@ -113,23 +113,23 @@ outside the workspace, imports and requires every entry point in real Node, and
 runs `publint` + `attw`. Nothing else in CI can catch a broken published
 artifact, because in-repo consumers resolve through workspace symlinks.
 
-## The candid-core pins
+## The Meant pins
 
-`stack.json` names the candid-core release this branch is tested against: an
-exact stable version of `@candid-core/schema` and of `@candid-core/cli`. The
-rest of the tree follows it. `pnpm check:stack` (a CI step) reads each
-tracked `package.json`, Markdown, MDX and text file and the two files that
-pin in code, and fails on each of these that names another version, a range
+`stack.json` names the Meant release this branch is tested against: an exact
+stable version of `@meantjs/schema` and of `@meantjs/cli`. The rest of the
+tree follows it. `pnpm check:stack` (a CI step) reads each tracked
+`package.json`, Markdown, MDX and text file and the two files that pin in
+code, and fails on each of these that names another version, a range
 included:
 
 - a `package.json` entry keyed by the package: a dependency of any kind or an
   override, `parent>package` and `package@range` keys included;
-- an `@candid-core/<name>@<version>` in a `package.json` value or a Markdown,
+- an `@meantjs/<name>@<version>` in a `package.json` value or a Markdown,
   MDX or text file: an install line, a script's `npx`, an `npm:` alias, a CDN
   URL;
 - a docs peer-table row that names the package and says exactly `<version>`;
-- the two pins in code: `CANDID_CORE_CLI_VERSION` in
-  `packages/vite-plugin/src/generate.ts` and the `@candid-core/schema` entry of
+- the two pins in code: `MEANT_CLI_VERSION` in
+  `packages/vite-plugin/src/generate.ts` and the `@meantjs/schema` entry of
   `scripts/export-budget.mjs`.
 
 A version in any other file (a `.ts` test, a workflow) is not read. It also
@@ -139,13 +139,18 @@ symlinks and the paths of the manifest's `frozen` list keep the versions they
 have: the changelogs record what each release shipped with, and `evals/`
 pins what its conditions were measured with.
 
-ic-reactor installs candid-core from npm, and only a published stable release.
-So candid-core publishes first, and the repin is a pull request of its own:
+ic-reactor installs Meant from npm, and only a published stable release. So
+Meant publishes first, and the repin is a pull request of its own:
 
-1. Change the versions in `stack.json`, and add `"examples/"` to its `frozen`
-   list. The examples install the published ic-reactor release, whose peers
-   are still the old pair until the release this repin goes out in, so
-   `pnpm test:examples:published` fails if they move now.
+1. Change the versions in `stack.json`. The examples move with the rest of
+   the tree: in the workspace they run on this branch's packages, whose peers
+   are the new release, and an example left on the old one fails to
+   type-check against them (the Type Check Examples job, and the downstream
+   check a Meant release runs on this repository). Outside the workspace,
+   `pnpm test:examples:published` installs them with the published
+   ic-reactor release, whose peers are still the old ones, so that check, which
+   is not a required one, fails on the repin and on `main` until the release
+   pull request below.
 2. Run `pnpm sync:stack`, then `pnpm install` to update the lockfile.
    `pnpm sync:stack` rewrites in place each disagreement above that is a
    version, a range or a dist-tag; it reports anything else (`catalog:`,
@@ -160,19 +165,19 @@ So candid-core publishes first, and the repin is a pull request of its own:
    how), and `accounts.ts` is Prettier's layout of the core fixture of that
    name.
 4. Check what a release changes by hand. The prose that says what one release
-   does, such as "`@candid-core/cli` 0.3.0 reads ...", is left alone by
+   does, such as "`@meantjs/cli` 0.5.0 reads ...", is left alone by
    `pnpm sync:stack`; so is the hand-written copy of a generated `Actor` in
    `packages/react/tests/suspense.test-d.tsx`. `pnpm test` runs the real CLI
    and fails on the generated lines that
    `packages/vite-plugin/tests/generation.test.ts` looks for.
-5. Run the gates, and name the candid-core release in the pull request.
+5. Run the gates, and name the Meant release in the pull request.
 
 A feature that needs the new release comes in a pull request after the repin.
-The release pull request that dates the changelog comes last: it removes
-`"examples/"` from `frozen` and runs `pnpm sync:stack` with the examples'
-other version bumps. Dependabot leaves `@candid-core/*` alone
-(`.github/dependabot.yml`): its bump would change one pin of many and fail
-`pnpm check:stack`, and a repin is chosen here.
+The release pull request that dates the changelog comes last, and soon after:
+it moves the examples to the new ic-reactor version, and the published-examples
+check then waits for its publish. Dependabot leaves `@meantjs/schema` and
+`@meantjs/cli` alone (`.github/dependabot.yml`): its bump would change one pin
+of many and fail `pnpm check:stack`, and a repin is chosen here.
 
 ## Size budget
 
@@ -188,7 +193,7 @@ packages, gzipped. Every limit sits just above its measured size, on purpose:
 
 size-limit adds every `peerDependencies` entry of the package it runs in to
 each check's `ignore`, so the first two never see `@icp-sdk/core`,
-`@candid-core/schema`, `@noble/curves` or `@tanstack/query-core`. The last two
+`@meantjs/schema`, `@noble/curves` or `@tanstack/query-core`. The last two
 run from `scripts/size-app/`, a private workspace package that declares no
 peers, so a change in what core pulls from them fails there. Keep it free of
 peers; `pnpm test:scripts` checks that.

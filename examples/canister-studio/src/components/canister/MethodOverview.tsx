@@ -1,4 +1,4 @@
-import { encodeArgs } from "@candid-core/schema/codec"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { Link } from "@tanstack/react-router"
 import type { ReactElement } from "react"
 import type { CanisterInterface, MethodInfo } from "../../interface/types.ts"

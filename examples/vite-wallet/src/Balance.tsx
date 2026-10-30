@@ -6,7 +6,7 @@
 //   so nothing is sent (no placeholder account, no `owner!`).
 // - `refetchInterval` spread onto the client's options ("spread to add
 //   options"), so ICP sent from `pnpm faucet` shows up by itself.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { useAuth, useClient } from "@ic-reactor/react"
 import { skipToken, useQuery } from "@tanstack/react-query"
 import { ErrorNote } from "./ErrorNote.tsx"

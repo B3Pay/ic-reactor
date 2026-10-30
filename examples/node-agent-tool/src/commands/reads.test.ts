@@ -1,5 +1,5 @@
 // Scenario 4: direct calls, `info` and `balance`, plain and certified.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { describe, expect, it } from "vitest"
 import { createCli } from "../test-kit.ts"
 

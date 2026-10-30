@@ -16,8 +16,8 @@
  *
  * @module
  */
-import { isPrincipal, resolveSchema } from "@candid-core/schema"
-import { encodeArgs, type EncodeResult } from "@candid-core/schema/codec"
+import { isPrincipal, resolveSchema } from "@meantjs/schema"
+import { encodeArgs, type EncodeResult } from "@meantjs/schema/codec"
 import {
   skipToken,
   type QueryClient,

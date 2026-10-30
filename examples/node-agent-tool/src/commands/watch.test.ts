@@ -1,6 +1,6 @@
 // Scenario 7: the cache outside React. `watch` reads through the client's
 // QueryClient, prints only changes, and disposes the client on Ctrl-C.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { isReactorError } from "@ic-reactor/core"
 import { describe, expect, it, vi } from "vitest"
 import { LEDGERS, ledgerOn } from "../ledgers.ts"

@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
       <footer className="app-footer">
         <p className="muted">
           Canister Studio: automatic forms and safe calls for any Internet
-          Computer canister, on ic-reactor and candid-core.{" "}
+          Computer canister, on ic-reactor and Meant.{" "}
           <Link to="/safety">How calls stay safe</Link>
         </p>
       </footer>

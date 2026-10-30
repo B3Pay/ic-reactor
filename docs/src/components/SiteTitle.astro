@@ -5,8 +5,8 @@ import LibraryIcon from './LibraryIcon.astro';
 
 // The library switcher: one docs site for B3Pay's open-source libraries. A
 // library whose pages aren't on this site yet says it's coming, never links
-// to an empty page. Candid Core's pages are served at /candid-core/, built
-// from its own repository (scripts/assemble-docs-site.mjs).
+// to an empty page. Meant's pages are served at /candid-core/, built from
+// its own repository (scripts/assemble-docs-site.mjs).
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 ---
 
@@ -28,7 +28,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
       <li>
         <a href="/candid-core/">
           <LibraryIcon library="candid-core" size={20} />
-          <span><strong>Candid Core</strong><small>Generate, validate and encode Candid</small></span>
+          <span><strong>Meant</strong><small>Generate, validate and encode Candid</small></span>
         </a>
       </li>
       <li>

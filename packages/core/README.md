@@ -1,7 +1,7 @@
 # @ic-reactor/core
 
 > **This is ic-reactor 4.** It replaces the 3.x runtime with a thin layer over
-> a candid-core generated module. 3.x is documented at
+> a module Meant generates. 3.x is documented at
 > https://ic-reactor.b3pay.net/v3/packages/core and takes security fixes until
 > 90 days after the 4.0 release.
 
@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg)](https://www.typescriptlang.org/)
 
-ic-reactor 4 is a thin layer over a `candid-core-cli gen` module: a client with
+ic-reactor 4 is a thin layer over a `meant gen` module: a client with
 caller-scoped query keys, one error union that says whether a call may have
 executed, network resolution, strict token-unit helpers and a test client.
 
@@ -21,12 +21,12 @@ errors and a complete React example, for people and coding agents alike.
 
 ```bash
 npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
-npm install --save-exact @candid-core/schema@0.4.0
+npm install --save-exact @meantjs/schema@0.6.0
 ```
 
-`@candid-core/schema` is a peer at exactly that version: the module
-`candid-core-cli gen` writes imports it, so the generator
-(`@candid-core/cli@0.3.0`) has to pair with it too.
+`@meantjs/schema` is a peer at exactly that version: the module `meant gen`
+writes imports it, so the generator (`@meantjs/cli@0.5.0`) has to pair with it
+too.
 
 With React, install `@tanstack/query-core` at the exact version your
 `@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>

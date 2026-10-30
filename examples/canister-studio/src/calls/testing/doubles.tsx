@@ -2,7 +2,7 @@
 // exercise the calls and not another area's rendering. Each keeps to its
 // module's exported contract; the tests `vi.mock` the real modules with this
 // one.
-import { encodeArgs } from "@candid-core/schema/codec"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { isReactorError } from "@ic-reactor/core"
 import type { JSX } from "react"
 import type { FieldIssue } from "../../forms/engine.ts"

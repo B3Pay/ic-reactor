@@ -87,7 +87,7 @@ function HomePage(): ReactElement {
       <section className="home-hero" aria-labelledby="home-title">
         <div className="stack-lg home-hero-text">
           <div className="stack-sm">
-            <p className="home-eyebrow">ic-reactor 4 + candid-core</p>
+            <p className="home-eyebrow">ic-reactor 4 + Meant</p>
             <h1 id="home-title" className="page-title home-title">
               Call any Internet Computer canister, safely.
             </h1>

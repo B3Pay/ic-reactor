@@ -1,8 +1,8 @@
 // Edge cases through the path a live canister takes: .did text →
 // didToContract (the CLI's WASM, offline) → schemaFromContract → the engine.
-import { didToContract } from "@candid-core/cli"
-import { serviceMethods, type ServiceMethod } from "@candid-core/schema"
-import { schemaFromContract } from "@candid-core/schema/contract"
+import { didToContract } from "@meantjs/cli"
+import { serviceMethods, type ServiceMethod } from "@meantjs/schema"
+import { schemaFromContract } from "@meantjs/schema/contract"
 import { beforeAll, describe, expect, it } from "vitest"
 import {
   checkCall,

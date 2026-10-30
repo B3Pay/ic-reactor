@@ -22,7 +22,7 @@
  * caller, and Alice's, a fixed account that every user of the page looks at)
  * and requires that nothing an observer shows was meant for somebody else.
  */
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { QueryObserver } from "@tanstack/query-core"
 import { afterAll, expect, it, vi } from "vitest"
 import {

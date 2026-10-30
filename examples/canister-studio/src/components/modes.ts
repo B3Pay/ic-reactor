@@ -1,4 +1,4 @@
-import type { MethodMode } from "@candid-core/schema"
+import type { MethodMode } from "@meantjs/schema"
 import type { CanisterInterface } from "../interface/types.ts"
 
 /** The order modes are listed in everywhere: reads first, then writes. */

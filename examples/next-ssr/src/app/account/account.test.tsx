@@ -10,7 +10,7 @@
 //   part, so the order is the page's, not a race.
 // - What a browser without JavaScript shows is the HTML with no script run:
 //   the balances, and the fallback's <noscript> note.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { JSDOM } from "jsdom"
 import type { ComponentProps } from "react"
 import { renderToReadableStream } from "react-dom/server"

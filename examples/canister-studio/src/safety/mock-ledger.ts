@@ -4,7 +4,7 @@ import {
   type Principal,
   type Schema,
   type WithMode,
-} from "@candid-core/schema"
+} from "@meantjs/schema"
 import type { Canister, Client } from "@ic-reactor/core"
 import type { createTestClient, TestHandlers } from "@ic-reactor/core/testing"
 import {

@@ -38,7 +38,7 @@ When it is done, the project holds these files:
   - new-key.ts
 - src/
   - generated/
-    - icrc1.ts written by `candid-core-cli gen`
+    - icrc1.ts written by `meant gen`
   - ledger-tools.ts the three tools
   - ledger-tools.test.ts
   - server.ts the server, over stdio
@@ -88,7 +88,7 @@ with no build step.
    directory to the project's root, and generate its module:
 
    ```sh
-   npx candid-core-cli gen icrc1.did -o src/generated
+   npx @meantjs/cli gen icrc1.did -o src/generated
    ```
 
 ## 1. A key for the agent
@@ -129,7 +129,7 @@ It prints the key's principal: the account the agent spends from.
 
 ```ts
 // src/ledger-tools.ts
-import { isPrincipal, principal } from "@candid-core/schema"
+import { isPrincipal, principal } from "@meantjs/schema"
 import {
   formatUnits,
   isReactorError,

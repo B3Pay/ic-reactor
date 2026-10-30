@@ -1,4 +1,4 @@
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"

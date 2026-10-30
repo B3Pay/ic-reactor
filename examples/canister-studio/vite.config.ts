@@ -41,7 +41,7 @@ export default defineConfig({
       "@noble/curves/ed25519.js",
       "@noble/curves/nist.js",
       "@noble/curves/secp256k1.js",
-      "@candid-core/schema/contract",
+      "@meantjs/schema/contract",
       "zod",
     ],
   },

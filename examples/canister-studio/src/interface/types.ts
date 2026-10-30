@@ -1,4 +1,4 @@
-import type { AnyFieldSchema, AnySchema, MethodMode } from "@candid-core/schema"
+import type { AnyFieldSchema, AnySchema, MethodMode } from "@meantjs/schema"
 import type { RegistryEntry } from "../lib/registry.ts"
 
 /** Where a canister's interface came from, and how far it can be trusted. */

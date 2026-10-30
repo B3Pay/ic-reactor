@@ -1,4 +1,4 @@
-import { isPrincipal } from "@candid-core/schema"
+import { isPrincipal } from "@meantjs/schema"
 import { useAuth, useClient } from "@ic-reactor/react"
 import { skipToken, useQuery } from "@tanstack/react-query"
 import { useId, useState, type ReactElement } from "react"

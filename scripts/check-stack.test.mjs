@@ -1,6 +1,6 @@
 /**
- * Tests of the stack check (scripts/check-stack.mjs): every candid-core pin in
- * a tracked package.json, every `@candid-core/<name>@<version>` and every
+ * Tests of the stack check (scripts/check-stack.mjs): every Meant pin in
+ * a tracked package.json, every `@meantjs/<name>@<version>` and every
  * peer-table "exactly" in a Markdown, MDX or text file, and the two pins in
  * code are the versions of stack.json, and `--write` rewrites what disagrees
  * and nothing else.
@@ -48,9 +48,9 @@ after(() => {
 })
 
 const STACK = {
-  "candid-core": {
-    "@candid-core/schema": "0.4.0",
-    "@candid-core/cli": "0.3.0",
+  meant: {
+    "@meantjs/schema": "0.4.0",
+    "@meantjs/cli": "0.3.0",
   },
   frozen: ["evals/"],
 }
@@ -64,19 +64,19 @@ const manifest = (fields) => json({ name: "fixture", private: true, ...fields })
 const AGREEING = {
   [MANIFEST]: json(STACK),
   "package.json": manifest({
-    devDependencies: { "@candid-core/schema": "0.4.0" },
+    devDependencies: { "@meantjs/schema": "0.4.0" },
   }),
   "packages/core/package.json": manifest({
-    peerDependencies: { "@candid-core/schema": "0.4.0" },
-    peerDependenciesMeta: { "@candid-core/schema": { optional: false } },
-    devDependencies: { "@candid-core/schema": "0.4.0" },
+    peerDependencies: { "@meantjs/schema": "0.4.0" },
+    peerDependenciesMeta: { "@meantjs/schema": { optional: false } },
+    devDependencies: { "@meantjs/schema": "0.4.0" },
   }),
   "examples/app/package.json": manifest({
-    dependencies: { "@candid-core/schema": "0.4.0" },
-    devDependencies: { "@candid-core/cli": "0.3.0" },
+    dependencies: { "@meantjs/schema": "0.4.0" },
+    devDependencies: { "@meantjs/cli": "0.3.0" },
   }),
   "README.md":
-    "npm install --save-exact @candid-core/schema@0.4.0\nnpm install --save-dev --save-exact @candid-core/cli@0.3.0\n",
+    "npm install --save-exact @meantjs/schema@0.4.0\nnpm install --save-dev --save-exact @meantjs/cli@0.3.0\n",
   "evals/README.md":
     "Each condition keeps the versions it was measured with.\n",
 }
@@ -128,12 +128,12 @@ describe("package.json pins", () => {
     assert.deepEqual(
       problemsWith({
         "examples/app/package.json": manifest({
-          dependencies: { "@candid-core/schema": "0.4.0" },
-          devDependencies: { "@candid-core/cli": "0.2.0" },
+          dependencies: { "@meantjs/schema": "0.4.0" },
+          devDependencies: { "@meantjs/cli": "0.2.0" },
         }),
       }),
       [
-        'examples/app/package.json:8 @candid-core/cli is "0.2.0"; stack.json pins 0.3.0',
+        'examples/app/package.json:8 @meantjs/cli is "0.2.0"; stack.json pins 0.3.0',
       ]
     )
   })
@@ -142,11 +142,11 @@ describe("package.json pins", () => {
     assert.deepEqual(
       problemsWith({
         "packages/core/package.json": manifest({
-          peerDependencies: { "@candid-core/schema": "^0.4.0" },
+          peerDependencies: { "@meantjs/schema": "^0.4.0" },
         }),
       }),
       [
-        'packages/core/package.json:5 @candid-core/schema is "^0.4.0"; stack.json pins 0.4.0',
+        'packages/core/package.json:5 @meantjs/schema is "^0.4.0"; stack.json pins 0.4.0',
       ]
     )
   })
@@ -155,22 +155,22 @@ describe("package.json pins", () => {
     assert.deepEqual(
       problemsWith({
         "package.json": manifest({
-          devDependencies: { "@candid-core/schema": "0.4.0" },
+          devDependencies: { "@meantjs/schema": "0.4.0" },
           pnpm: {
             overrides: {
-              "@candid-core/schema": "0.3.0",
-              "@candid-core/cli>@candid-core/schema": "0.3.0",
-              "@candid-core/schema@<0.4.0": "0.3.0",
-              "@candid-core/schema@>=0.3.0 <0.4.0": "0.3.0",
+              "@meantjs/schema": "0.3.0",
+              "@meantjs/cli>@meantjs/schema": "0.3.0",
+              "@meantjs/schema@<0.4.0": "0.3.0",
+              "@meantjs/schema@>=0.3.0 <0.4.0": "0.3.0",
             },
           },
         }),
       }),
       [
-        'package.json:9 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
-        'package.json:10 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
-        'package.json:11 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
-        'package.json:12 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
+        'package.json:9 @meantjs/schema is "0.3.0"; stack.json pins 0.4.0',
+        'package.json:10 @meantjs/schema is "0.3.0"; stack.json pins 0.4.0',
+        'package.json:11 @meantjs/schema is "0.3.0"; stack.json pins 0.4.0',
+        'package.json:12 @meantjs/schema is "0.3.0"; stack.json pins 0.4.0',
       ]
     )
   })
@@ -179,16 +179,16 @@ describe("package.json pins", () => {
     assert.deepEqual(
       problemsWith({
         "package.json": manifest({
-          devDependencies: { "@candid-core/schema": "0.4.0" },
+          devDependencies: { "@meantjs/schema": "0.4.0" },
           pnpm: {
             overrides: {
-              "@candid-core/schema@0.3.0>@noble/hashes": "1.8.0",
-              "@candid-core/schema@0.3.0>@candid-core/cli": "0.2.0",
+              "@meantjs/schema@0.3.0>@noble/hashes": "1.8.0",
+              "@meantjs/schema@0.3.0>@meantjs/cli": "0.2.0",
             },
           },
         }),
       }),
-      ['package.json:10 @candid-core/cli is "0.2.0"; stack.json pins 0.3.0']
+      ['package.json:10 @meantjs/cli is "0.2.0"; stack.json pins 0.3.0']
     )
   })
 
@@ -196,18 +196,18 @@ describe("package.json pins", () => {
     assert.deepEqual(
       problemsWith({
         "examples/app/package.json": manifest({
-          scripts: { gen: "npx -y @candid-core/cli@0.2.0 gen app.did -o src" },
+          scripts: { gen: "npx -y @meantjs/cli@0.2.0 gen app.did -o src" },
           dependencies: {
-            "@candid-core/schema": "0.4.0",
-            "schema-alias": "npm:@candid-core/schema@0.3.0",
+            "@meantjs/schema": "0.4.0",
+            "schema-alias": "npm:@meantjs/schema@0.3.0",
           },
-          devDependencies: { "@candid-core/cli": "0.3.0" },
-          overrides: { "@candid-core/schema@0.3.0": "0.4.0" },
+          devDependencies: { "@meantjs/cli": "0.3.0" },
+          overrides: { "@meantjs/schema@0.3.0": "0.4.0" },
         }),
       }),
       [
-        'examples/app/package.json:9 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
-        'examples/app/package.json:5 @candid-core/cli is "0.2.0"; stack.json pins 0.3.0',
+        'examples/app/package.json:9 @meantjs/schema is "0.3.0"; stack.json pins 0.4.0',
+        'examples/app/package.json:5 @meantjs/cli is "0.2.0"; stack.json pins 0.3.0',
       ]
     )
   })
@@ -216,8 +216,8 @@ describe("package.json pins", () => {
     assert.deepEqual(
       problemsWith({
         "tests/fake-cli/package.json": json({
-          name: "@candid-core/cli",
-          dependencies: { "@candid-core/schema-extra": "1.0.0" },
+          name: "@meantjs/cli",
+          dependencies: { "@meantjs/schema-extra": "1.0.0" },
         }),
       }),
       []
@@ -230,16 +230,16 @@ describe("mentions in Markdown, MDX and text files", () => {
     assert.deepEqual(
       problemsWith({
         "docs/guide.mdx":
-          "Install the pair:\n\n```sh\nnpm install --save-exact @candid-core/schema@0.3.0\n```\n",
+          "Install the pair:\n\n```sh\nnpm install --save-exact @meantjs/schema@0.3.0\n```\n",
         "packages/core/README.md":
-          "The generator (`@candid-core/cli@0.2.0-beta.1`) pairs with it.\n",
+          "The generator (`@meantjs/cli@0.2.0-beta.1`) pairs with it.\n",
         "packages/core/llms.txt":
-          "Install @candid-core/schema@0.3.0 with --save-exact.\n",
+          "Install @meantjs/schema@0.3.0 with --save-exact.\n",
       }),
       [
-        'docs/guide.mdx:4 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
-        'packages/core/README.md:1 @candid-core/cli is "0.2.0-beta.1"; stack.json pins 0.3.0',
-        'packages/core/llms.txt:1 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
+        'docs/guide.mdx:4 @meantjs/schema is "0.3.0"; stack.json pins 0.4.0',
+        'packages/core/README.md:1 @meantjs/cli is "0.2.0-beta.1"; stack.json pins 0.3.0',
+        'packages/core/llms.txt:1 @meantjs/schema is "0.3.0"; stack.json pins 0.4.0',
       ]
     )
   })
@@ -248,18 +248,18 @@ describe("mentions in Markdown, MDX and text files", () => {
     assert.deepEqual(
       problemsWith({
         "docs/cdn.md": [
-          "npm i @candid-core/schema@^0.4.0",
-          "npm i @candid-core/cli@latest",
-          "import { c } from 'https://cdn.jsdelivr.net/npm/@candid-core/schema@0.3.0/dist/index.js'",
-          'npm i "@candid-core/cli@>=0.3.0"',
+          "npm i @meantjs/schema@^0.4.0",
+          "npm i @meantjs/cli@latest",
+          "import { c } from 'https://cdn.jsdelivr.net/npm/@meantjs/schema@0.3.0/dist/index.js'",
+          'npm i "@meantjs/cli@>=0.3.0"',
           "",
         ].join("\n"),
       }),
       [
-        'docs/cdn.md:1 @candid-core/schema is "^0.4.0"; stack.json pins 0.4.0',
-        'docs/cdn.md:2 @candid-core/cli is "latest"; stack.json pins 0.3.0',
-        'docs/cdn.md:3 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
-        'docs/cdn.md:4 @candid-core/cli is ">=0.3.0"; stack.json pins 0.3.0',
+        'docs/cdn.md:1 @meantjs/schema is "^0.4.0"; stack.json pins 0.4.0',
+        'docs/cdn.md:2 @meantjs/cli is "latest"; stack.json pins 0.3.0',
+        'docs/cdn.md:3 @meantjs/schema is "0.3.0"; stack.json pins 0.4.0',
+        'docs/cdn.md:4 @meantjs/cli is ">=0.3.0"; stack.json pins 0.3.0',
       ]
     )
   })
@@ -268,7 +268,7 @@ describe("mentions in Markdown, MDX and text files", () => {
     assert.deepEqual(
       problemsWith({
         "docs/prose.md":
-          "Pin @candid-core/schema@0.4.0. Then **@candid-core/cli@0.3.0**: done, (`@candid-core/cli@0.3.0`).\n",
+          "Pin @meantjs/schema@0.4.0. Then **@meantjs/cli@0.3.0**: done, (`@meantjs/cli@0.3.0`).\n",
       }),
       []
     )
@@ -278,7 +278,7 @@ describe("mentions in Markdown, MDX and text files", () => {
     assert.deepEqual(
       problemsWith({
         "docs/typeset.md":
-          "Say \u201c@candid-core/cli@0.3.0\u201d. Pin @candid-core/schema@0.4.0\u2014the pair. Not ~~@candid-core/cli@0.3.0~~.\n",
+          "Say \u201c@meantjs/cli@0.3.0\u201d. Pin @meantjs/schema@0.4.0\u2014the pair. Not ~~@meantjs/cli@0.3.0~~.\n",
       }),
       []
     )
@@ -290,13 +290,13 @@ describe("mentions in Markdown, MDX and text files", () => {
         "docs/packages/core.mdx": [
           "| Peer                  | Range                           |",
           "| --------------------- | ------------------------------- |",
-          "| `@candid-core/schema` | exactly `0.3.0`: the module ... |",
+          "| `@meantjs/schema` | exactly `0.3.0`: the module ... |",
           "| `@icp-sdk/core`       | exactly `6.1.0`                 |",
           "",
         ].join("\n"),
       }),
       [
-        'docs/packages/core.mdx:3 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
+        'docs/packages/core.mdx:3 @meantjs/schema is "0.3.0"; stack.json pins 0.4.0',
       ]
     )
   })
@@ -305,9 +305,9 @@ describe("mentions in Markdown, MDX and text files", () => {
     assert.deepEqual(
       problemsWith({
         "docs/peers.md": [
-          "`@candid-core/schema` is a peer of core.",
+          "`@meantjs/schema` is a peer of core.",
           "Its other peers are exactly `6.1.0` and newer.",
-          "`@candid-core/schema` pairs exactly `@candid-core/cli@0.3.0`.",
+          "`@meantjs/schema` pairs exactly `@meantjs/cli@0.3.0`.",
           "",
         ].join("\n"),
       }),
@@ -319,9 +319,9 @@ describe("mentions in Markdown, MDX and text files", () => {
     assert.deepEqual(
       problemsWith({
         "docs/other.md": [
-          "`@candid-core/cli` 0.2.0 reads a file by its exact name.",
-          "@tanstack/query-core@5.62.0, @candid-core/profile@0.1.0 and @candid-core/schema-extra@1.0.0.",
-          "Mail me@candid-core/schema@0.1.0 is not a package.",
+          "`@meantjs/cli` 0.2.0 reads a file by its exact name.",
+          "@tanstack/query-core@5.62.0, @meantjs/profile@0.1.0 and @meantjs/schema-extra@1.0.0.",
+          "Mail me@meantjs/schema@0.1.0 is not a package.",
           "",
         ].join("\n"),
       }),
@@ -335,17 +335,16 @@ describe("what keeps its versions", () => {
     const root = repository(
       {
         ...AGREEING,
-        "CHANGELOG.md": "npm install --save-exact @candid-core/schema@0.3.0\n",
-        "packages/core/CHANGELOG.md":
-          "Repinned from `@candid-core/cli@0.2.0`.\n",
-        "docs/changelog.mdx": "Moved from @candid-core/cli@0.2.0.\n",
+        "CHANGELOG.md": "npm install --save-exact @meantjs/schema@0.3.0\n",
+        "packages/core/CHANGELOG.md": "Repinned from `@meantjs/cli@0.2.0`.\n",
+        "docs/changelog.mdx": "Moved from @meantjs/cli@0.2.0.\n",
         "evals/conditions/thin/package.json": manifest({
-          dependencies: { "@candid-core/schema": "0.2.0" },
+          dependencies: { "@meantjs/schema": "0.2.0" },
         }),
-        "evals/README.md": "npm install @candid-core/schema@0.2.0\n",
-        "docs/frozen-note.md": "npm install @candid-core/schema@0.1.0\n",
+        "evals/README.md": "npm install @meantjs/schema@0.2.0\n",
+        "docs/frozen-note.md": "npm install @meantjs/schema@0.1.0\n",
         "scratch/package.json": manifest({
-          dependencies: { "@candid-core/schema": "0.1.0" },
+          dependencies: { "@meantjs/schema": "0.1.0" },
         }),
         [MANIFEST]: json({
           ...STACK,
@@ -367,21 +366,19 @@ describe("what keeps its versions", () => {
           repository({
             ...AGREEING,
             [MANIFEST]: json({ ...STACK, frozen: ["evals/", "docs/note.md"] }),
-            "docs/note.md": "npm install @candid-core/schema@0.1.0\n",
-            "docs/note.md.txt": "npm install @candid-core/schema@0.1.0\n",
+            "docs/note.md": "npm install @meantjs/schema@0.1.0\n",
+            "docs/note.md.txt": "npm install @meantjs/schema@0.1.0\n",
           })
         )
       ),
-      [
-        'docs/note.md.txt:1 @candid-core/schema is "0.1.0"; stack.json pins 0.4.0',
-      ]
+      ['docs/note.md.txt:1 @meantjs/schema is "0.1.0"; stack.json pins 0.4.0']
     )
   })
 
   it("skips a tracked file deleted from the working tree", () => {
     const root = repository({
       ...AGREEING,
-      "docs/gone.md": "npm install @candid-core/schema@0.1.0\n",
+      "docs/gone.md": "npm install @meantjs/schema@0.1.0\n",
     })
     unlinkSync(join(root, "docs/gone.md"))
     assert.deepEqual(listed(check(root)), [])
@@ -407,23 +404,23 @@ describe("what keeps its versions", () => {
     const root = repository({
       [MANIFEST]: json({
         ...STACK,
-        "candid-core": {
-          ...STACK["candid-core"],
-          "@candid-core/extra": "1.0.0",
+        meant: {
+          ...STACK.meant,
+          "@meantjs/extra": "1.0.0",
         },
       }),
       "package.json": manifest({
         devDependencies: {
-          "@candid-core/schema": "0.4.0",
-          "@candid-core/cli": "0.3.0",
+          "@meantjs/schema": "0.4.0",
+          "@meantjs/cli": "0.3.0",
         },
       }),
       "evals/package.json": manifest({
-        dependencies: { "@candid-core/extra": "1.0.0" },
+        dependencies: { "@meantjs/extra": "1.0.0" },
       }),
     })
     assert.deepEqual(listed(check(root)), [
-      "stack.json:5 no package.json outside the frozen paths pins @candid-core/extra; remove it from stack.json or pin it",
+      "stack.json:5 no package.json outside the frozen paths pins @meantjs/extra; remove it from stack.json or pin it",
     ])
   })
 })
@@ -432,7 +429,7 @@ describe("pins in code", () => {
   const codePins = [
     {
       file: "src/generate.ts",
-      name: "@candid-core/cli",
+      name: "@meantjs/cli",
       pattern: /(export const CLI_VERSION = ")([^"]*)(")/g,
     },
   ]
@@ -443,7 +440,7 @@ describe("pins in code", () => {
       "src/generate.ts": 'export const CLI_VERSION = "0.2.0"\n',
     })
     assert.deepEqual(listed(check(root, { codePins })), [
-      'src/generate.ts:1 @candid-core/cli is "0.2.0"; stack.json pins 0.3.0',
+      'src/generate.ts:1 @meantjs/cli is "0.2.0"; stack.json pins 0.3.0',
     ])
     check(root, { codePins, write: true })
     assert.equal(
@@ -459,17 +456,17 @@ describe("pins in code", () => {
         'export const CLI_VERSION = "0.3.0"\nexport const CLI_VERSION = "0.3.0"\n',
     })
     assert.deepEqual(listed(check(twice, { codePins })), [
-      "src/generate.ts:0 the pin of @candid-core/cli matches 2 times, not once; update CODE_PINS in scripts/check-stack.mjs",
+      "src/generate.ts:0 the pin of @meantjs/cli matches 2 times, not once; update CODE_PINS in scripts/check-stack.mjs",
     ])
     const refactored = repository({
       ...AGREEING,
       "src/generate.ts": 'export const CLI = { version: "0.2.0" }\n',
     })
     assert.deepEqual(listed(check(refactored, { codePins })), [
-      "src/generate.ts:0 the pin of @candid-core/cli matches 0 times, not once; update CODE_PINS in scripts/check-stack.mjs",
+      "src/generate.ts:0 the pin of @meantjs/cli matches 0 times, not once; update CODE_PINS in scripts/check-stack.mjs",
     ])
     assert.deepEqual(listed(check(repository(AGREEING), { codePins })), [
-      "src/generate.ts:0 holds the pin of @candid-core/cli but is not a tracked file; update CODE_PINS in scripts/check-stack.mjs",
+      "src/generate.ts:0 holds the pin of @meantjs/cli but is not a tracked file; update CODE_PINS in scripts/check-stack.mjs",
     ])
   })
 })
@@ -479,18 +476,18 @@ describe("--write", () => {
     const stale = {
       ...AGREEING,
       "examples/app/package.json": manifest({
-        dependencies: { "@candid-core/schema": "0.3.0" },
-        devDependencies: { "@candid-core/cli": "^0.2.0" },
+        dependencies: { "@meantjs/schema": "0.3.0" },
+        devDependencies: { "@meantjs/cli": "^0.2.0" },
       }),
       "README.md":
-        "npm install --save-exact @candid-core/schema@0.3.0\nnpm install --save-dev --save-exact @candid-core/cli@0.3.0\n",
+        "npm install --save-exact @meantjs/schema@0.3.0\nnpm install --save-dev --save-exact @meantjs/cli@0.3.0\n",
       "docs/cdn.md":
-        "See https://cdn.jsdelivr.net/npm/@candid-core/schema@0.3.0/dist/index.js.\n",
+        "See https://cdn.jsdelivr.net/npm/@meantjs/schema@0.3.0/dist/index.js.\n",
       "docs/core.mdx":
-        "| `@candid-core/schema` | exactly `0.3.0`: the module imports it |\n",
-      "CHANGELOG.md": "npm install --save-exact @candid-core/schema@0.3.0\n",
+        "| `@meantjs/schema` | exactly `0.3.0`: the module imports it |\n",
+      "CHANGELOG.md": "npm install --save-exact @meantjs/schema@0.3.0\n",
       "evals/package.json": manifest({
-        dependencies: { "@candid-core/schema": "0.2.0" },
+        dependencies: { "@meantjs/schema": "0.2.0" },
       }),
     }
     const root = repository(stale)
@@ -509,11 +506,11 @@ describe("--write", () => {
     assert.equal(read(root, "README.md"), AGREEING["README.md"])
     assert.equal(
       read(root, "docs/cdn.md"),
-      "See https://cdn.jsdelivr.net/npm/@candid-core/schema@0.4.0/dist/index.js.\n"
+      "See https://cdn.jsdelivr.net/npm/@meantjs/schema@0.4.0/dist/index.js.\n"
     )
     assert.equal(
       read(root, "docs/core.mdx"),
-      "| `@candid-core/schema` | exactly `0.4.0`: the module imports it |\n"
+      "| `@meantjs/schema` | exactly `0.4.0`: the module imports it |\n"
     )
     assert.equal(read(root, "CHANGELOG.md"), stale["CHANGELOG.md"])
     assert.equal(read(root, "evals/package.json"), stale["evals/package.json"])
@@ -522,11 +519,11 @@ describe("--write", () => {
 
   it("keeps a package.json valid: an escaped quote ends a version", () => {
     const script = (version) =>
-      `sh -c "npx -y @candid-core/cli@${version} gen app.did"`
+      `sh -c "npx -y @meantjs/cli@${version} gen app.did"`
     const app = (version) =>
       manifest({
         scripts: { gen: script(version) },
-        devDependencies: { "@candid-core/cli": "0.3.0" },
+        devDependencies: { "@meantjs/cli": "0.3.0" },
       })
     assert.deepEqual(
       problemsWith({ "examples/app/package.json": app("0.3.0") }),
@@ -544,21 +541,21 @@ describe("--write", () => {
     const stale = {
       ...AGREEING,
       "packages/core/package.json": manifest({
-        peerDependencies: { "@candid-core/schema": "catalog:" },
+        peerDependencies: { "@meantjs/schema": "catalog:" },
         devDependencies: {
-          "@candid-core/schema": "workspace:*",
-          "schema-alias": "npm:@candid-core/schema@0.3.0 || 0.5.0",
+          "@meantjs/schema": "workspace:*",
+          "schema-alias": "npm:@meantjs/schema@0.3.0 || 0.5.0",
         },
       }),
-      "docs/tarball.md": "npm install ./@candid-core/schema@0.3.0.tgz\n",
+      "docs/tarball.md": "npm install ./@meantjs/schema@0.3.0.tgz\n",
     }
     const root = repository(stale)
     const result = check(root, { write: true })
     assert.deepEqual(listed(result), [
-      'docs/tarball.md:1 @candid-core/schema is "0.3.0.tgz"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
-      'packages/core/package.json:5 @candid-core/schema is "catalog:"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
-      'packages/core/package.json:8 @candid-core/schema is "workspace:*"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
-      'packages/core/package.json:9 @candid-core/schema is "0.3.0 || 0.5.0"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
+      'docs/tarball.md:1 @meantjs/schema is "0.3.0.tgz"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
+      'packages/core/package.json:5 @meantjs/schema is "catalog:"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
+      'packages/core/package.json:8 @meantjs/schema is "workspace:*"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
+      'packages/core/package.json:9 @meantjs/schema is "0.3.0 || 0.5.0"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
     ])
     assert.ok(result.problems.every(({ fixable }) => !fixable))
     assert.deepEqual(result.written, [])
@@ -569,13 +566,13 @@ describe("--write", () => {
     const codePins = [
       {
         file: "examples/app/package.json",
-        name: "@candid-core/cli",
+        name: "@meantjs/cli",
         pattern: /("cliMajor": )(\d+)(,)/g,
       },
     ]
     const app = manifest({
       cliMajor: 0,
-      devDependencies: { "@candid-core/cli": "0.3.0" },
+      devDependencies: { "@meantjs/cli": "0.3.0" },
     })
     const root = repository({ ...AGREEING, "examples/app/package.json": app })
     const result = check(root, { codePins, write: true })
@@ -592,7 +589,7 @@ describe("--write", () => {
   it("writes nothing without --write", () => {
     const stale = {
       ...AGREEING,
-      "README.md": "npm install --save-exact @candid-core/schema@0.3.0\n",
+      "README.md": "npm install --save-exact @meantjs/schema@0.3.0\n",
     }
     const root = repository(stale)
     assert.equal(check(root).problems.length, 1)
@@ -602,43 +599,48 @@ describe("--write", () => {
 
 describe("readManifest", () => {
   const refused = [
-    ["text that is not JSON", "{ candid-core: }", /is not JSON/],
+    ["text that is not JSON", "{ meant: }", /is not JSON/],
     ["a list", json([STACK]), /must hold an object/],
     [
       "a range",
-      json({ "candid-core": { "@candid-core/schema": "^0.4.0" } }),
+      json({ meant: { "@meantjs/schema": "^0.4.0" } }),
       /exact stable version/,
     ],
     [
       "a prerelease",
-      json({ "candid-core": { "@candid-core/schema": "0.5.0-beta.1" } }),
+      json({ meant: { "@meantjs/schema": "0.5.0-beta.1" } }),
       /exact stable version/,
     ],
     [
       "build metadata",
-      json({ "candid-core": { "@candid-core/schema": "0.4.0+1" } }),
+      json({ meant: { "@meantjs/schema": "0.4.0+1" } }),
       /exact stable version/,
     ],
     [
       "a leading zero",
-      json({ "candid-core": { "@candid-core/schema": "0.04.0" } }),
+      json({ meant: { "@meantjs/schema": "0.04.0" } }),
       /exact stable version/,
     ],
     [
       "an upper-case name",
-      json({ "candid-core": { "@candid-core/sChema": "0.4.0" } }),
+      json({ meant: { "@meantjs/sChema": "0.4.0" } }),
       /scoped package name/,
     ],
-    ["no packages", json({ "candid-core": {} }), /at least one package/],
+    ["no packages", json({ meant: {} }), /at least one package/],
     [
       "an unscoped name",
-      json({ "candid-core": { "candid-core": "0.1.0" } }),
+      json({ meant: { meant: "0.1.0" } }),
       /scoped package name/,
     ],
     [
       "an unknown key",
-      json({ ...STACK, crate: { "candid-core": "0.1.0" } }),
+      json({ ...STACK, crate: { meant: "0.1.0" } }),
       /unknown key "crate"/,
+    ],
+    [
+      "the key it had before the packages took the Meant name",
+      json({ "candid-core": STACK.meant }),
+      /unknown key "candid-core"/,
     ],
     [
       "a frozen that is not a list",
@@ -682,11 +684,11 @@ describe("readManifest", () => {
     const root = repository({
       [MANIFEST]: json({
         $comment: "notes",
-        "candid-core": { "@candid-core/schema": "0.5.0" },
+        meant: { "@meantjs/schema": "0.5.0" },
       }),
     })
     const { pins, frozen } = readManifest(root)
-    assert.deepEqual([...pins], [["@candid-core/schema", "0.5.0"]])
+    assert.deepEqual([...pins], [["@meantjs/schema", "0.5.0"]])
     assert.deepEqual(frozen, [])
   })
 })
@@ -709,9 +711,9 @@ describe("the command", () => {
 
   const CODE_FILES = {
     "packages/vite-plugin/src/generate.ts":
-      'export const CANDID_CORE_CLI_VERSION = "0.3.0"\n',
+      'export const MEANT_CLI_VERSION = "0.3.0"\n',
     "scripts/export-budget.mjs":
-      'export const FOREIGN = [{\n  package: "@candid-core/schema",\n  from: "packages/core",\n  pin: "0.4.0",\n}]\n',
+      'export const FOREIGN = [{\n  package: "@meantjs/schema",\n  from: "packages/core",\n  pin: "0.4.0",\n}]\n',
   }
 
   it("exits 0 and counts what it checked on a tree that agrees", () => {
@@ -719,7 +721,7 @@ describe("the command", () => {
     assert.equal(result.status, 0, result.stderr)
     assert.match(
       result.stdout,
-      /^7 pins and 2 mentions agree with stack\.json \(@candid-core\/schema 0\.4\.0, @candid-core\/cli 0\.3\.0\)\.$/m
+      /^7 pins and 2 mentions agree with stack\.json \(@meantjs\/schema 0\.4\.0, @meantjs\/cli 0\.3\.0\)\.$/m
     )
   })
 
@@ -728,13 +730,13 @@ describe("the command", () => {
       repository({
         ...AGREEING,
         ...CODE_FILES,
-        "README.md": "npm install --save-exact @candid-core/schema@0.3.0\n",
+        "README.md": "npm install --save-exact @meantjs/schema@0.3.0\n",
       })
     )
     assert.equal(result.status, 1)
     assert.match(
       result.stderr,
-      /^README\.md:1: @candid-core\/schema is "0\.3\.0"; stack\.json pins 0\.4\.0$/m
+      /^README\.md:1: @meantjs\/schema is "0\.3\.0"; stack\.json pins 0\.4\.0$/m
     )
     assert.match(result.stderr, /Run `pnpm sync:stack`, then `pnpm install`\./)
   })
@@ -743,14 +745,14 @@ describe("the command", () => {
     const root = repository({
       ...AGREEING,
       ...CODE_FILES,
-      "README.md": "npm install --save-exact @candid-core/schema@0.3.0\n",
+      "README.md": "npm install --save-exact @meantjs/schema@0.3.0\n",
     })
     const result = run(root, ["--write"])
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /^rewrote README\.md$/m)
     assert.equal(
       read(root, "README.md"),
-      "npm install --save-exact @candid-core/schema@0.4.0\n"
+      "npm install --save-exact @meantjs/schema@0.4.0\n"
     )
   })
 
@@ -760,7 +762,7 @@ describe("the command", () => {
         ...CODE_FILES,
         [MANIFEST]: json(STACK),
         "package.json": manifest({
-          devDependencies: { "@candid-core/schema": "0.4.0" },
+          devDependencies: { "@meantjs/schema": "0.4.0" },
         }),
       }),
       ["--write"]
@@ -768,7 +770,7 @@ describe("the command", () => {
     assert.equal(result.status, 1)
     assert.match(
       result.stderr,
-      /^stack\.json:4: no package\.json outside the frozen paths pins @candid-core\/cli/m
+      /^stack\.json:4: no package\.json outside the frozen paths pins @meantjs\/cli/m
     )
   })
 

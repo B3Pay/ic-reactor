@@ -1,6 +1,6 @@
 ---
 title: "Canister Studio"
-description: Automatic forms and safe calls for any mainnet canister, server-rendered with TanStack Start, on ic-reactor 4 and candid-core
+description: Automatic forms and safe calls for any mainnet canister, server-rendered with TanStack Start, on ic-reactor 4 and Meant
 editUrl: false
 ---
 
@@ -11,13 +11,13 @@ A TanStack Start app, rendered on the server, built on `@ic-reactor/core`,
 hooks. It gives every method of any canister on mainnet a form built from its
 Candid, and calls it with every rule of ic-reactor 4 in view:
 
-- **Typed canisters.** The ICP ledger, the ckBTC and ckETH ledgers and the
-  ckBTC minter come from three modules that the Vite plugin generates from
-  committed `.did` files with `candid-core-cli gen`. The wallet page calls
-  them through the generated types, with no cast.
+- **Typed canisters.** The ICP ledger, the ckBTC and ckETH ledgers and the ckBTC
+  minter come from three modules that the Vite plugin generates from committed
+  `.did` files with `meant gen`. The wallet page calls them through the
+  generated types, with no cast.
 - **Any canister, read live.** Open any mainnet canister id: a server function
   reads its `candid:service` metadata and module hash in one certified
-  `read_state`, compiles the interface with `@candid-core/cli` in a worker
+  `read_state`, compiles the interface with `@meantjs/cli` in a worker
   thread with a deadline, and caches it by module hash. The browser rebuilds
   the actor from the compiled envelope with `schemaFromContract`. An
   interface read from the uncertified `__get_candid_interface_tmp_hack` query

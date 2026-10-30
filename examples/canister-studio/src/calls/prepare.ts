@@ -1,4 +1,4 @@
-import { encodeArgs } from "@candid-core/schema/codec"
+import { encodeArgs } from "@meantjs/schema/codec"
 import type { MethodInfo } from "../interface/types.ts"
 import { toVars } from "../lib/reactor.ts"
 

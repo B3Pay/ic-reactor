@@ -1,4 +1,4 @@
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import type { Value } from "./canisters/icrc1.ts"
 
 /** Why `text` is not canonical principal text, or `undefined` when it is. */

@@ -3,7 +3,7 @@
  * callback, called through the same path as a canister's methods.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { c, principal, type Principal } from "@candid-core/schema"
+import { c, principal, type Principal } from "@meantjs/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {
   ARCHIVE,

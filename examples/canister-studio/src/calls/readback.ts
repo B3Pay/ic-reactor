@@ -1,4 +1,4 @@
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import type { CanisterInterface, MethodInfo } from "../interface/types.ts"
 import { prepareCall, type PreparedCall } from "./prepare.ts"
 

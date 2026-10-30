@@ -6,7 +6,7 @@
 // The client is built with `network: "env"`, as the app's is, on jsdom's page
 // (http://localhost:3000), and the backend is found by `{ name: "backend" }`
 // in an ic_env cookie written the way @ic-reactor/vite-plugin writes it.
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import type { Client } from "@ic-reactor/core"
 import { createTestClient, type TestHandlers } from "@ic-reactor/core/testing"
 import { ReactorProvider } from "@ic-reactor/react"

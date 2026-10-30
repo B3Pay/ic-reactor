@@ -18,13 +18,13 @@ import {
   type Principal,
   type Schema,
   type ServiceMethod,
-} from "@candid-core/schema"
+} from "@meantjs/schema"
 import {
   DEFAULT_MAX_DEPTH,
   DEFAULT_MAX_ELEMENTS,
   decodeArgs,
   encodeArgs,
-} from "@candid-core/schema/codec"
+} from "@meantjs/schema/codec"
 import type { Identity } from "@icp-sdk/core/agent"
 import { createClientWith, type Client } from "../client.js"
 import { checkBoolean, resolveNetwork, type Network } from "../network.js"

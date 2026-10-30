@@ -1,5 +1,5 @@
 // Scenario 6: --json on every command, in one stable shape.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { describe, expect, it } from "vitest"
 import { stringify } from "./output.ts"
 import { createCli, generatePem } from "./test-kit.ts"

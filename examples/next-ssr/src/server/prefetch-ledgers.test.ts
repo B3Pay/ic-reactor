@@ -2,7 +2,7 @@
 // given and only that one, as the anonymous caller, by `{ id }`; its
 // dehydrated cache survives JSON exactly; a ledger that fails is reported and
 // left out, and the rest are not.
-import { isPrincipal } from "@candid-core/schema"
+import { isPrincipal } from "@meantjs/schema"
 import { dehydrate, hydrate, type QueryKey } from "@tanstack/react-query"
 import { afterEach, describe, expect, it } from "vitest"
 import { actor, type Actor } from "@/canisters/icrc1"

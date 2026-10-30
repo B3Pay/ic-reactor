@@ -8,7 +8,7 @@ import { dehydrate, hydrate } from "@tanstack/query-core"
 import { createClient } from "../src/client.js"
 import { deserializeData, serializeData } from "../src/hydration.js"
 
-/** What a canister reply can decode to, as candid-core 0.3 shapes it. */
+/** What a canister reply can decode to, as `@meantjs/schema` shapes it. */
 const CANDID_VALUES = {
   "nat above 2^64": 340282366920938463463374607431768211457n,
   "negative int": -18446744073709551617n,

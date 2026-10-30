@@ -474,15 +474,15 @@ describe("docs pages", () => {
     const run = check(
       repo({
         "packages/core/package.json": core({
-          "@candid-core/schema": "0.3.0-beta.1",
+          "@meantjs/schema": "0.3.0-beta.1",
           "@icp-sdk/core": "^6.1.0",
         }),
         [`${PAGES}/guides/getting-started.mdx`]: [
           "# Getting started",
           "",
           `\`${VERSION}\` is published under \`beta\`.`,
-          "npm install --save-exact @candid-core/schema@0.3.0-beta.1",
-          "npm install --save-exact @candid-core/schema@0.2.0-beta.4",
+          "npm install --save-exact @meantjs/schema@0.3.0-beta.1",
+          "npm install --save-exact @meantjs/schema@0.2.0-beta.4",
           "Vite ^4.2.0 or 8.0.0, and TanStack Query 5.89 or newer.",
         ].join("\n"),
       })
@@ -508,18 +508,18 @@ describe("docs pages", () => {
           version: VERSION,
           homepage: "https://ic-reactor.b3pay.net/v4/packages/core/",
           peerDependencies: {
-            "@candid-core/schema": "0.3.0",
+            "@meantjs/schema": "0.3.0",
             "@tanstack/query-core": "^5.62.0",
           },
         }),
         [`${PAGES}/guides/getting-started.mdx`]: [
           "# Getting started",
           "",
-          "npm install --save-exact @candid-core/schema@0.3.0",
-          "npm install --save-exact @candid-core/schema@0.2.0",
-          "npm install @tanstack/query-core@5.62.0 @candid-core/cli@0.1.0",
-          "npm install --save-exact @candid-core/schema@0.3.0-beta.1",
-          "Pin `@candid-core/schema@0.3.0`.",
+          "npm install --save-exact @meantjs/schema@0.3.0",
+          "npm install --save-exact @meantjs/schema@0.2.0",
+          "npm install @tanstack/query-core@5.62.0 @meantjs/cli@0.1.0",
+          "npm install --save-exact @meantjs/schema@0.3.0-beta.1",
+          "Pin `@meantjs/schema@0.3.0`.",
         ].join("\n"),
       })
     )
@@ -528,7 +528,7 @@ describe("docs pages", () => {
     assert.equal(lines.length, 2, run.output)
     assert.match(
       lines[0],
-      /getting-started\.mdx:4 names @candid-core\/schema@0\.2\.0, which packages\/\*\/package\.json pins exactly at 0\.3\.0\. Name the pin\./
+      /getting-started\.mdx:4 names @meantjs\/schema@0\.2\.0, which packages\/\*\/package\.json pins exactly at 0\.3\.0\. Name the pin\./
     )
     assert.match(
       lines[1],

@@ -9,7 +9,7 @@
 //
 // Every function throws a UsageError: exit code 2, kind "usage", and no write
 // is sent. (A transfer's amount is read after the ledger's decimals are.)
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import { parseUnits } from "@ic-reactor/core"
 
 /** Input refused by this tool, before any write was sent. */

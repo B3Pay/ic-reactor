@@ -9,7 +9,7 @@
 // replica or the ledger; after it, it reads the replica's request log to show
 // what the library did, and checks that the step ended as it should. Any
 // surprise makes the demo exit 1, so `pnpm demo` is also a smoke test.
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { parseCommandLine } from "../command-line.ts"

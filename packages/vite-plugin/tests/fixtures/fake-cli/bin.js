@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// A stand-in for candid-core-cli. `gen <did>... -o <dir> --json` reads each
+// A stand-in for meant. `gen <did>... -o <dir> --json` reads each
 // entry and, by what it says:
 //   TRAP  writes a trap message to stderr and exits 101 (a crash in the generator)
 //   HANG  never exits, after appending its pid to hang.pids beside this file

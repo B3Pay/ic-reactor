@@ -67,16 +67,16 @@ evals/runs/
 evals/results/
 
 # packages/core/tests/fixtures/: modules and a Contract envelope written by
-# `candid-core-cli gen`, kept byte for byte (see the README there).
+# `meant gen`, kept byte for byte (see the README there).
 packages/core/tests/fixtures/*.ts
 packages/core/tests/fixtures/*.envelope.json
 
-# scripts/check-snippets/app/generated/: the modules `candid-core-cli gen` writes
+# scripts/check-snippets/app/generated/: the modules `meant gen` writes
 # for the `.did` files next to them, kept byte for byte. They are what a guide
 # snippet's `./generated/<name>` import resolves to.
 scripts/check-snippets/app/generated/*.ts
 
-# The modules and Contract envelopes `candid-core-cli gen` (run by
+# The modules and Contract envelopes `meant gen` (run by
 # @ic-reactor/vite-plugin or an example's `gen` script) writes from an example's
 # .did, kept byte for byte so that `gen:check` passes. Listed by name, not by a
 # glob over src/canisters/: a hand-written module put next to them (a stable
@@ -102,7 +102,7 @@ examples/canister-studio/src/canisters/icp_ledger.envelope.json
 examples/canister-studio/src/canisters/ckbtc_minter.ts
 examples/canister-studio/src/canisters/ckbtc_minter.envelope.json
 
-# e2e/src/declarations/: the module and Contract envelope `candid-core-cli gen`
+# e2e/src/declarations/: the module and Contract envelope `meant gen`
 # writes from e2e/src/actor/hello_actor.did (`pnpm gen` in e2e/), kept byte for
 # byte so that `pnpm gen:check` passes.
 e2e/src/declarations/hello_actor.ts

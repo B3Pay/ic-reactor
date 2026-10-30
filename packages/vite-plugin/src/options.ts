@@ -21,7 +21,7 @@
  * - A canister whose options hold a value that is not one, or a key that is
  *   no option, is refused. Every run fails it, with the reasons, before the
  *   run does anything else: it fetches nothing, writes nothing, runs no
- *   `candid-core-cli` process and makes no request for it, and the other
+ *   `meant` process and makes no request for it, and the other
  *   canisters run as they would. Its name is still in the `ic_env` cookie,
  *   which carries every canister an entry names: the app may still call it.
  *
@@ -227,7 +227,7 @@ export function methodsProblem(methods: unknown): string | undefined {
       return `methods holds ${describeValue(name)}, which is not a method name`
     }
     if (name.includes(",")) {
-      return `methods names ${describeValue(name)}, which has a comma: candid-core-cli project takes the names separated by commas, so it cannot be projected to`
+      return `methods names ${describeValue(name)}, which has a comma: \`meant project\` takes the names separated by commas, so it cannot be projected to`
     }
   }
   return undefined
@@ -247,7 +247,7 @@ export function verifyProblem(verify: unknown): string | undefined {
  * omitted. A canister ID is the text of a principal, which is told here, and
  * not only by the fetch or the check that reads it: those load
  * `@icp-sdk/core`, and a canister with `methods` would have its methods
- * listed, by a `candid-core-cli` process, before its check found the ID wrong.
+ * listed, by a `meant` process, before its check found the ID wrong.
  */
 export function canisterIdProblem(canisterId: unknown): string | undefined {
   if (canisterId === undefined) return undefined

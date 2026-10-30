@@ -1,7 +1,7 @@
 import { useAuth, useClient } from "@ic-reactor/react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react"
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { TransferArg, type Account } from "../../canisters/icrc1.ts"
 import { ConfirmWrite, type EarlierSend } from "../../calls/ConfirmWrite.tsx"
 import { resendLeftOpen } from "../../calls/dedupe.ts"

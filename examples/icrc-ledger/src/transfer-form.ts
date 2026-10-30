@@ -1,7 +1,7 @@
 // Turns what a person typed into an ICRC-1 transfer, or refuses it. Nothing
 // here guesses: a principal must be canonical text, and an amount must be a
 // plain decimal the token's decimals can hold exactly.
-import { isPrincipal, principal } from "@candid-core/schema"
+import { isPrincipal, principal } from "@meantjs/schema"
 import { parseUnits } from "@ic-reactor/core"
 import type { TransferArg } from "./canisters/icrc1.ts"
 
