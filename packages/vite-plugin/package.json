@@ -69,7 +69,7 @@
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
     "@types/node": "^26.5.1",
-    "tsup": "^8.5.1",
+    "tsup": "^9.0.0",
     "typescript": "^6.0.3",
     "vitest": "^5.0.0"
   }

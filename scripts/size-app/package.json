@@ -18,7 +18,7 @@
     "react": "^19.3.0"
   },
   "devDependencies": {
-    "@size-limit/preset-small-lib": "^13.0.3",
-    "size-limit": "^13.0.3"
+    "@size-limit/preset-small-lib": "^14.3.0",
+    "size-limit": "^14.3.0"
   }
 }
