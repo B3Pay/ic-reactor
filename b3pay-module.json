@@ -1,0 +1,180 @@
+{
+  "$schema": "https://b3pay.net/schemas/b3pay-module.schema.json",
+  "schema": 1,
+  "id": "ic-reactor",
+  "title": "IC Reactor",
+  "description": "Typed canister calls for TypeScript and React: a client, one error type, units helpers, a test client and a React provider, over a module generated from a .did file.",
+  "group": "internet-computer",
+  "status": "maintained",
+  "links": {
+    "repository": "https://github.com/B3Pay/ic-reactor",
+    "package": "https://www.npmjs.com/package/@ic-reactor/core"
+  },
+  "editUrl": "https://github.com/B3Pay/ic-reactor/edit/main/docs/src/content/docs/{path}",
+  "sidebar": [
+    {
+      "label": "Get started",
+      "items": [
+        {
+          "label": "Overview",
+          "page": "index"
+        },
+        {
+          "label": "Getting started",
+          "page": "guides/getting-started"
+        },
+        {
+          "label": "Migrating from 3.x",
+          "page": "migrating-from-3"
+        },
+        {
+          "label": "Versioning and support",
+          "page": "versioning"
+        }
+      ]
+    },
+    {
+      "label": "Build",
+      "items": [
+        {
+          "label": "An ICRC-1 wallet",
+          "page": "build/icrc1-wallet"
+        },
+        {
+          "label": "A server page for one user",
+          "page": "build/ssr-per-user"
+        },
+        {
+          "label": "An agent's ledger tools",
+          "page": "build/agent-tools"
+        }
+      ]
+    },
+    {
+      "label": "Guides",
+      "items": [
+        {
+          "label": "Reads",
+          "page": "guides/reads"
+        },
+        {
+          "label": "Writes",
+          "page": "guides/writes"
+        },
+        {
+          "label": "Errors and mayHaveExecuted",
+          "page": "guides/errors"
+        },
+        {
+          "label": "Auth",
+          "page": "guides/auth"
+        },
+        {
+          "label": "SSR and hydration",
+          "page": "guides/ssr"
+        },
+        {
+          "label": "Testing",
+          "page": "guides/testing"
+        },
+        {
+          "label": "The Vite plugin",
+          "page": "guides/vite-plugin"
+        }
+      ]
+    },
+    {
+      "label": "Concepts",
+      "items": [
+        {
+          "label": "The client",
+          "page": "guides/client"
+        },
+        {
+          "label": "Values and units",
+          "page": "guides/values"
+        }
+      ]
+    },
+    {
+      "label": "Reference",
+      "items": [
+        {
+          "label": "@ic-reactor/core",
+          "page": "packages/core"
+        },
+        {
+          "label": "@ic-reactor/react",
+          "page": "packages/react"
+        },
+        {
+          "label": "@ic-reactor/vite-plugin",
+          "page": "packages/vite-plugin"
+        },
+        {
+          "label": "API reference",
+          "collapsed": true,
+          "items": [
+            {
+              "label": "Overview",
+              "page": "libs"
+            },
+            {
+              "label": "Functions",
+              "directory": "libs/functions",
+              "collapsed": true
+            },
+            {
+              "label": "Interfaces",
+              "directory": "libs/interfaces",
+              "collapsed": true
+            },
+            {
+              "label": "Type aliases",
+              "directory": "libs/type-aliases",
+              "collapsed": true
+            }
+          ]
+        },
+        {
+          "label": "Guide for AI tools (llms.txt)",
+          "link": "llms.txt"
+        }
+      ]
+    },
+    {
+      "label": "Examples",
+      "items": [
+        {
+          "label": "All examples",
+          "page": "examples"
+        },
+        {
+          "label": "ICRC-1 ledger",
+          "page": "examples/icrc-ledger"
+        },
+        {
+          "label": "Next.js SSR",
+          "page": "examples/next-ssr"
+        },
+        {
+          "label": "Vite wallet",
+          "page": "examples/vite-wallet"
+        },
+        {
+          "label": "Node agent tool",
+          "page": "examples/node-agent-tool"
+        },
+        {
+          "label": "Canister Studio",
+          "page": "examples/canister-studio"
+        }
+      ]
+    }
+  ],
+  "home": "index",
+  "origin": {
+    "repository": "B3Pay/ic-reactor",
+    "commit": "446056396ae198c16deb1c6c0e34d34920e9b9ec"
+  }
+}

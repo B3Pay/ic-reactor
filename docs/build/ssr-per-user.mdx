@@ -1,0 +1,553 @@
+---
+title: Render a server page for one user
+description: "A Next.js App Router page for the account a URL names: its ICP balance read on the server and handed to the browser exact, a certified balance streamed in, and the owner told apart once they sign in"
+editUrl: https://github.com/B3Pay/ic-reactor/edit/main/docs/src/content/docs/build/ssr-per-user.mdx
+---
+
+import { Aside, FileTree } from "@astrojs/starlight/components"
+
+This guide builds one page of a Next.js App Router app:
+`/accounts/<principal>`, the ICP balance of the account the URL names. The
+server reads the balance and sends it with the page. The browser takes over
+the server's cache and sends nothing on load. A certified balance, read
+through consensus, streams in after it.
+
+The user is the account in the URL, not the visitor. A server holds no
+session: it reads as the anonymous principal, and any account's balance can be
+read that way. Once the visitor signs in, the browser knows who they are, and
+the page says whether the account is theirs.
+
+The page takes care of five things:
+
+- **One client per request.** Two visitors never share a cache.
+- **The same keys on both sides.** One function builds the page's reads for
+  the server and for the browser, so the browser finds what the server read.
+- **Exact amounts.** A balance crosses from the server to the browser as a
+  `bigint`, never as a rounded number.
+- **A bad URL.** Text that is not a principal gets the not-found page, and
+  nothing is sent to the ledger.
+- **Failures.** A ledger that does not answer is shown with the error's kind,
+  rendered on the server.
+
+When it is done, the project holds these files beside the ones
+`create-next-app` wrote:
+
+<FileTree>
+
+- icrc1.did the ledger's interface
+- vitest.config.ts
+- src/
+  - generated/
+    - icrc1.ts written by `candid-core-cli gen`
+  - account.ts the page's reads, for the server and the browser
+  - account.test.ts
+  - server/
+    - request-client.ts
+  - app/
+    - layout.tsx
+    - providers.tsx
+    - accounts/
+      - \[owner\]/
+        - page.tsx
+  - components/
+    - Balance.tsx
+    - YourAccount.tsx
+    - CertifiedBalance.tsx
+
+</FileTree>
+
+## Before you start
+
+Create the app. These flags give it a `src/` directory and the `@/*` alias
+this guide imports with:
+
+```sh
+npx create-next-app@latest my-app --ts --app --src-dir --import-alias "@/*" --yes
+cd my-app
+```
+
+`create-next-app` turns on Cache Components (`cacheComponents: true` in
+`next.config.ts`). This guide is written for them.
+
+1. Install the packages of
+   [Getting started, step 1](/docs/ic-reactor/guides/getting-started/#1-install): the
+   core, React and Internet Identity packages, and the generator.
+2. Install Vitest for the test in step 8. `create-next-app` pins
+   `@types/node` to version 20, which Vitest 5 does not accept, so update it
+   in the same command:
+
+   ```sh
+   npm install --save-dev vitest @types/node@22
+   ```
+
+3. In `tsconfig.json`, set `"target"` to `"ES2022"`. `create-next-app` writes
+   `"ES2017"`, and TypeScript refuses a bigint literal such as `1n` below
+   ES2020.
+4. Copy `icrc1.did` from the repository's
+   [`examples/icrc-ledger`](https://github.com/B3Pay/ic-reactor/tree/main/examples/icrc-ledger)
+   directory to the project's root, and generate its module:
+
+   ```sh
+   npx candid-core-cli gen icrc1.did -o src/generated
+   ```
+
+## 1. One client per request
+
+```ts
+// src/server/request-client.ts
+import { createClient, type Client } from "@ic-reactor/core"
+import { cache } from "react"
+
+/** This request's client: every Server Component of one request gets it. */
+export const requestClient = cache((): Client =>
+  createClient({ network: "ic", identity: "anonymous" })
+)
+```
+
+React's `cache()` keeps a value for the length of one server request. Every
+Server Component of a request gets the same client, and the next request gets
+a new one. Never build a client at module scope on a server: every request
+would share it, and its cache with it.
+
+The client is anonymous, because a server holds no session, and an anonymous
+client refuses every update before sending it. There is nothing to dispose:
+it built no sign-in, and a server's `QueryClient` sets no timers. See
+[SSR and hydration](/docs/ic-reactor/guides/ssr/#one-client-per-request).
+
+## 2. The provider
+
+```tsx
+// src/app/providers.tsx
+"use client"
+
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider } from "@ic-reactor/react"
+import { AuthClient } from "@icp-sdk/auth/client"
+import type { ReactNode } from "react"
+
+export function Providers({ children }: { children: ReactNode }) {
+  return (
+    <ReactorProvider
+      client={() =>
+        createClient({
+          network: "ic",
+          auth: (network) => new AuthClient(network),
+        })
+      }
+    >
+      {children}
+    </ReactorProvider>
+  )
+}
+```
+
+Replace the `src/app/layout.tsx` that `create-next-app` wrote:
+
+```tsx
+// src/app/layout.tsx
+import type { ReactNode } from "react"
+import { Providers } from "@/app/providers"
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  )
+}
+```
+
+The layout is a Server Component, and a function cannot cross from a Server
+Component into a client one, so the `client` factory lives in a module marked
+`"use client"`. The provider calls the factory once for each request's server
+render, and once in the browser tab. The `auth` factory runs only in the
+browser.
+
+## 3. The page's reads
+
+```ts
+// src/account.ts
+import type { Principal } from "@candid-core/schema"
+import type { Client } from "@ic-reactor/core"
+import { actor, type Actor } from "@/generated/icrc1"
+
+/** The ICP ledger on mainnet. */
+export const LEDGER_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+/**
+ * The reads of an account page. The server and the browser both build them
+ * here, so the browser asks for the very keys the server filled.
+ */
+export function accountReads(client: Client, owner: Principal) {
+  const ledger = client.canister<Actor>(actor, { id: LEDGER_ID })
+  return {
+    symbol: client.queryOptions(ledger, "icrc1_symbol"),
+    decimals: client.queryOptions(ledger, "icrc1_decimals"),
+    balance: client.queryOptions(ledger, "icrc1_balance_of", {
+      owner,
+      subaccount: null,
+    }),
+  }
+}
+
+/**
+ * Reads an account into the client's cache. prefetchQuery never throws: a
+ * read that fails stays in the cache with its error.
+ */
+export async function prefetchAccount(client: Client, owner: Principal) {
+  const reads = accountReads(client, owner)
+  await Promise.all([
+    client.queryClient.prefetchQuery(reads.symbol),
+    client.queryClient.prefetchQuery(reads.decimals),
+    client.queryClient.prefetchQuery(reads.balance),
+  ])
+  return reads
+}
+```
+
+- The server builds the page's reads with `accountReads`, and so does the
+  component that shows them in the browser. The keys come from the client,
+  never from a string you wrote, so both sides ask for the same keys.
+- Those keys hold the caller. The server reads as the anonymous principal, and
+  the browser's hydrating render is anonymous too, whoever is signed in, so the
+  browser finds the server's data.
+- `prefetchAccount` reads the three into the client's cache.
+  `prefetchQuery` never throws, so a failed read stays in the cache with its
+  error, to be read back with `getQueryState`.
+
+## 4. The page
+
+```tsx
+// src/app/accounts/[owner]/page.tsx
+import { isPrincipal, principal } from "@candid-core/schema"
+import { isReactorError } from "@ic-reactor/core"
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
+import { notFound } from "next/navigation"
+import { connection } from "next/server"
+import { Suspense } from "react"
+import { prefetchAccount } from "@/account"
+import { Balance } from "@/components/Balance"
+import { CertifiedBalance } from "@/components/CertifiedBalance"
+import { YourAccount } from "@/components/YourAccount"
+import { requestClient } from "@/server/request-client"
+
+type Params = Promise<{ owner: string }>
+
+export default function AccountPage({ params }: { params: Params }) {
+  return (
+    <main>
+      <h1>Account</h1>
+      <Suspense fallback={<p>Reading the account…</p>}>
+        <Account params={params} />
+      </Suspense>
+    </main>
+  )
+}
+
+async function Account({ params }: { params: Params }) {
+  // Read the ledger for each request: never once, kept for every visitor.
+  await connection()
+  // Anything can arrive in a URL: only principal text names an account.
+  const { owner: text } = await params
+  if (!isPrincipal(text)) notFound()
+  const owner = principal(text)
+
+  const client = requestClient()
+  const reads = await prefetchAccount(client, owner)
+  const failed = client.queryClient.getQueryState(reads.balance.queryKey)?.error
+
+  return (
+    <>
+      <p>
+        <code>{owner}</code>
+      </p>
+      <YourAccount owner={owner} />
+      {failed == null ? (
+        <HydrationBoundary state={dehydrate(client.queryClient)}>
+          <Balance owner={owner} />
+        </HydrationBoundary>
+      ) : (
+        <p role="alert">
+          The ledger did not answer (
+          {isReactorError(failed) ? failed.kind : "failed"}).
+        </p>
+      )}
+      <Suspense fallback={<p>Certified balance: reading through consensus…</p>}>
+        <CertifiedBalance owner={owner} />
+      </Suspense>
+    </>
+  )
+}
+```
+
+- **A shell, then the account.** Cache Components prerender the heading and
+  the fallback once, at build time. The account section renders for each
+  request and streams into the same response. Reading `params` outside a
+  `<Suspense>` fails the build ("prevents the route from being
+  prerendered").
+- **`connection()`** says the section is rendered when a request comes in.
+  Without it, Next tries to prerender the section, and logs an error when the
+  agent reads the clock ("encountered the unstable value `Date.now()`").
+- **A bad URL.** `isPrincipal` turns away anything that is not principal text,
+  before a call is made. The response is under way by then, so its status
+  stays 200. Next marks the not-found page `noindex`.
+- **The hand-over.** `dehydrate(client.queryClient)` is plain JSON. The
+  client's `QueryClient` writes a `bigint` into it as tagged text and reads it
+  back exact in the browser.
+- **A failure** stays on the server. TanStack Query dehydrates successful
+  reads only, so the page renders the error's kind itself, where
+  `isReactorError` can read it.
+
+<Aside>
+  The account section is in the first response, but React's inline script is
+  what puts it on the screen. Without JavaScript, the fallback stays. For a page
+  that shows its data without JavaScript, or answers a bad principal with a 404,
+  turn Cache Components off and await the account in the page itself, as
+  [SSR and hydration](/docs/ic-reactor/guides/ssr/#prefetch-and-hand-over) does.
+</Aside>
+
+## 5. The balance in the browser
+
+```tsx
+// src/components/Balance.tsx
+"use client"
+
+import type { Principal } from "@candid-core/schema"
+import { formatUnits } from "@ic-reactor/core"
+import { useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { accountReads } from "@/account"
+
+export function Balance({ owner }: { owner: Principal }) {
+  const client = useClient()
+  const reads = accountReads(client, owner)
+  // The server has just read these: no read again on mount. A token's symbol
+  // and decimals never change; the balance is read again after a minute.
+  const symbol = useQuery({ ...reads.symbol, staleTime: Infinity })
+  const decimals = useQuery({ ...reads.decimals, staleTime: Infinity })
+  const balance = useQuery({ ...reads.balance, staleTime: 60_000 })
+
+  if (balance.isError) return <p role="alert">{balance.error.message}</p>
+  if (
+    symbol.data === undefined ||
+    decimals.data === undefined ||
+    balance.data === undefined
+  ) {
+    return <p>Balance: …</p>
+  }
+  return (
+    <p>
+      Balance: {formatUnits(balance.data, decimals.data)} {symbol.data}
+    </p>
+  )
+}
+```
+
+- TanStack Query's default `staleTime` is 0. Without one, each read the server
+  handed over would be stale on arrival, and read again as soon as the
+  component mounts. With these, the browser sends nothing on load. A minute
+  after the server's read, a remount or a refocused window reads the balance
+  again.
+- After the visitor signs in, `useClient()` renders the component again for
+  the new caller, whose keys are empty. The balance shows `…` until it is read
+  as them. Nothing read anonymously is reused for a signed-in visitor.
+- `formatUnits` shows base units as decimal text, never through `Number`. See
+  [Values and units](/docs/ic-reactor/guides/values/#token-amounts).
+
+## 6. Whose account it is
+
+```tsx
+// src/components/YourAccount.tsx
+"use client"
+
+import type { Principal } from "@candid-core/schema"
+import { useAuth } from "@ic-reactor/react"
+
+export function YourAccount({ owner }: { owner: Principal }) {
+  const { status, principal, signIn } = useAuth()
+  if (status === "signed-in") {
+    return principal === owner ? (
+      <p>This is your account.</p>
+    ) : (
+      <p>
+        You are signed in as <code>{principal}</code>, another account.
+      </p>
+    )
+  }
+  return (
+    <button onClick={() => signIn().catch(console.error)}>
+      Sign in to see if this is you
+    </button>
+  )
+}
+```
+
+`useAuth()` is `"anonymous"` on the server and in the browser's hydrating
+render, whatever session the browser holds, so the HTML matches. Right after
+hydration, the component renders again with the session, and the page says
+whether the account is the visitor's. See
+[The hydrating render](/docs/ic-reactor/guides/ssr/#the-hydrating-render).
+
+## 7. A certified balance, streamed
+
+```tsx
+// src/components/CertifiedBalance.tsx
+import type { Principal } from "@candid-core/schema"
+import { formatUnits, isReactorError } from "@ic-reactor/core"
+import { LEDGER_ID } from "@/account"
+import { actor, type Actor } from "@/generated/icrc1"
+import { requestClient } from "@/server/request-client"
+
+/** The balance read through consensus: a second or two on mainnet. */
+export async function CertifiedBalance({ owner }: { owner: Principal }) {
+  const client = requestClient()
+  const { queryClient } = client
+  const ledger = client.canister<Actor>(actor, {
+    id: LEDGER_ID,
+    certified: true,
+  })
+  try {
+    const [balance, decimals, symbol] = await Promise.all([
+      queryClient.fetchQuery(
+        client.queryOptions(ledger, "icrc1_balance_of", {
+          owner,
+          subaccount: null,
+        })
+      ),
+      queryClient.fetchQuery(client.queryOptions(ledger, "icrc1_decimals")),
+      queryClient.fetchQuery(client.queryOptions(ledger, "icrc1_symbol")),
+    ])
+    return (
+      <p>
+        Certified balance: {formatUnits(balance, decimals)} {symbol}
+      </p>
+    )
+  } catch (error) {
+    return (
+      <p role="alert">
+        Certified balance: not read (
+        {isReactorError(error) ? error.kind : "failed"}).
+      </p>
+    )
+  }
+}
+```
+
+- `certified: true` makes each read a replicated call, which goes through
+  consensus: a second or two on mainnet. Its keys are its own, ending in
+  `"certified"`, so an uncertified answer is never served for it.
+- The page renders it inside its own `<Suspense>`, so the rest of the account
+  does not wait for it.
+- `requestClient()` returns the client the page used, because it is the same
+  request.
+- It is an awaited Server Component, so a failure is rendered with its kind
+  here, on the server.
+
+## 8. Test the hand-over
+
+Vitest needs the `@/` alias that Next.js resolves:
+
+```ts
+// vitest.config.ts
+import { fileURLToPath } from "node:url"
+import { defineConfig } from "vitest/config"
+
+export default defineConfig({
+  // The same `@/` that Next.js resolves to src/.
+  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+})
+```
+
+```ts
+// src/account.test.ts
+import { principal } from "@candid-core/schema"
+import { createTestClient } from "@ic-reactor/core/testing"
+import { dehydrate, hydrate } from "@tanstack/react-query"
+import { afterEach, expect, it } from "vitest"
+import { accountReads, LEDGER_ID, prefetchAccount } from "@/account"
+import { actor, type Actor } from "@/generated/icrc1"
+
+const owner = principal("rkp4c-7iaaa-aaaaa-aaaca-cai")
+const balance = 2n ** 70n // more than a Number holds exactly
+
+// A client over an in-memory replica, with the ledger mocked: one for the
+// server's request and one for the browser tab, as the app has.
+const clients: ReturnType<typeof createTestClient>[] = []
+function side(signedIn: boolean) {
+  const test = createTestClient({ signedIn })
+  test.mock<Actor>(actor, LEDGER_ID, {
+    icrc1_symbol: () => "ICP",
+    icrc1_decimals: () => 8,
+    icrc1_balance_of: () => balance,
+  })
+  clients.push(test)
+  return test
+}
+afterEach(() => {
+  for (const test of clients.splice(0)) test.client.dispose()
+})
+
+/** What the page sends the browser: the server's cache, as JSON. */
+async function serverRender() {
+  const server = side(false)
+  await prefetchAccount(server.client, owner)
+  return JSON.parse(JSON.stringify(dehydrate(server.client.queryClient)))
+}
+
+it("hands the balance to the browser exactly, and the browser reads nothing", async () => {
+  const state = await serverRender()
+  const browser = side(false)
+  hydrate(browser.client.queryClient, state)
+
+  const reads = accountReads(browser.client, owner)
+  expect(browser.client.queryClient.getQueryData(reads.balance.queryKey)).toBe(
+    balance
+  )
+  expect(browser.requests).toHaveLength(0)
+})
+
+it("reads again as a signed-in visitor: nothing read anonymously is reused", async () => {
+  const state = await serverRender()
+  const browser = side(true)
+  hydrate(browser.client.queryClient, state)
+
+  const reads = accountReads(browser.client, owner)
+  const { queryClient } = browser.client
+  expect(queryClient.getQueryData(reads.balance.queryKey)).toBeUndefined()
+  expect(await queryClient.fetchQuery(reads.balance)).toBe(balance)
+})
+```
+
+```sh
+npx vitest run
+```
+
+- Each side is a real client over an in-memory replica, with the ledger
+  mocked. The server's state goes through `JSON.stringify` and `JSON.parse`,
+  as it does on its way to the browser.
+- `2n ** 70n` is more than a `Number` holds exactly, and it arrives exact.
+- An anonymous browser sends nothing. A signed-in one finds no data under its
+  own keys, and reads the balance again.
+
+## 9. Run it
+
+```sh
+npm run dev
+```
+
+Open `http://localhost:3000/accounts/rkp4c-7iaaa-aaaaa-aaaca-cai`, the
+account of the cycles minting canister. The balance shows first, and the
+certified balance a second or two later. In the network panel, the browser
+sends no request to the IC for the page. Then try
+`http://localhost:3000/accounts/not-a-principal`.
+
+## Next
+
+- [Next.js SSR example](/docs/ic-reactor/examples/next-ssr/): three ledgers, a lookup
+  form, a Route Handler, and tests of the hydration itself.
+- [SSR and hydration](/docs/ic-reactor/guides/ssr/): every rule this page follows, and what
+  a signed-in reload costs.
+- [Build an ICRC-1 wallet](/docs/ic-reactor/build/icrc1-wallet/): sign in and send a
+  transfer that is never paid twice.

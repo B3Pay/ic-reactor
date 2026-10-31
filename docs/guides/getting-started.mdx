@@ -1,0 +1,617 @@
+---
+title: Getting started
+description: Install ic-reactor 4, generate a module from a .did file with candid-core-cli gen or the Vite plugin, and make a first read and write
+editUrl: https://github.com/B3Pay/ic-reactor/edit/main/docs/src/content/docs/guides/getting-started.mdx
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+This page takes an app from nothing to a first read and a first write. It uses
+the ICRC-1 ledger interface (`icrc1.did`) and the ICP ledger on mainnet.
+
+`icrc1.did` is the file of the same name in the repository's
+[`examples/icrc-ledger`](https://github.com/B3Pay/ic-reactor/tree/main/examples/icrc-ledger)
+directory. Copy it to your project's root once step 0 has made the project.
+To work with another canister,
+save its interface from the canister itself (see
+[Get a canister's .did](#get-a-canisters-did) below). The generator names a
+module after its file, so a saved `icp_ledger.did` gives
+`./generated/icp_ledger`, not the `./generated/icrc1` this page imports.
+
+## 0. Create the project
+
+Start in an empty directory. For a React app, make it with Vite's `react-ts`
+template, which steps 5 and 6 assume:
+
+```sh
+npm create vite@latest my-app -- --template react-ts --no-interactive
+cd my-app
+```
+
+For Node only (steps 1 to 4), make a package that is an ES module:
+
+```sh
+mkdir my-app && cd my-app
+npm init -y
+npm pkg set type=module
+```
+
+Both give a `package.json` with `"type": "module"`. That matters:
+`@ic-reactor/core` and `@ic-reactor/react` are ES modules only, and the
+scripts on this page use top-level `await`, which `npx tsx` refuses in a
+CommonJS package with "Top-level await is currently not supported with the
+'cjs' output format". `npm install` in an empty directory writes no `"type"`,
+and `npm init -y` writes none (npm 10) or `"commonjs"` (npm 11); both fail.
+See [ES modules only](#es-modules-only) below.
+
+## 1. Install
+
+The core packages and the runtime they sit on:
+
+```sh
+npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
+npm install --save-exact @candid-core/schema@0.4.0
+```
+
+For React, add the provider and TanStack's React bindings. For Internet
+Identity sign-in, add `@icp-sdk/auth`:
+
+```sh
+npm install @ic-reactor/react @tanstack/react-query
+npm install @icp-sdk/auth
+```
+
+Install `@tanstack/query-core` at the exact version your
+`@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
+dependencies`), and check that `npm ls @tanstack/query-core` shows one copy.
+With two copies, `client.queryOptions()` throws a `TypeError` for the hooks'
+`skipToken`, and `ReactorProvider` throws in development.
+
+The generator is a development tool:
+
+```sh
+npm install --save-dev --save-exact @candid-core/cli@0.3.0
+```
+
+`@candid-core/schema` and `@candid-core/cli` are installed exactly
+(`--save-exact`) because the generated module imports the schema runtime, and
+the CLI has to pair with that runtime. `@ic-reactor/core` lists the schema
+version it needs in its `peerDependencies`; `@ic-reactor/vite-plugin` lists the
+CLI version.
+
+## 2. Generate the module
+
+Everything the client knows about a canister comes from a module that
+`candid-core-cli gen` writes from the canister's `.did` file. With
+`icrc1.did` in the project's root:
+
+```sh
+npx candid-core-cli gen icrc1.did -o src/generated
+```
+
+The module is named after the `.did` file: this writes `src/generated/icrc1.ts`
+and, beside it, `src/generated/icrc1.envelope.json`. Do not edit either. The
+module exports a TypeScript type and a schema for each Candid type, the
+service schema `actor`, and `type Actor`, which types each method as its call
+signature, `(arg0: ...) => Promise<...>`, marked with its mode
+(`& $.WithMode<"query">`).
+
+Several files can be generated at once:
+`npx candid-core-cli gen a.did b.did -o src/canisters`.
+
+In CI, add `--check`. It writes nothing and exits 1 when the files on disk
+differ from what the generator would write:
+
+```sh
+npx candid-core-cli gen icrc1.did -o src/generated --check
+```
+
+### Or generate with the Vite plugin
+
+In a Vite app, the plugin runs the same generator when `vite dev` or
+`vite build` starts, and again when the `.did` file changes. Set `outDir` to
+`src/generated` to match the imports on this page (without it the plugin
+writes to `src/canisters`):
+
+```ts
+// vite.config.ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+import { defineConfig } from "vite"
+
+export default defineConfig({
+  plugins: [
+    icReactor({
+      canisters: {
+        icrc1: { didFile: "icrc1.did", outDir: "src/generated" },
+      },
+    }),
+  ],
+})
+```
+
+The plugin also sets up a local environment. See
+[The Vite plugin](/docs/ic-reactor/guides/vite-plugin/).
+
+Commit `icrc1.did` and the generated module. Vite's `react-ts` template builds
+with `tsc -b && vite build`, so TypeScript checks `src/` before the plugin has
+generated anything, and a fresh clone without the module fails its first
+build. If you would rather not commit the module, run
+`npx candid-core-cli gen icrc1.did -o src/generated` before `tsc -b`, for
+example in a `prebuild` script.
+
+An app that only talks to mainnet has no local network for the plugin to
+find, and `vite dev` says "Could not detect the local IC environment". Set
+`injectEnvironment: false` in `icReactor({ ... })` to skip that detection.
+
+### Get a canister's .did
+
+Every canister on the Internet Computer can publish its Candid interface as
+`candid:service` metadata. In a Vite app, give the canister's entry its
+`canisterId`: when `didFile` is not on disk, `vite dev` or `vite build` reads
+the metadata from certified state, writes it to `didFile`, and generates the
+module from it.
+
+```ts
+// vite.config.ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+import { defineConfig } from "vite"
+
+export default defineConfig({
+  plugins: [
+    icReactor({
+      canisters: {
+        icp_ledger: {
+          didFile: "icp_ledger.did", // written when missing: commit it
+          canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+          network: "ic", // the default
+          outDir: "src/generated",
+        },
+      },
+      injectEnvironment: false,
+    }),
+  ],
+})
+```
+
+Commit the file it writes. Once `didFile` is on disk, a build reads it and
+makes no network request, so builds stay reproducible and work offline. To
+fetch it again, run `IC_REACTOR_FETCH=icp_ledger npx vite build` (names
+separated by commas, or `all`). The plugin needs `@icp-sdk/core` for the
+fetch, which the install above has already added. See
+[The Vite plugin](/docs/ic-reactor/guides/vite-plugin/#fetch-a-did-from-a-live-canister).
+To keep only the methods the app calls, list them in `methods`, and the plugin
+writes the [projection](/docs/ic-reactor/guides/vite-plugin/#only-the-methods-the-app-calls)
+of the interface to them.
+
+Without Vite, this script reads the same metadata and saves it to a file:
+
+{/* prettier-ignore */}
+```ts
+// scripts/fetch-did.ts: save a live canister's Candid interface from certified
+// state. readState checks the subnet's signature against the IC root key, and
+// throws when the replica cannot be reached or refuses the read.
+// usage: npx tsx scripts/fetch-did.ts <canister-id> [out.did]
+import { HttpAgent, StatePaths } from "@icp-sdk/core/agent"
+import { Principal } from "@icp-sdk/core/principal"
+import { writeFile } from "node:fs/promises"
+
+const [id, out = `${id}.did`] = process.argv.slice(2)
+if (!id) throw new Error("usage: fetch-did <canister-id> [out.did]")
+
+const canisterId = Principal.fromText(id)
+const agent = await HttpAgent.create({ host: "https://icp-api.io" })
+const path = StatePaths.canisterCandid(canisterId)
+const { values } = await agent.readState({ canisterId }, { paths: [path] })
+const did = values.get(path)
+if (did === null) throw new Error(`${id} has no candid:service metadata`)
+
+await writeFile(out, did)
+console.log(`wrote ${out}: ${did.length} bytes of certified candid:service from ${id}`)
+```
+
+```sh
+npx tsx scripts/fetch-did.ts ryjl3-tyaaa-aaaaa-aaaba-cai icp_ledger.did
+```
+
+That saves the ICP ledger's full interface, which is not `icrc1.did`, and
+`npx candid-core-cli gen icp_ledger.did -o src/generated` names its module
+`icp_ledger`: import from `./generated/icp_ledger` in place of this page's
+`./generated/icrc1`.
+
+With [icp-cli](https://github.com/dfinity/icp-cli) installed,
+`icp canister metadata <canister-id> candid:service -n ic > icp_ledger.did`
+reads the same metadata. A canister that keeps its metadata private, or
+publishes none, has no interface to fetch: ask its developers for the `.did`.
+
+## 3. Set up a client and a canister
+
+```ts
+// src/ledger.ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/icrc1"
+
+export const client = createClient({ network: "ic", identity: "anonymous" })
+export const ledger = client.canister<Actor>(actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+```
+
+`createClient` does no work until it is used. `identity: "anonymous"` is a
+client that only reads: it refuses every update before sending anything.
+`client.canister()` returns an object with one async method per Candid method.
+It returns the same object each time, so it is safe to call in a render.
+
+Read [The client](/docs/ic-reactor/guides/client/) for the other networks and for signing
+users in.
+
+## 4. A first read, outside React
+
+Call the methods directly:
+
+```ts
+// src/read.ts
+import { formatUnits } from "@ic-reactor/core"
+import { ledger } from "./ledger"
+
+const decimals = await ledger.icrc1_decimals() // 8
+const fee = await ledger.icrc1_fee() // 10000n: a bigint, never a number
+
+console.log(formatUnits(fee, decimals)) // "0.0001"
+```
+
+Run it with `npx tsx src/read.ts`. Plain `node src/read.ts` fails: Node
+resolves an import such as `./ledger` only with its file extension, which a
+bundler's imports leave out.
+
+The imports on this page are written for a bundler, or for TypeScript's
+`moduleResolution: "bundler"`. Under `moduleResolution: "nodenext"` (a Node
+project compiled by `tsc`), TypeScript wants the extension of the file it
+compiles to (error TS2835), so write `./generated/icrc1.js` and
+`./ledger.js`:
+
+```ts nocheck
+// src/ledger.ts, under "moduleResolution": "nodenext"
+import { actor, type Actor } from "./generated/icrc1.js"
+```
+
+Amounts are `bigint` in base units. `formatUnits` turns one into text, and
+`parseUnits` goes the other way. See [Values and units](/docs/ic-reactor/guides/values/).
+
+A direct call never touches a cache. To read through the client's cache outside
+React, use `client.queryClient.fetchQuery(client.queryOptions(...))`; see
+[Reads](/docs/ic-reactor/guides/reads/).
+
+## 5. A first read, in React
+
+Put a `ReactorProvider` around the tree. Its `client` prop is a factory: the
+provider calls it once and owns the client it creates, disposing it when the
+provider unmounts.
+
+```tsx
+// src/App.tsx
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider, useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function App() {
+  return (
+    <ReactorProvider
+      client={() => createClient({ network: "ic", identity: "anonymous" })}
+    >
+      <Fee />
+    </ReactorProvider>
+  )
+}
+
+function Fee() {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const fee = useQuery(client.queryOptions(ledger, "icrc1_fee"))
+
+  if (fee.isPending) return <p>Loading</p>
+  if (fee.isError) return <p>{fee.error.message}</p>
+  return <p>Fee: {fee.data.toString()} base units</p>
+}
+```
+
+This file exports a named `App`. Vite's `react-ts` template imports a default
+one in `src/main.tsx`, so change that import to
+`import { App } from "./App"`.
+
+`useQuery` is TanStack Query's own hook. `client.queryOptions(ledger, method,
+arg)` gives it the key, the function and the retry rule. Build the options in
+render, from the `useClient()` of that render.
+
+`fee.error` is a `ReactorError`. See
+[Errors and mayHaveExecuted](/docs/ic-reactor/guides/errors/).
+
+## 6. A first write
+
+A write needs a signed-in caller. Give the client an `auth` factory instead of
+an `identity`: users then sign in and out, and the client calls as whoever is
+signed in. The factory runs once, in a browser only.
+
+```tsx
+// src/App.tsx
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
+import { AuthClient } from "@icp-sdk/auth/client"
+import { principal } from "@candid-core/schema"
+import { useMutation } from "@tanstack/react-query"
+import { useState } from "react"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function App() {
+  return (
+    <ReactorProvider
+      client={() =>
+        createClient({
+          network: "ic",
+          auth: (network) => new AuthClient(network),
+        })
+      }
+    >
+      <Send />
+    </ReactorProvider>
+  )
+}
+
+function Send() {
+  const client = useClient()
+  const { status, principal: caller, signIn } = useAuth()
+  const [signInError, setSignInError] = useState<string>()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+
+  if (status !== "signed-in")
+    return (
+      <>
+        <button
+          onClick={() =>
+            // signIn() rejects when the sign-in fails or the user closes it.
+            signIn().catch((error: unknown) => setSignInError(String(error)))
+          }
+        >
+          Sign in
+        </button>
+        {signInError && <p>{signInError}</p>}
+      </>
+    )
+  return (
+    <>
+      <button
+        disabled={transfer.isPending}
+        onClick={() =>
+          // 1 e8s to the signed-in principal itself. The ledger still
+          // charges its fee.
+          transfer.mutate({
+            to: { owner: principal(caller), subaccount: null },
+            amount: 1n,
+            fee: null,
+            memo: null,
+            from_subaccount: null,
+            created_at_time: null,
+          })
+        }
+      >
+        Send 1 e8s to yourself
+      </button>
+      {transfer.error && (
+        <p>
+          {transfer.error.mayHaveExecuted
+            ? "Unknown outcome: check the balance before sending again"
+            : transfer.error.message}
+        </p>
+      )}
+    </>
+  )
+}
+```
+
+Three things in this snippet matter:
+
+- `icrc1_transfer` returns `variant { Ok : nat; Err : TransferError }`. The
+  mutation resolves with the `Ok` value, and an `Err` rejects as a
+  `ReactorError` of kind `"canister_err"` with the `Err` value in `err`.
+- A failed write either certainly had no effect, or may have executed.
+  `error.mayHaveExecuted` says which. When it is `true`, do not send the
+  transfer again blindly: read the balance first.
+- There is no `retry` on the mutation, and there must not be one. The client
+  itself re-sends an update, at most twice, only after a failure that proves
+  the canister never got it.
+
+After the write, the client invalidates the ledger's reads, so a mounted
+balance refetches by itself. See [Writes](/docs/ic-reactor/guides/writes/).
+
+<Aside type="caution">
+  This sends a real transfer on mainnet if the signed-in user holds ICP. Try
+  writes on a local replica or with the test client first. See
+  [Testing](/docs/ic-reactor/guides/testing/).
+</Aside>
+
+## Keep the IC stack out of the first load
+
+The `App` of step 6 imports the client, `AuthClient` and the generated module.
+`src/main.tsx` imports `App`, so a Vite build puts all of them in the one chunk
+the page loads before it shows anything. `React.lazy` moves them out of that
+chunk, into chunks the page loads asynchronously, with no change to `App.tsx`
+and no option of this library:
+
+```tsx
+// src/main.tsx
+import { lazy, StrictMode, Suspense } from "react"
+import { createRoot } from "react-dom/client"
+
+// App builds the client (ReactorProvider, createClient, AuthClient) and
+// imports the generated module: all of it loads with this import. The
+// boundary below waits for this import only: the boundaries for reads and
+// lazy routes go inside App, below its ReactorProvider.
+const App = lazy(() => import("./App").then((m) => ({ default: m.App })))
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <Suspense fallback={<p>Loading…</p>}>
+      <App />
+    </Suspense>
+  </StrictMode>
+)
+```
+
+It holds only while `main.tsx`, and every module it imports statically,
+imports nothing from `@ic-reactor/*`, `@icp-sdk/*` or the generated module.
+One static import of any of them puts it back in the first chunk. The
+`ReactorProvider` is inside `App`, so every `useClient()` and `useAuth()` is
+too.
+
+Measured on the [Vite wallet](/docs/ic-reactor/examples/vite-wallet/) with Vite 8.3.0,
+minified JavaScript (its 3.28 kB of CSS loads first either way). For the lazy
+build its `main.tsx` was changed as above, with its dev accounts, which import
+`@icp-sdk/core`, loaded in the same lazy import:
+
+| `vite build` of the wallet | First chunk               | Loaded asynchronously     |
+| -------------------------- | ------------------------- | ------------------------- |
+| as it is                   | 622.46 kB, 193.56 kB gzip | nothing                   |
+| with `React.lazy`          | 222.30 kB, 69.90 kB gzip  | 401.79 kB, 126.21 kB gzip |
+
+The first load is React, React DOM and the fallback. The rest is the client,
+the agent with its certificate check, `AuthClient` and the wallet's own code,
+in three chunks the browser fetches together once the first one runs. React
+starts that import while it renders `<App />`, so a fast or cached import can
+arrive before the fallback is ever painted: what moves is the first chunk's
+size, not a guarantee that the rest loads after the first paint. Every
+chunk is under 222 kB, so the build stays under Vite's 500 kB chunk warning,
+which the wallet otherwise raises to 700 kB.
+
+### Suspense boundaries go below the provider
+
+The boundary in `main.tsx` sits above the `ReactorProvider`. When something
+below the provider suspends before the provider's first commit, and no
+boundary sits between them, React throws that render away, the provider's
+state with it, and the next attempt calls the factory again:
+
+- A `useSuspenseQuery` read there never ends. Each attempt gets a new client
+  and an empty cache, sends the read again and suspends again, so the page
+  stays on the `main.tsx` fallback.
+- A lazily loaded route there renders once its chunk arrives, but every
+  attempt before that builds a client of its own.
+
+So put a `Suspense` boundary inside `App`, below the provider, around every
+component that reads with `useSuspenseQuery` (see
+[Reads](/docs/ic-reactor/guides/reads/#suspense)) and every lazy route. React can still
+start the provider over a few times before it commits: for a moment after it
+last showed a fallback (300 ms in React 19), it holds back a new one, and it
+starts again when a read finishes in that time. Each client it throws away has
+already sent the read. The provider disposes such a client only as a best
+effort, when the runtime has `FinalizationRegistry` and the garbage collector
+runs its finalizer, which JavaScript does not guarantee. When the
+first screen reads with `useSuspenseQuery`, build the client once, at the top
+level of the lazy module, and hand it to the provider, so every attempt gets
+the same client and cache and the read is sent once:
+
+```tsx
+// src/App.tsx, when the first screen suspends
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider, useClient } from "@ic-reactor/react"
+import { AuthClient } from "@icp-sdk/auth/client"
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { Suspense } from "react"
+import { actor, type Actor } from "./generated/icrc1"
+
+// Built once, when the lazy chunk runs, and never disposed: the provider
+// disposes only a client its own factory created.
+const appClient = createClient({
+  network: "ic",
+  auth: (network) => new AuthClient(network),
+})
+
+export function App() {
+  return (
+    <ReactorProvider client={() => appClient}>
+      <Suspense fallback={<p>Loading the fee…</p>}>
+        <Fee />
+      </Suspense>
+    </ReactorProvider>
+  )
+}
+
+function Fee() {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const fee = useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee"))
+  return <p>Fee: {fee.data.toString()} base units</p>
+}
+```
+
+That suits a browser-only app whose root is never unmounted. A module that
+also runs on a server keeps the factory: a module-scope client there is shared
+by every request. See
+[The client](/docs/ic-reactor/guides/client/#one-client-per-tab-one-per-request).
+
+### What a route guard sees
+
+`AuthState.status` is one of `"anonymous"`, `"signed-in"`, `"expired"` and
+`"signed-in-elsewhere"`, and it keeps those four: there is no member for "not
+loaded yet". With the pattern above:
+
+- **While the chunk loads**, React shows the `Suspense` fallback and renders
+  nothing below it. There is no client and no auth yet, and no status to
+  read: `useAuth()` throws outside a `ReactorProvider`. Put the guard, and the
+  routes it guards, inside `App`, below the provider, and let the fallback
+  stand for "not known yet". A `Suspense` boundary of the guard's own, around
+  the lazy routes it renders, goes there too, below the provider. Code that
+  runs before the chunk arrives, such as a router loader in `main.tsx`, must
+  not redirect on sign-in: it cannot know.
+- **On the first render inside `App`**, the provider builds the client, and
+  the first `useAuth()` or `useClient()` builds the auth and reads its state.
+  `AuthClient` of `@icp-sdk/auth` 10 reads its stored session synchronously
+  when it is built, so a returning user is `"signed-in"` on that first render,
+  never `"anonymous"` first. The status falls to `"anonymous"` later only if
+  the stored session turns out unusable, as on any sign-out.
+- **An `AuthLike` of your own** that learns its session asynchronously says
+  `signed-out`, so `"anonymous"`, until it knows. The status cannot tell that
+  apart from a signed-out user, so a guard over such an auth renders nothing,
+  or a fallback, until the auth's own signal says it is ready, and only then
+  redirects on `"anonymous"`.
+
+A page that hydrates server HTML is another case: `useAuth()` is `"anonymous"`
+during the hydrating render whatever the session. See
+[SSR and hydration](/docs/ic-reactor/guides/ssr/).
+
+## ES modules only
+
+`@ic-reactor/core` and `@ic-reactor/react` are ES modules only, with no
+CommonJS build (the Vite plugin ships both). Use them from a package with
+`"type": "module"`, or through a bundler (Vite, Next.js, webpack, esbuild),
+which handles either.
+
+From CommonJS:
+
+- Plain Node can `require()` them from Node 20.19 (on Node 20) or 22.12 on.
+  An `import()` works in a CommonJS module Node runs as written; TypeScript
+  compiled with `module: "commonjs"` turns it into a `require()`.
+- A TypeScript runner or build that compiles your own files to CommonJS can
+  fail on a dependency instead: `npx tsx` in a package without
+  `"type": "module"` stops with `ERR_PACKAGE_PATH_NOT_EXPORTED` naming a
+  subpath of `@icp-sdk/core`. Set `"type": "module"` (or name the file
+  `.mts`).
+
+## Next
+
+- [Build an ICRC-1 wallet](/docs/ic-reactor/build/icrc1-wallet/): sign-in, a balance and
+  a transfer that is never paid twice, in one app with a test.
+- [The client](/docs/ic-reactor/guides/client/): networks, `identity` and `auth`, disposal,
+  one client per request on a server.
+- [Reads](/docs/ic-reactor/guides/reads/) and [Writes](/docs/ic-reactor/guides/writes/): the rules behind
+  `queryOptions` and `mutationOptions`.
+- [Errors and mayHaveExecuted](/docs/ic-reactor/guides/errors/): what to do for each kind of
+  failure.
+- [Auth](/docs/ic-reactor/guides/auth/): signing in and out, and what happens to reads when
+  the caller changes.
+- [Examples](/docs/ic-reactor/examples/): five apps to read and run.

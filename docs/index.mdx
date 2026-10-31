@@ -1,0 +1,133 @@
+---
+title: IC Reactor
+description: A thin layer over a module that candid-core-cli generates from a .did file, with a client, one error type, units helpers, a test client and a React provider
+editUrl: https://github.com/B3Pay/ic-reactor/edit/main/docs/src/content/docs/ic-reactor/index.mdx
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+ic-reactor 4 is a thin layer over a module that `candid-core-cli gen`
+generates from a `.did` file. The layer is a client with caller-scoped query
+keys, one error type that says whether a call may have executed, helpers for
+token units, a test client over an in-memory replica, and a React provider
+with `useAuth`. Reading and writing use TanStack Query's own hooks.
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/icrc1"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+const ledger = client.canister<Actor>(actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+
+console.log(await ledger.icrc1_symbol()) // "ICP"
+```
+
+## Status
+
+ic-reactor 4 is the current release, published under npm's `latest`
+dist-tag: `npm install @ic-reactor/core` installs it. The code is developed
+on the [`main` branch](https://github.com/B3Pay/ic-reactor/tree/main).
+
+These pages describe what is built on `main` and nothing else. The one guide
+that ships in the package, `node_modules/@ic-reactor/core/llms.txt`, is for
+people and coding agents alike, and these pages agree with it.
+
+Coming from 3.x? Start with [Migrating from 3.x](/docs/ic-reactor/migrating-from-3/): the
+3.x names are gone, and that page maps each one to its 4 replacement.
+
+## Start here
+
+<CardGrid>
+  <LinkCard
+    title="Getting started"
+    description="Install, generate the module, make a first read and write"
+    href="/docs/ic-reactor/guides/getting-started/"
+  />
+  <LinkCard
+    title="Examples"
+    description="Five apps: a ledger explorer, a Next.js app, a wallet, a Node tool and a studio for any canister"
+    href="/docs/ic-reactor/examples/"
+  />
+  <LinkCard
+    title="Migrating from 3.x"
+    description="The 34 removed names and what replaces them"
+    href="/docs/ic-reactor/migrating-from-3/"
+  />
+</CardGrid>
+
+## Guides
+
+In reading order.
+
+<CardGrid>
+  <LinkCard
+    title="The client"
+    description="Networks, identity or auth, canisters, dispose, one client per request"
+    href="/docs/ic-reactor/guides/client/"
+  />
+  <LinkCard
+    title="Values and units"
+    description="Candid values in TypeScript, principals, parseUnits and formatUnits"
+    href="/docs/ic-reactor/guides/values/"
+  />
+  <LinkCard
+    title="Reads"
+    description="queryOptions, keys, certified reads, retries, suspense, infinite queries"
+    href="/docs/ic-reactor/guides/reads/"
+  />
+  <LinkCard
+    title="Writes"
+    description="mutationOptions, invalidation, and when an update is sent again"
+    href="/docs/ic-reactor/guides/writes/"
+  />
+  <LinkCard
+    title="Errors and mayHaveExecuted"
+    description="ReactorError, its kinds and codes, and what to do for each"
+    href="/docs/ic-reactor/guides/errors/"
+  />
+  <LinkCard
+    title="Auth"
+    description="Sign in and out, AuthLike, useAuth, identity attributes"
+    href="/docs/ic-reactor/guides/auth/"
+  />
+  <LinkCard
+    title="SSR and hydration"
+    description="Next.js App Router, a client per request, dehydrate and hydrate"
+    href="/docs/ic-reactor/guides/ssr/"
+  />
+  <LinkCard
+    title="Testing"
+    description="createTestClient: a fake replica, refused requests, test sign-in"
+    href="/docs/ic-reactor/guides/testing/"
+  />
+  <LinkCard
+    title="The Vite plugin"
+    description="Generation, the ic_env cookie and the /api proxy"
+    href="/docs/ic-reactor/guides/vite-plugin/"
+  />
+</CardGrid>
+
+## Packages
+
+<CardGrid>
+  <LinkCard
+    title="@ic-reactor/core"
+    description="The client, ReactorError, the units helpers, and the test client"
+    href="/docs/ic-reactor/packages/core/"
+  />
+  <LinkCard
+    title="@ic-reactor/react"
+    description="ReactorProvider, useClient and useAuth"
+    href="/docs/ic-reactor/packages/react/"
+  />
+  <LinkCard
+    title="@ic-reactor/vite-plugin"
+    description="Generates the module and sets up the local environment"
+    href="/docs/ic-reactor/packages/vite-plugin/"
+  />
+</CardGrid>
+
+The API reference in the sidebar is generated from the `main` branch as it
+stands, which can be ahead of the latest release.

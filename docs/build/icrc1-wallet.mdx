@@ -1,0 +1,619 @@
+---
+title: Build an ICRC-1 wallet
+description: From an ICRC-1 ledger's .did file to a React page that signs in with Internet Identity, shows a balance and sends a transfer that is never paid twice
+editUrl: https://github.com/B3Pay/ic-reactor/edit/main/docs/src/content/docs/build/icrc1-wallet.mdx
+---
+
+import { Aside, FileTree } from "@astrojs/starlight/components"
+
+This guide builds a wallet for an ICRC-1 ledger as one small React app. A
+person signs in with Internet Identity, sees their balance, and sends a
+transfer. It uses the ICP ledger on mainnet. Any ICRC-1 ledger, such as ckBTC,
+ckETH or an SNS token, works the same way with its own ledger id.
+
+The app takes care of four things that are easy to get wrong:
+
+- **Amounts** are `bigint` base units. What a person types is read by
+  `parseUnits`, which refuses `1,5` or a ninth decimal of ICP instead of
+  rounding it.
+- **The balance** waits until someone is signed in, and is cached per caller.
+- **A lost reply** is never answered by sending a new transfer. The page
+  offers the same transfer again, and the ledger answers `Duplicate` if the
+  first one went through.
+- **A test** runs the transfer against an in-memory replica, with its reply
+  lost on purpose, and checks that the ledger is paid once.
+
+When it is done, the project holds these files:
+
+<FileTree>
+
+- icrc1.did the ledger's interface
+- src/
+  - generated/
+    - icrc1.ts written by `candid-core-cli gen`
+  - ledger.ts the ledger, its token, and how amounts are shown
+  - App.tsx the client and the page
+  - SignIn.tsx
+  - Balance.tsx
+  - transfer.ts a form to a transfer, and the ledger's errors in words
+  - Send.tsx
+  - transfer.test.ts
+  - main.tsx
+
+</FileTree>
+
+## Before you start
+
+Follow steps 0 to 2 of [Getting started](/docs/ic-reactor/guides/getting-started/). They
+give you:
+
+1. a Vite app made from the `react-ts` template
+   ([step 0](/docs/ic-reactor/guides/getting-started/#0-create-the-project));
+2. the packages, with `@ic-reactor/react` and `@icp-sdk/auth` for the React
+   app ([step 1](/docs/ic-reactor/guides/getting-started/#1-install));
+3. `src/generated/icrc1.ts`, generated from `icrc1.did`
+   ([step 2](/docs/ic-reactor/guides/getting-started/#2-generate-the-module)).
+
+The test in step 7 also needs Vitest:
+
+```sh
+npm install --save-dev vitest
+```
+
+<Aside type="caution">
+  Signing in and reading cost nothing. A transfer on mainnet moves real ICP
+  and pays the ledger's fee. Run the test of [step 7](#7-test-it-without-a-network)
+  first. To send on a local network instead, see the
+  [Vite wallet](/docs/ic-reactor/examples/vite-wallet/) example.
+</Aside>
+
+## 1. The ledger and its token
+
+```ts
+// src/ledger.ts
+import { formatUnits } from "@ic-reactor/core"
+import { useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+/** The ICP ledger on mainnet. Every ICRC-1 ledger works the same way. */
+export const LEDGER_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+/** This render's client, and the ledger as its caller calls it. */
+export function useLedger() {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, { id: LEDGER_ID })
+  return { client, ledger }
+}
+
+export interface Token {
+  readonly symbol: string
+  readonly decimals: number
+  /** The transfer fee, in base units. */
+  readonly fee: bigint
+}
+
+/** The ledger's token, once its three reads have answered. */
+export function useToken(): Token | undefined {
+  const { client, ledger } = useLedger()
+  // A token's symbol and decimals never change: not read again on a remount
+  // or a window focus.
+  const symbol = useQuery({
+    ...client.queryOptions(ledger, "icrc1_symbol"),
+    staleTime: Infinity,
+  })
+  const decimals = useQuery({
+    ...client.queryOptions(ledger, "icrc1_decimals"),
+    staleTime: Infinity,
+  })
+  const fee = useQuery(client.queryOptions(ledger, "icrc1_fee"))
+  if (
+    symbol.data === undefined ||
+    decimals.data === undefined ||
+    fee.data === undefined
+  ) {
+    return undefined
+  }
+  return { symbol: symbol.data, decimals: decimals.data, fee: fee.data }
+}
+
+/** An amount in base units, as a person reads it: "1.5 ICP". */
+export const showAmount = (units: bigint, token: Token): string =>
+  `${formatUnits(units, token.decimals)} ${token.symbol}`
+```
+
+- `useLedger()` builds the ledger from the `useClient()` of the render.
+  `client.canister()` returns the same object each time, so this costs nothing
+  per render. `useClient()` renders its component again when the caller
+  changes, so every option built from it uses the current caller's keys.
+- The token is three reads. `staleTime: Infinity` keeps symbol and decimals
+  from being read again on their own. A transfer still refreshes every read of
+  the ledger, these two and the fee included.
+- `showAmount` goes through `formatUnits`, never through `Number`, which
+  cannot hold every amount a ledger can. See
+  [Values and units](/docs/ic-reactor/guides/values/#token-amounts).
+
+## 2. The client and the page
+
+```tsx
+// src/App.tsx
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider } from "@ic-reactor/react"
+import { AuthClient } from "@icp-sdk/auth/client"
+import { Balance } from "./Balance"
+import { Send } from "./Send"
+import { SignIn } from "./SignIn"
+
+export function App() {
+  return (
+    <ReactorProvider
+      client={() =>
+        createClient({
+          network: "ic",
+          auth: (network) => new AuthClient(network),
+        })
+      }
+    >
+      <main>
+        <h1>Wallet</h1>
+        <SignIn />
+        <Balance />
+        <Send />
+      </main>
+    </ReactorProvider>
+  )
+}
+```
+
+The provider calls its `client` factory once and owns the client it makes.
+The `auth` factory runs once too, in the browser only, and the client calls
+every method as whoever is signed in. Read [Auth](/docs/ic-reactor/guides/auth/) for other
+sign-ins.
+
+`App` is a named export. Vite's template imports a default one, so make
+`src/main.tsx` import it by name:
+
+```tsx
+// src/main.tsx
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
+import { App } from "./App"
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+)
+```
+
+## 3. Sign in
+
+```tsx
+// src/SignIn.tsx
+import { useAuth } from "@ic-reactor/react"
+import { useState } from "react"
+
+export function SignIn() {
+  const { status, principal, signIn, signOut } = useAuth()
+  const [error, setError] = useState<string>()
+  // signIn() and signOut() reject when they fail, or when the user closes
+  // the Internet Identity window.
+  const run = (action: () => Promise<unknown>) => {
+    setError(undefined)
+    action().catch((reason: unknown) => setError(String(reason)))
+  }
+
+  if (status === "signed-in") {
+    return (
+      <p>
+        Signed in as <code>{principal}</code>{" "}
+        <button onClick={() => run(signOut)}>Sign out</button>
+      </p>
+    )
+  }
+  return (
+    <p>
+      {status === "expired" && "Your session expired. "}
+      <button onClick={() => run(signIn)}>
+        Sign in with Internet Identity
+      </button>
+      {error && <span role="alert"> {error}</span>}
+    </p>
+  )
+}
+```
+
+`useAuth()` renders the component again when the status or the principal
+changes. Its `status` is `"signed-in"`, `"anonymous"`, `"expired"` or
+`"signed-in-elsewhere"`, and only `"signed-in"` can send a transfer.
+
+Internet Identity gives each site its own principal. The principal you get on
+`http://localhost:5173` is not the one you get on your deployed site, and ICP
+sent to one is not in the other's balance.
+
+## 4. The balance
+
+```tsx
+// src/Balance.tsx
+import { principal } from "@candid-core/schema"
+import { useAuth } from "@ic-reactor/react"
+import { skipToken, useQuery } from "@tanstack/react-query"
+import { showAmount, useLedger, useToken } from "./ledger"
+
+export function Balance() {
+  const { client, ledger } = useLedger()
+  const { status, principal: caller } = useAuth()
+  const token = useToken()
+  const signedIn = status === "signed-in"
+  const balance = useQuery(
+    client.queryOptions(
+      ledger,
+      "icrc1_balance_of",
+      // Nobody to read for yet: skipToken sends nothing.
+      signedIn ? { owner: principal(caller), subaccount: null } : skipToken
+    )
+  )
+
+  if (!signedIn) return <p>Sign in to see your balance.</p>
+  if (balance.isError) return <p role="alert">{balance.error.message}</p>
+  if (balance.data === undefined || token === undefined)
+    return <p>Balance: …</p>
+  return <p>Balance: {showAmount(balance.data, token)}</p>
+}
+```
+
+- `skipToken` holds the read until there is an account to read. There is no
+  placeholder account and no `caller!`.
+- `principal(caller)` turns the caller's text into a `Principal`, the branded
+  text the generated module takes. The read's key holds the caller, so each
+  account's balance is cached apart, and nobody is shown another account's
+  balance after a switch.
+- A transfer refreshes the ledger's reads when it settles, so the balance
+  updates without code of its own. See
+  [Writes](/docs/ic-reactor/guides/writes/#what-a-write-refreshes).
+
+## 5. From a form to a transfer
+
+This file has no React in it. It turns what a person typed into a transfer, or
+refuses it before anything is sent, and words each error the ledger can
+answer with.
+
+```ts
+// src/transfer.ts
+import { isPrincipal, principal } from "@candid-core/schema"
+import { parseUnits, type Canister, type Client } from "@ic-reactor/core"
+import type {
+  Account,
+  Actor,
+  TransferArg,
+  TransferError,
+} from "./generated/icrc1"
+import { showAmount, type Token } from "./ledger"
+
+/** What a person typed in the form. */
+export interface TransferForm {
+  readonly to: string
+  readonly amount: string
+}
+
+/** The account and amount the form asks for, or why it is refused. */
+export function readForm(
+  form: TransferForm,
+  token: Token
+): { ok: true; to: Account; amount: bigint } | { ok: false; reason: string } {
+  const to = form.to.trim()
+  if (!isPrincipal(to)) {
+    return { ok: false, reason: "The recipient is not a principal." }
+  }
+  let amount: bigint
+  try {
+    // Plain decimal text with at most `decimals` fraction digits. "1,5",
+    // "1e3" and a ninth decimal of ICP are refused, never rounded.
+    amount = parseUnits(form.amount, token.decimals)
+  } catch (error) {
+    return { ok: false, reason: (error as Error).message }
+  }
+  if (amount === 0n) return { ok: false, reason: "Send more than zero." }
+  return { ok: true, to: { owner: principal(to), subaccount: null }, amount }
+}
+
+/**
+ * A new transfer argument, with a memo of its own and the IC's time in
+ * `created_at_time`. The ledger answers the same argument from the same
+ * account `Duplicate` instead of running it twice.
+ */
+export async function newTransfer(
+  client: Client,
+  ledger: Canister<Actor>,
+  to: Account,
+  amount: bigint,
+  token: Token
+): Promise<TransferArg> {
+  return {
+    to,
+    amount,
+    // The fee the page showed: if the ledger's fee has changed since, it
+    // answers BadFee rather than charge another one.
+    fee: token.fee,
+    memo: crypto.getRandomValues(new Uint8Array(16)),
+    from_subaccount: null,
+    created_at_time: await client.time(ledger),
+  }
+}
+
+/** What the ledger's Err means, in a sentence. */
+export function describeError(err: TransferError, token: Token): string {
+  switch (err.tag) {
+    case "InsufficientFunds":
+      return `Not enough funds: the balance is ${showAmount(err.value.balance, token)}, less than the amount plus the fee.`
+    case "BadFee":
+      return `The fee is now ${showAmount(err.value.expected_fee, token)}. Send again to pay it.`
+    case "Duplicate":
+      return `This transfer went through already, in block ${err.value.duplicate_of}. It was not paid twice.`
+    case "TooOld":
+    case "CreatedInFuture":
+      return "The ledger refused the transfer's time. Send it as a new transfer."
+    case "TemporarilyUnavailable":
+      return "The ledger is unavailable for now. Try again in a moment."
+    case "BadBurn":
+      return `A burn is at least ${showAmount(err.value.min_burn_amount, token)}.`
+    case "GenericError":
+      return err.value.message
+  }
+}
+```
+
+- `readForm` checks the recipient with `isPrincipal` and the amount with
+  `parseUnits` itself, so the form and the amount sent can never disagree.
+- `newTransfer` makes the transfer one the ledger can recognize. With
+  `created_at_time` set, the ledger runs an argument from the same account
+  once, and answers a repeat `Duplicate`. `client.time(ledger)` reads the IC's
+  certified time, which the ledger checks the stamp against, rather than the
+  computer's clock. That time moves about once a second, so the memo keeps two
+  transfers of the same amount, made in the same second, apart.
+- `describeError` has a case for each tag of the generated `TransferError`.
+  If a tag were missing, the function could end without returning a string,
+  and it would not compile.
+
+## 6. Send
+
+```tsx
+// src/Send.tsx
+import { useAuth } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { useState, type FormEvent } from "react"
+import { showAmount, useLedger, useToken } from "./ledger"
+import { describeError, newTransfer, readForm } from "./transfer"
+
+export function Send() {
+  const { client, ledger } = useLedger()
+  const { status } = useAuth()
+  const token = useToken()
+  const [form, setForm] = useState({ to: "", amount: "" })
+  const [refusal, setRefusal] = useState<string>()
+  // No `retry`: a transfer sent again after a lost reply could pay twice.
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  // Offered only after an unknown outcome, and only to the account that sent it.
+  const again = client.resendOf(transfer.error, ledger, "icrc1_transfer", {
+    dedupedBy: (sent) => sent.created_at_time,
+  })
+
+  const onSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (token === undefined) return
+    const read = readForm(form, token)
+    if (!read.ok) return setRefusal(read.reason)
+    setRefusal(undefined)
+    try {
+      transfer.mutate(
+        await newTransfer(client, ledger, read.to, read.amount, token)
+      )
+    } catch (error) {
+      // client.time() failed: nothing was sent.
+      setRefusal(String(error))
+    }
+  }
+
+  const error = transfer.error
+  return (
+    <form onSubmit={onSubmit}>
+      <p>
+        <label>
+          To{" "}
+          <input
+            value={form.to}
+            onChange={(e) => setForm({ ...form, to: e.target.value })}
+            placeholder="principal"
+            spellCheck={false}
+          />
+        </label>
+      </p>
+      <p>
+        <label>
+          Amount{token && ` (${token.symbol})`}{" "}
+          <input
+            value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            inputMode="decimal"
+          />
+        </label>
+      </p>
+      {token && (
+        <p>Fee: {showAmount(token.fee, token)}, on top of the amount.</p>
+      )}
+      <button
+        disabled={
+          status !== "signed-in" || token === undefined || transfer.isPending
+        }
+      >
+        Send
+      </button>
+      {refusal && <p role="alert">Not sent: {refusal}</p>}
+      {transfer.isSuccess && token && (
+        <p>
+          Sent {showAmount(transfer.variables.amount, token)}, in block{" "}
+          {transfer.data.toString()}.
+        </p>
+      )}
+      {error && token && (
+        <p role="alert">
+          {error.kind === "canister_err"
+            ? describeError(error.err, token)
+            : error.mayHaveExecuted
+              ? "The outcome is unknown: the transfer may have gone through. Check the balance before sending a new one."
+              : `Not sent: ${error.message}`}
+        </p>
+      )}
+      {again && (
+        <button
+          type="button"
+          disabled={transfer.isPending}
+          onClick={() => transfer.mutate(again.arg)}
+        >
+          Send the same transfer again
+        </button>
+      )}
+    </form>
+  )
+}
+```
+
+A failed transfer ends one of three ways, and the page says which:
+
+| `transfer.error`                    | What happened                                                          | What the page offers                          |
+| ----------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------- |
+| `kind: "canister_err"`              | the ledger ran the call and refused it; `error.err` is the typed `Err` | the reason, from `describeError`              |
+| `mayHaveExecuted: true`             | the reply was lost: the transfer may or may not have gone through      | the balance, read again; the same transfer    |
+| any other, `mayHaveExecuted: false` | it was certainly not executed                                          | the message; a new press sends a new transfer |
+
+- The mutation resolves with the `Ok` value, the transfer's block index. An
+  `Err` rejects as `canister_err`, so a refused transfer is never shown as
+  sent.
+- `client.resendOf` offers "Send the same transfer again" only after an
+  unknown outcome, only while the account that sent it is signed in, and only
+  when `created_at_time` is set, which is what the ledger deduplicates on.
+  Pressed, it sends the attempt's own
+  argument, memo and time included. If the first one went through, the ledger
+  answers `Duplicate`, and the page says so. See
+  [Writes](/docs/ic-reactor/guides/writes/#sending-the-same-write-again).
+- Each press of Send builds a new argument with a new memo, so a new transfer
+  is never taken for a repeat of an earlier one.
+- There is no `retry` on the mutation, and there must not be one. The client
+  re-sends a transfer itself only after a failure that proves the ledger never
+  got it. See [Errors and mayHaveExecuted](/docs/ic-reactor/guides/errors/).
+
+## 7. Test it without a network
+
+`createTestClient` gives a real client over an in-memory replica. The ledger
+is replaced by handlers you write, and a test can lose a reply on purpose:
+
+```ts
+// src/transfer.test.ts
+import { principal } from "@candid-core/schema"
+import { createTestClient } from "@ic-reactor/core/testing"
+import { afterEach, beforeEach, expect, it } from "vitest"
+import { actor, type Actor } from "./generated/icrc1"
+import { LEDGER_ID, type Token } from "./ledger"
+import { newTransfer, readForm } from "./transfer"
+
+const token: Token = { symbol: "ICP", decimals: 8, fee: 10_000n }
+const to = { owner: principal("aaaaa-aa"), subaccount: null }
+
+let test: ReturnType<typeof createTestClient>
+let moved: bigint
+
+beforeEach(() => {
+  test = createTestClient() // signed in, as the identity of seed 1
+  moved = 0n
+  // The ledger's deduplication, in a few lines: the same argument from the
+  // same account runs once, and is answered Duplicate after that.
+  const blocks = new Map<string, bigint>()
+  test.mock<Actor>(actor, LEDGER_ID, {
+    icrc1_transfer: (arg, { caller }) => {
+      const key = [caller, arg.created_at_time, arg.memo?.join()].join(" ")
+      const block = blocks.get(key)
+      if (block !== undefined) {
+        return {
+          tag: "Err",
+          value: { tag: "Duplicate", value: { duplicate_of: block } },
+        }
+      }
+      moved += arg.amount
+      blocks.set(key, BigInt(blocks.size))
+      return { tag: "Ok", value: BigInt(blocks.size - 1) }
+    },
+  })
+})
+
+afterEach(() => test.client.dispose())
+
+it("refuses an amount it cannot send exactly", () => {
+  expect(readForm({ to: "aaaaa-aa", amount: "1.5" }, token)).toEqual({
+    ok: true,
+    to,
+    amount: 150_000_000n,
+  })
+  expect(readForm({ to: "aaaaa-aa", amount: "1,5" }, token).ok).toBe(false)
+  expect(readForm({ to: "aaaaa-aa", amount: "0.123456789" }, token).ok).toBe(
+    false
+  )
+  expect(readForm({ to: "alice", amount: "1" }, token).ok).toBe(false)
+})
+
+it("pays once when the reply is lost and the same transfer is sent again", async () => {
+  const ledger = test.client.canister<Actor>(actor, { id: LEDGER_ID })
+  const arg = await newTransfer(test.client, ledger, to, 1n, token)
+  test.dropNextReply({ method: "icrc1_transfer" }) // it runs; its reply is lost
+
+  const lost = await ledger.icrc1_transfer(arg).catch((error: unknown) => error)
+  expect(lost).toMatchObject({ kind: "outcome_unknown", mayHaveExecuted: true })
+
+  const again = test.client.resendOf(lost, ledger, "icrc1_transfer", {
+    dedupedBy: (sent) => sent.created_at_time,
+  })
+  if (again === undefined) throw new Error("no re-send was offered")
+  await expect(again.send()).rejects.toMatchObject({
+    kind: "canister_err",
+    err: { tag: "Duplicate" },
+  })
+  expect(moved).toBe(1n) // the ledger ran it once
+})
+```
+
+```sh
+npx vitest run
+```
+
+- The handler stands in for the ledger's deduplication. The client, the
+  signatures, the certificates and the lost reply are all real.
+- `dropNextReply({ method: "icrc1_transfer" })` lets the transfer run and loses
+  its reply, so the call rejects with `mayHaveExecuted: true`. The client does
+  not send it again by itself.
+- `again.send()` sends the identical argument, and the ledger answers
+  `Duplicate`. `moved` shows it was paid once.
+
+The test runs in Node, Vitest's default environment. For tests of the
+components themselves, see [Testing](/docs/ic-reactor/guides/testing/#testing-react).
+
+## 8. Run it
+
+```sh
+npm run dev
+```
+
+Open `http://localhost:5173` and sign in. The balance reads `0 ICP` for a new
+principal. Send ICP to the principal shown, from another wallet, and reload
+the page to see it. Then send part of it to another principal: the balance
+drops by the amount plus the fee.
+
+## Next
+
+- [Vite wallet](/docs/ic-reactor/examples/vite-wallet/): this wallet on a local network,
+  with a faucet, development accounts, an address book canister, and an
+  unknown outcome kept on screen across a switch of account.
+- [Writes](/docs/ic-reactor/guides/writes/): what a write refreshes, and when the same
+  write can be sent again.
+- [Errors and mayHaveExecuted](/docs/ic-reactor/guides/errors/): every kind of failure and
+  what to do about it.
+- [Testing](/docs/ic-reactor/guides/testing/): injected failures, sign-in, and tests of
+  React components.

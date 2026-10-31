@@ -1,0 +1,570 @@
+# @ic-reactor/core
+
+> How to call Internet Computer canisters with a module `candid-core-cli gen`
+> generated from a `.did`, a client from `@ic-reactor/core`, and TanStack
+> Query. The client applies the rules a hand-written integration must get
+> right; this guide names the call for each.
+
+Applies to `@ic-reactor/core` 4.0.0.
+
+## Imports
+
+```ts
+import { createClient, formatUnits, isReactorError, parseUnits } from "@ic-reactor/core"
+import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
+import { isPrincipal, principal, type Principal } from "@candid-core/schema"
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+```
+
+One import path per name: Candid values only from `@candid-core/schema`,
+`skipToken` and the hooks only from TanStack Query.
+
+`@ic-reactor/core` and `@ic-reactor/react` are ES modules only. A Node
+project needs `"type": "module"` in its `package.json`
+(`npm pkg set type=module`), or a bundler; `npx tsx` with
+top-level `await` fails in a CommonJS package. Under TypeScript's
+`moduleResolution: "nodenext"`, import local files with their `.js`
+extension (`./generated/icrc1.js`).
+
+The generated module (from `candid-core-cli gen` or `@ic-reactor/vite-plugin`;
+do not edit it) exports a type and schema per Candid type, the service schema
+`actor`, and `type Actor`.
+
+## Setup
+
+```ts
+// src/ledger.ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/icrc1"
+
+export const client = createClient({ network: "ic", identity: "anonymous" })
+export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaaba-cai" })
+```
+
+`client.canister()` returns the same object each time: safe in render.
+
+With React, install `@tanstack/query-core` at the exact version your
+`@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
+dependencies`), and check that `npm ls @tanstack/query-core` shows one copy.
+With two copies, core and the hooks each have their own `skipToken`:
+`client.queryOptions()` throws a `TypeError` for the hooks' one, and in
+development `ReactorProvider` throws when it is handed such a client.
+
+`network` and the root key:
+
+- `"ic"`: mainnet (`https://icp-api.io`) and its built-in root key.
+- `"local"`: icp-cli's local network, `http://127.0.0.1:8000`; its root key
+  is fetched. A dfx replica is `{ host: "http://127.0.0.1:4943" }`.
+- `{ host, rootKey }`: any other replica. A given `rootKey` is used, never
+  fetched; without one, it is fetched only from a local `host` (`localhost`,
+  `127.0.0.1`, `[::1]`). Never fetch one from any other host.
+- `"env"`: the page's network. Canisters can be named, `{ name: "backend" }`,
+  from the `ic_env` cookie, believed only on a local replica or with
+  `allowEnvConfig: true`. A server has no cookie: use `{ id }` there.
+  `"env"` is for `localhost` pages: a LAN or Tailscale address, a LAN name
+  with no dot, `*.local`, `*.test`, `*.internal`, `*.ts.net`, a tunnel or a
+  dev container routes to its own origin (never mainnet) but does not
+  believe the cookie or take a root key.
+  `allowEnvConfig: true` throws on `ic0.app`, `*.app.github.dev`,
+  `*.gitpod.io`, `*.loca.lt` and `*.devtunnels.ms` pages (not public
+  suffixes: any sibling site can set the cookie), and never takes the
+  cookie's root key for a mainnet host.
+  `client.canisterId({ name })` says, without a call, what a name resolves
+  to: `{ ok: true, id }`, or `{ ok: false, reason, message }` with `reason`
+  `"no_browser"`, `"untrusted_host"` or `"absent"`, and the resolver's reason
+  text, which a call's error includes after the method and target.
+- Without the Vite plugin (Next.js, webpack, esbuild) there is no cookie and no
+  `/api` proxy, so `"env"` and `{ name }` do not work on a local network. Use
+  `network: "local"` with `{ id }` from a build-time variable
+  (`NEXT_PUBLIC_BACKEND_ID`, written from
+  `icp canister status -e local -i backend` into
+  `.env.development.local`, which only `next dev` reads).
+
+Deploying to mainnet (`icp deploy -e ic`): with `"env"`, a canister's own
+`<id>.icp0.io` (or `<id>.raw.icp0.io`) page believes its cookie's canister
+ids (a public suffix: no sibling can set it), never its root key. On
+`<id>.ic0.app` and custom domains `{ name }` does not resolve. For a page that
+works everywhere, name canisters `{ id: import.meta.env.VITE_BACKEND_ID }`,
+with the local id in `.env.development` and the mainnet id
+(`icp canister status backend -e ic -i`) in `.env.production`. Never set
+`allowEnvConfig: true` on `ic0.app`; on a custom domain only when every
+subdomain is yours.
+
+`createClient` throws a `TypeError` for an option it does not have (`host`
+goes inside `network`), an `allowEnvConfig` or `fetchRootKey` that is not a
+boolean (environment text: `=== "true"`), a `rootKey` that is not 133 bytes
+in a `Uint8Array` (decode hex first), and a `host` the agent cannot call over
+`http:` or `https:`, including one `"env"` takes from the page or from
+`ICP_HOST` (`localhost:4943` reads as the scheme `localhost:`; write
+`http://localhost:4943`).
+
+Who calls (exactly one):
+
+- `identity`: a fixed `Identity` (scripts, servers, tests), or `"anonymous"`,
+  read-only: every update is refused before sending. A
+  `new AnonymousIdentity()` signs writes, so map one you are handed:
+  `identity: id && !id.getPrincipal().isAnonymous() ? id : "anonymous"`.
+- `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth/client`):
+  users sign in and out. The factory runs once, in a browser only; if it
+  throws (blocked `localStorage`) or returns no auth (a Promise, from an
+  `async` factory), the client stays anonymous, public reads still work, and
+  `signIn()` rejects with the error. `network`
+  is `{ agentOptions, identityProvider? }`: the client's host and root key
+  (and its `fetch`, when you gave one), and the Internet Identity to sign in
+  with (the `ic_env` cookie's, or icp-cli's built-in one for a local host). Absent on a mainnet client, it
+  means mainnet's. Absent on any other network (a project that deploys its
+  own `internet_identity`, `"env"` on a local page with no
+  `INTERNET_IDENTITY_PROVIDER` in the cookie, a replica with its own root
+  key), sign-in cannot work, and a factory that reads
+  `network.identityProvider`, as `new AuthClient(network)` does, gets a
+  warning once in development. Name the provider there, which never warns:
+  `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
+  A spread that adds other options, `{ ...network, derivationOrigin }`, reads no
+  provider and gets no warning, so name one there too.
+  `() => new AuthClient()` ignores `network`, so it suits mainnet only. On a
+  dfx replica (`{ host: "http://127.0.0.1:4943" }`) the factory is handed
+  icp-cli's built-in Internet Identity on port 4943, which dfx does not serve:
+  name the one the dfx project deploys.
+  Two `signIn()` calls with the same options in one synchronous run, as
+  `StrictMode`'s double effect makes them, are one sign-in.
+  With `new AuthClient({ ...network, transport: "redirect" })` (Internet
+  Identity's ICRC-167 redirect), sign in only on a route of its own that calls
+  `signIn()` on every load, from an effect that starts it on a timer its
+  cleanup clears (a hydrating render shows `"anonymous"` whatever the
+  session). Enter that route with a full page load (`<a href="/sign-in">`, not
+  a router link): `AuthClient` takes its callback from the page it is built
+  on. List that URL in the origin's `/.well-known/ii-auth-callbacks`.
+
+Internet Identity's sign-in features, 2.0's among them, are `AuthClient`
+options. Pass them in the
+factory beside `...network` (`openIdProvider`, `ssoDomain`,
+`derivationOrigin`, `stateStorage: new CookieStateStorage({ domain })`,
+`namespace`, `disableBrowserActivity`, `transport: "redirect"`, which needs
+`signIn()` called on the page's load, not from a click), or to
+`signIn()` (`maxTimeToLive`, `maxTimeToIdle`, `returnTo`). `signIn()` rejects
+with the auth's own errors (its window closed or blocked, a
+`SupersededError`), never a `ReactorError`: always catch it.
+
+Identity attributes reach a canister as a call's `sender_info`, never as
+arguments. With DFINITY's `identity-attributes` library on the canister: keep
+the `AuthClient` the factory builds, and the `identityProvider` canister it is
+handed (mainnet: `rdmx6-jaaaa-aaaaa-aaadq-cai`), per client; mint the nonce
+(`_internet_identity_sign_in_start`, an update) through a second client on the
+same network built with `identity: new AnonymousIdentity()`, since
+`identity: "anonymous"` and a signed-out client refuse updates; start
+`client.signIn()` and `requestAttributes({ keys, nonce })` together, from a
+click; then call `_internet_identity_sign_in_finish` through a client built
+with `identity: new AttributesIdentity({ inner: await authClient.getIdentity(), attributes, signer: { canisterId } })`,
+dispose both, and invalidate the app client's reads of that canister. Its
+`err` rejects as a `canister_err`; an untrusted signer traps (`rejected`, code
+5). Trust `verified_email`, never `email` (for an organization's SSO, the
+canister reads `sso:<domain>:email` for its `trusted_sso_domains`), and let
+the canister check the attributes.
+
+Who is calling, and may they write:
+
+| Question               | Answer                                                                    |
+| ---------------------- | ------------------------------------------------------------------------- |
+| the caller's principal | `useAuth().principal`, `client.caller()` (`"2vxsx-fae"` unless signed in) |
+| may a write be sent    | `useAuth().status === "signed-in"`; the client refuses the rest itself    |
+| when did it change     | `useAuth()` re-renders; `client.subscribe(fn)`                            |
+
+`"signed-in"` may be a read-only session (Internet Identity can scope one to
+queries, and the network refuses its updates); nothing tells the two apart
+yet. A session ends by the clock: `useAuth()` re-renders with `"expired"` at
+`expiresAt` (ms since the epoch, present while signed in), with no user
+activity.
+
+The client keeps one agent per principal: a call goes out as the principal
+current when it was made, or not at all.
+
+One client per browser tab, or per request on a server. In React,
+`<ReactorProvider client={() => createClient(...)}>` builds it once per
+mounted tree and disposes it on unmount; a module-scope client passed as
+`client={() => client}` is borrowed, never disposed. A client made outside a
+provider, or kept across its unmount, is the app's to release with
+`client.dispose()` (calling it again does nothing; later calls reject
+`cancelled`, code `client_disposed`, and send nothing); one that lives as long
+as the page needs none. Inside, `useClient()`
+returns a view of it for the caller the render shows (anonymous while
+hydrating): a new object after each sign-in, switch or sign-out, the same one
+while the caller stays, whose `mutationOptions` send only as that caller (a
+write pressed before a switch reaches the render is refused `cancelled`,
+`caller_changed`, and sends nothing). `useAuth()` returns
+`{ status, principal, expiresAt?, signIn, signOut }`, `"anonymous"` on a server and in a
+hydrating page's first render.
+
+An app that already uses TanStack Query keeps one `QueryClient` per tree,
+the client's: run its own queries (REST too) under `ReactorProvider`, on
+`client.queryClient`. An error that is not a `ReactorError` is retried there
+as TanStack Query retries it (up to 3 times in a browser), and
+`client.dispose()` clears those queries too. A nested `QueryClientProvider` of
+the app's still has its reads invalidated by a write that ran on it, but a
+server render dehydrates `client.queryClient`.
+
+Any other sign-in that hands over an `Identity` (a delegation, or a key)
+becomes an `AuthLike`. A wallet that signs each call itself (ICRC-25 and
+ICRC-49: OISY, Plug, NFID accounts) is not one: keep the client anonymous for
+reads, send the wallet's writes with `SignerAgent` from `@icp-sdk/signer`, and
+then invalidate the reads yourself with
+`client.queryClient.invalidateQueries({ queryKey: client.queryKey(canister) })`.
+Such a write gets no `ReactorError` and no `mayHaveExecuted`.
+
+```ts
+// src/auth-like.ts
+import type { AuthLike } from "@ic-reactor/core"
+import type { Identity } from "@icp-sdk/core/agent"
+
+export interface SignInSource {
+  getIdentity(): Identity // anonymous while signed out
+  isAuthenticated(): boolean
+  login(): Promise<void>
+  logout(): Promise<void>
+  subscribe(listener: () => void): () => void
+}
+
+export function toAuthLike(source: SignInSource): AuthLike {
+  const signedIn = () =>
+    source.isAuthenticated() && !source.getIdentity().getPrincipal().isAnonymous()
+  return {
+    getPrincipal: () => (signedIn() ? source.getIdentity().getPrincipal() : undefined),
+    getStatus: () => ({ state: signedIn() ? "signed-in" : "signed-out" }),
+    getIdentity: async () => source.getIdentity(),
+    subscribe: (listener) => source.subscribe(listener),
+    signIn: () => source.login(),
+    signOut: () => source.logout(),
+  }
+}
+```
+
+## Values
+
+Methods use the generated types:
+
+| Candid                                   | Value                                          |
+| ---------------------------------------- | ---------------------------------------------- |
+| `nat`, `int`, `nat64`, `int64`           | `bigint` (never `number`)                      |
+| `nat8`..`nat32`, `int8`..`int32`, floats | `number`                                       |
+| `text`, `bool`                           | `string`, `boolean`                            |
+| `principal`                              | `Principal`: branded principal text            |
+| `blob` / `vec nat8`                      | `Uint8Array`                                   |
+| `opt T`                                  | `T \| null` (the property is always present)   |
+| `opt opt T`, `opt null`                  | `{ some: T \| null } \| null`, `{ some: null } \| null` |
+| `vec T`                                  | `T[]`                                          |
+| `record { a : T }`                       | `{ a: T }`, every field present                |
+| `variant { A : T; B }`                   | `{ tag: "A"; value: T } \| { tag: "B" }`       |
+
+Make principals from user input with `principal(text)`, which throws a
+`TypeError` for invalid text: catch it and refuse the input. In render, test with `isPrincipal(text)` first.
+
+Direct calls take the parameters `type Actor` lists; the builders below take
+them as one value: nothing for none, the value for one, a tuple `[a, b]` for
+more.
+
+Token amounts are base units:
+
+```ts
+/// <reference lib="es2023.intl" />
+import { formatUnits, parseUnits } from "@ic-reactor/core"
+
+const units = parseUnits("1.5", 8) // 150000000n
+const text = formatUnits(units, 8, { minFractionDigits: 8 }) // "1.50000000"
+const local = new Intl.NumberFormat(undefined, { maximumFractionDigits: 8 }).format(
+  text as Intl.StringNumericLiteral // the cast needs lib ES2023
+)
+```
+
+`parseUnits` throws for text that is not a plain decimal (`"1e3"`, `"1,5"`),
+a negative, or more significant fraction digits than `decimals`: refuse that
+input. Trailing zeros, `"5."`, `".5"` and whitespace around the number are
+accepted (`"1.500"` at 2 decimals is `150n`), so validate the field with
+`parseUnits` itself, not another parser. A cap is the Candid
+type's: a `nat64` field refuses 2^64 at encoding (`invalid_args`); an ICRC-1
+`amount` is a `nat`, with none.
+
+### Results
+
+A method whose result is `variant { Ok : T; Err : E }` resolves with the `Ok`
+value; `Err` rejects as kind `"canister_err"`, with the `Err` value in `err`
+(typed on a query's or mutation's `error`).
+
+## Reads
+
+```tsx
+import type { Principal } from "@candid-core/schema"
+import { formatUnits } from "@ic-reactor/core"
+import { useClient } from "@ic-reactor/react"
+import { skipToken, useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function Balance({ owner }: { owner: Principal | undefined }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaaba-cai" })
+  const balance = useQuery(
+    client.queryOptions(ledger, "icrc1_balance_of", owner ? { owner, subaccount: null } : skipToken)
+  )
+  return <p>{balance.data === undefined ? "…" : formatUnits(balance.data, 8)}</p>
+}
+```
+
+`skipToken` stands in for arguments not known yet;
+arguments that do not encode make the read reject `invalid_args`.
+
+Keys are `["ic-reactor", network, caller, canisterId, method, args]`, so one
+principal's cached answer is never served to another: after a sign-in,
+sign-out or switch, the new caller's key is empty (`data` is `undefined`)
+until it loads, and a read made for the previous caller never lands in it.
+Keep it so: build the options in render from that render's `useClient()`,
+listing it in the dependencies of any `useMemo` or effect built from it
+(React Compiler does), and add nothing that carries data across keys
+(`placeholderData: keepPreviousData`, cross-key `initialData`).
+`client.queryKey(ledger, method?, args?)` gives keys for the cache.
+
+Reads retry transient failures (never on a server). Spread to add options:
+`{ ...client.queryOptions(...), staleTime }`.
+
+`queryOptions` with an update or oneway method of a generated `Actor` does
+not compile (an `Actor` written by hand says no mode: it throws at run time).
+An update that answers the same however often it runs (ckBTC's
+`get_btc_address`) opts in with a fourth argument, `{ update: "idempotent" }`,
+after the arguments (`undefined` when it takes none); a oneway never compiles.
+Such a read is still an update, so a signed-out or `"anonymous"` client
+refuses it (`unauthenticated`) and sends nothing. Read an ICRC-21 consent
+message as the caller who will send the write: the message can depend on the
+caller (the DFINITY ICRC-1 ledger names the sender as `From`).
+A method TypeScript cannot tell is a read does not compile: a type parameter
+(`M extends keyof A & string`), a union that may name an update
+(`keyof Actor & string`), or any method of a `Canister<A>` with a generic `A`.
+Give the type arguments,
+`client.queryOptions<A, any>(canister, method, vars)`, which keeps the
+run-time check and types the data `unknown`. The variables follow the same
+rule, checked at run time: the value for one argument, a tuple for several,
+`undefined` or `[]` for none (`[arg]` compiles but is refused
+`invalid_args`). `mutationOptions`, `queryKey` and `resendOf` take
+`<A, any>` the same way; for a generic `A` only `queryOptions` widens the
+variables, so cast them for the other three.
+The target `{ id, certified: true }` certifies `query` replies.
+
+## Writes
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+export function Send({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaaba-cai" })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  return <button disabled={transfer.isPending} onClick={() => transfer.mutate(arg)}>Send</button>
+}
+```
+
+- The mutation invalidates the canister's reads, for every caller, after a
+  success, a `canister_err` and a failure that may have executed. Nothing
+  else is needed after an unknown outcome.
+  A third argument, `{ invalidates: [canister, [canister, "method"]] }`,
+  names the reads to invalidate instead (name the written canister too if
+  its reads change); `[]`, none. To add an `onSettled`, call the client's
+  from yours.
+- A write that timed out (`timeoutMs`, below in Errors) whose request went
+  out is `outcome_unknown`: never send it again blindly.
+- Do not retry a write. `retry` is `false`; keep it. The client itself
+  re-sends an update, at most twice, only after a failure proving the canister
+  never got it (reject code 2, status 429); any other failure is final.
+- A write is sent as the caller current when `mutate()` was called, or not at
+  all. Held back by TanStack Query (offline, queued behind its `scope`, or
+  retried) while the account changes, it is refused (`cancelled`,
+  `caller_changed`, `mayHaveExecuted: false`) and nothing is sent; a
+  re-send `resendOf` offered is refused as `outcome_unknown` instead (below). This holds
+  with an `onMutate` of yours that replaces the client's, on
+  `client.queryClient`. A mutation restored from a persister is always
+  refused that way: call `mutate()` again. On another `QueryClient`, keep the
+  client's `onMutate` (spread its result into yours; before TanStack Query
+  5.89, pass it unwrapped). If nobody is signed in,
+  the client refuses it (`unauthenticated`) before calling anything.
+- Send the same write again after `mayHaveExecuted: true` only to a method
+  that runs the same argument from the same sender at most once, such as an
+  ICRC-1 transfer with `created_at_time` set (it answers `Duplicate`).
+  Stamp that key from the IC's clock, `await client.time(ledger)` (a certified
+  `bigint` of nanoseconds), not from `Date.now()`. That time moves about once
+  a second, so give each transfer its own `memo` too.
+  `client.resendOf(transfer.error, ledger, "icrc1_transfer", { dedupedBy: (arg) => arg.created_at_time })`
+  is `undefined` unless that write's outcome is unknown, `dedupedBy` finds a
+  key (not `null`) in its argument, the argument is unchanged since it was
+  sent, the canister still resolves where the write went, and its sender is
+  still the caller; then `again.send()` sends the same bytes to the same
+  canister as that sender, and `transfer.mutate(again.arg)` sends the
+  argument only as that same write, or sends nothing (`code`
+  `caller_changed`, `target_changed`, `arg_changed`). A re-send that did not
+  run, refused that way or turned away (a 429 or another 4xx status, reject
+  code 1 to 3), rejects `outcome_unknown` with `mayHaveExecuted: true`, because
+  the first attempt may have run: its `code`, `httpStatus` or `rejectCode`
+  and its `cause` say why, `resendOf` offers that write again while its
+  sender is the caller, and you read the state back before anything else. Never change an offered argument: build a new one for a new transfer. A method with no
+  such key has no safe re-send: read the state back.
+- For the exact bytes a write will send, such as an ICRC-21 consent
+  request's `arg`, use `client.encode(ledger, "icrc1_transfer", arg)` (a
+  `Uint8Array`, made by the call's own encoder; variables that do not encode
+  throw `invalid_args`), never a second encoding of your own. An offered
+  re-send carries the bytes it sent as `again.bytes`.
+- A `canister_err` is a known outcome, so `resendOf` offers nothing after it.
+  When the canister calls it temporary (an ICRC-1 `TemporarilyUnavailable`),
+  send the same argument object again with `transfer.mutate(arg)`: with
+  `created_at_time` set, that is the same bytes and the same key, answered
+  `Duplicate` if an earlier attempt ran.
+- To keep an offer in state, type it from the method:
+  `NonNullable<ReturnType<typeof client.resendOf<Actor, "icrc1_transfer">>>`.
+- Call update methods only from `useMutation` or directly, never from
+  `useQuery`; call query methods from `useQuery` or directly.
+
+## Errors
+
+Every rejection is a `ReactorError`: test with `isReactorError(error)`, then
+read `kind` and `mayHaveExecuted`. For a direct call, test with
+`isReactorError(error, canister, method)`: it narrows `error.err` to that
+method's `Err` arm after `kind === "canister_err"` (no cast), and it is `false`
+for an error of any other method, canister object or `client.func` call (it
+checks at run time). A failed write either certainly had no effect, or may
+have executed:
+
+| What happened                                                                   | `kind`                            | May have executed |
+| ------------------------------------------------------------------------------- | --------------------------------- | ----------------- |
+| refused before sending: arguments that do not encode, a write while signed out | `invalid_args`, `unauthenticated` | no |
+| HTTP 4xx except 408 (429 included): the replica or a boundary node refused it    | `not_delivered`                   | no                |
+| the identity did not sign it (a declined passkey or hardware-wallet prompt: the signer's error is the `cause`), or the request could not be built | `not_delivered` | no |
+| reject code 1, 2 (transient) or 3: rejected before any canister code ran         | `rejected` (2: `not_delivered`)   | no                |
+| reject code 4 or 5: the canister rejected or trapped, maybe after changing state | `rejected`                        | yes (a write)     |
+| a sent write got no trustworthy answer: network drop, timeout, 5xx, 408          | `outcome_unknown`                 | yes               |
+| a reply that did not decode                                                      | `invalid_reply`                   | yes (a write)     |
+| the canister returned `Err`                                                      | `canister_err`                    | no                |
+| the caller changed, the call was aborted, or a read's `timeoutMs` passed (`code: "timeout"`) | `cancelled` | no (an aborted write: yes) |
+| a `client.resendOf()` re-send that did not run, refused (its `code` says why) or turned away by any of the rows above (its `httpStatus` or `rejectCode` says why); the first attempt may have run | `outcome_unknown` | yes |
+
+A write that got no answer (`outcome_unknown`, or `cancelled` with
+`mayHaveExecuted: true`) carries `error.expiresAt`: the latest ingress expiry
+its sends were signed with, a `bigint` of nanoseconds on the IC's clock
+(about five minutes after the send). A `client.resendOf()` re-send that did
+not run carries the `expiresAt` of the write it re-sends. Once the IC's time is past it, no send
+of that write can still start running. For a method that commits without
+awaiting another canister (an ICRC-1 transfer), a certified read-back of
+state newer than that which finds nothing is final. Compare with a margin,
+since the host's clock may differ from the IC's.
+
+On the management canister (`aaaaa-aa`), codes 1 to 3 prove nothing: a write
+there may have executed. A query changes nothing, so a failed read never "may
+have executed".
+
+How long a call waits: unless the call has a `timeoutMs` (below), neither the
+client nor the agent puts a timeout on an HTTP request (the call or query, or a `read_state` that polls), so a request
+that gets no answer waits as long as the `fetch` in use does. An accepted
+update is polled for about five minutes (a deadline checked when a poll is
+answered) before it rejects `outcome_unknown`. A read made with `queryOptions` stops
+waiting at any point when TanStack Query cancels it
+(`queryClient.cancelQueries(...)`, or its last observer unmounts), and
+rejects `cancelled` (with `mayHaveExecuted: true` for an update read with
+`{ update: "idempotent" }` whose request went out).
+
+To bound the wait, give the canister target `timeoutMs`:
+`client.canister<Actor>(actor, { id, timeoutMs: 15_000 })` bounds each of its
+direct calls, its `queryOptions` reads, its mutations and `client.time()` on
+it, counted from the call.
+`client.mutationOptions(ledger, "icrc1_transfer", { timeoutMs: 15_000 })`
+bounds that mutation's runs instead (1 to 2147483647 ms; anything else
+throws). When it passes, the call stops waiting and rejects with
+`code: "timeout"`: `cancelled`, `mayHaveExecuted: false`, for a read and for a
+write that had not gone out; `outcome_unknown`, `mayHaveExecuted: true`, for a
+write whose request went out, for an `{ update: "idempotent" }` read whose
+request went out, and for a re-send of an offered write at any point. That
+write may still execute: it is an unknown outcome to reconcile like any other
+(read the state back, or `resendOf` for a method that deduplicates, given the
+canister object the write went through: another `timeoutMs` is another
+object), never one to send again blindly. Nothing is sent again for a
+timeout, and the request is not torn down. Unlike other `cancelled` errors, a
+`cancelled` with `code: "timeout"` is a real timeout: show it, do not ignore
+it. Canister objects that differ only in `timeoutMs` share query keys, so a
+read observed through two of them is bounded by the options TanStack Query
+was given last.
+
+## Outside React
+
+```ts
+import { principal } from "@candid-core/schema"
+import { isReactorError, parseUnits } from "@ic-reactor/core"
+import { client, ledger } from "./ledger"
+
+const account = { owner: principal("aaaaa-aa"), subaccount: null }
+
+const cached = await client.queryClient.fetchQuery(client.queryOptions(ledger, "icrc1_balance_of", account))
+await client.queryClient.invalidateQueries({ queryKey: client.queryKey(ledger) })
+const fresh = await ledger.icrc1_balance_of(account)
+
+try {
+  const arg = { to: account, amount: parseUnits("1.5", 8), fee: null, memo: null, from_subaccount: null, created_at_time: null }
+  await ledger.icrc1_transfer(arg) // refused unless `client` was built with an Identity
+} catch (error) {
+  if (!isReactorError(error, ledger, "icrc1_transfer")) throw error
+  if (error.kind === "canister_err") console.error(error.err.tag) // a TransferError
+  else console.error(error.mayHaveExecuted ? "unknown outcome: re-read first" : error.kind)
+}
+```
+
+Direct calls never touch a cache. To test, `createTestClient()` from
+`@ic-reactor/core/testing` gives a real client over an in-memory replica with
+a sign-in you control.
+
+## Example
+
+```tsx
+import { principal } from "@candid-core/schema"
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
+import { toAuthLike, type SignInSource } from "./auth-like"
+import { actor, type Actor } from "./generated/backend"
+
+export function App({ auth }: { auth: SignInSource }) {
+  return (
+    <ReactorProvider client={() => createClient({ network: "ic", auth: () => toAuthLike(auth) })}>
+      <Profile />
+    </ReactorProvider>
+  )
+}
+
+function Profile() {
+  const client = useClient()
+  const { status, principal: caller, signIn } = useAuth()
+  const backend = client.canister<Actor>(actor, { id: "rrkah-fqaaa-aaaaa-aaaaq-cai" })
+  const me = principal(caller)
+  const signedIn = status === "signed-in"
+  const profile = useQuery(client.queryOptions(backend, "get_profile", signedIn ? me : skipToken))
+  const rename = useMutation(client.mutationOptions(backend, "set_name"))
+
+  if (!signedIn) return <button onClick={() => signIn().catch(console.error)}>Sign in</button>
+  if (profile.data === undefined) return <p>Loading…</p>
+  return (
+    <>
+      <p>{profile.data.name}</p>
+      <button disabled={rename.isPending} onClick={() => rename.mutate([me, "Ada"])}>Rename</button>
+      {rename.error && <p>{rename.error.mayHaveExecuted ? "Unknown outcome" : rename.error.message}</p>}
+    </>
+  )
+}
+```
+
+## Do not
+
+- Cast text to `Principal`: use `principal(text)`.
+- Convert `bigint` values to `number`: use `parseUnits` and `formatUnits`.
+- Add `retry` to a write (`{ ...client.mutationOptions(...), retry: 3 }`
+  compiles), or call a write from `useQuery`: TanStack Query may run a query's
+  function again whenever it refetches, and every run of an update executes
+  again.
+- Write a query key by hand (it leaves the caller out), or carry data across
+  keys (`keepPreviousData`, cross-key `initialData`).
+- Build agents yourself, a client per render, or one client for every user of
+  a server.
+- Send a write as the anonymous identity: pass `identity: "anonymous"`, never
+  an `AnonymousIdentity` you were handed.
+- Treat every failed write as "not executed": read `mayHaveExecuted`.

@@ -1,0 +1,65 @@
+---
+title: Vite wallet
+description: A React and Vite ICP wallet on a local icp-cli network, with Internet Identity, a backend canister and optimistic updates on ic-reactor 4
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+An ICP wallet built with React and Vite on `@ic-reactor/core`,
+`@ic-reactor/react` and `@ic-reactor/vite-plugin`, against a local icp-cli
+network that runs the NNS ICP ledger, Internet Identity and a small Rust
+backend canister of the example's own.
+
+- **The page's network:** one client per tab,
+  `createClient({ network: "env", auth })`. The Vite plugin sets the `ic_env`
+  cookie and proxies `/api` to the local network, so the backend is called as
+  `{ name: "backend" }` and the ledger by its `{ id }`. A panel shows the id
+  the client resolved and the cookie it came from.
+- **Two ways to sign in, one client:** Internet Identity through
+  `@icp-sdk/auth`'s `AuthClient`, built with
+  `(network) => new AuthClient(network)` from the network the client hands it
+  (the local II on a local page), and a "dev account" of the app's own, an
+  `AuthLike` holding an Ed25519 key, offered only on a local page. Switching
+  accounts shows the next account nothing of the last.
+- **Reads and writes:** the balance with `skipToken` while signed out and a
+  `refetchInterval`, so a top-up from the example's faucet shows by itself;
+  ICP transfers with `parseUnits`, the fee, deduplication by `created_at_time`
+  and a `memo` per transfer, typed ledger errors and the
+  unknown-outcome path, where `client.resendOf` offers the same transfer
+  again to its sender only; a profile write refused before sending while
+  signed out.
+- **Optimistic updates:** an address book whose adds and removes show at once
+  and roll back on a refusal or a failure, while the client's own
+  invalidation still runs; paying a contact refreshes both balances and not
+  the address book.
+
+The guides behind it: [Auth](/docs/ic-reactor/guides/auth/) for the two sign-in sources,
+[Writes](/docs/ic-reactor/guides/writes/) for transfers and optimistic updates, and
+[the Vite plugin](/docs/ic-reactor/guides/vite-plugin/) for the cookie and the `/api` proxy.
+[Build an ICRC-1 wallet](/docs/ic-reactor/build/icrc1-wallet/) builds its sign-in, balance
+and transfer step by step, against mainnet.
+
+Every scenario has tests on `createTestClient()` that run without a replica
+(`pnpm test`). To run the wallet itself you need icp-cli's local network,
+which the example installs (`pnpm icp:start`, `pnpm icp:deploy`,
+`pnpm dev`), and the Rust toolchain for the backend; see its README.
+
+StackBlitz installs the example from npm and runs those tests (`npm test`):
+you can read and change the code there and run them again. It cannot run the
+wallet itself. icp-cli's local network is a native binary, which StackBlitz
+does not run, and the backend needs the Rust toolchain, so the page it would
+serve has no network to call. Clone the repository to run the wallet.
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Read the code and run the tests in your browser (not the wallet)"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/vite-wallet?file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/main/examples/vite-wallet"
+  />
+</CardGrid>

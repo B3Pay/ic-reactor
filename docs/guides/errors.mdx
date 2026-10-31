@@ -1,0 +1,476 @@
+---
+title: Errors and mayHaveExecuted
+description: "ReactorError: its kinds and codes, which failures may have executed, and what to do for each"
+editUrl: https://github.com/B3Pay/ic-reactor/edit/main/docs/src/content/docs/guides/errors.mdx
+---
+
+Every call the client makes rejects with a `ReactorError`, whether it is a
+direct call, a query function, a mutation function or a `client.func` call. It
+carries two things you need most: a `kind` that says what went wrong, and
+`mayHaveExecuted`, which says whether a write may have taken effect anyway.
+
+## Testing for a ReactorError
+
+`ReactorError` is a type. There is no class, so `instanceof` does not work.
+Test with `isReactorError`, which also recognises an error made by another copy
+of the package:
+
+```ts
+import { isReactorError } from "@ic-reactor/core"
+import { ledger } from "./ledger"
+
+try {
+  await ledger.icrc1_fee()
+} catch (error) {
+  if (!isReactorError(error)) throw error // not ours: a bug, not a failed call
+  console.error(error.kind, error.mayHaveExecuted, error.message)
+}
+```
+
+`isReactorError` narrows to `ReactorError<unknown>`. `ReactorError<E>` is the
+same error with a typed `err`. For a method whose result is
+`variant { Ok : T; Err : E }`, the `error` of a query or mutation is
+`ReactorError<E>`, and `err` is typed `E` exactly when `kind` is
+`"canister_err"`.
+
+For a direct call, name the canister and the method the error came from:
+`isReactorError(error, canister, method)` narrows to that method's
+`ReactorError<E>`, so `err` is typed after the `kind` check, with no cast. For
+a method without an `Err` arm, `err` stays `undefined`.
+
+```ts
+import { isReactorError } from "@ic-reactor/core"
+import type { Account } from "./generated/icrc1"
+import { ledger } from "./ledger"
+
+/** Sends a transfer, and says what happened. */
+export async function pay(to: Account, amount: bigint): Promise<string> {
+  const arg = {
+    to,
+    amount,
+    fee: null,
+    memo: null,
+    from_subaccount: null,
+    created_at_time: null,
+  }
+  try {
+    return `Sent in block ${await ledger.icrc1_transfer(arg)}.`
+  } catch (error) {
+    if (!isReactorError(error, ledger, "icrc1_transfer")) throw error
+    if (
+      error.kind === "canister_err" &&
+      error.err.tag === "InsufficientFunds"
+    ) {
+      return `The balance is ${error.err.value.balance}.` // error.err is a TransferError
+    }
+    return error.message
+  }
+}
+```
+
+The check is made when the code runs, not only by the compiler: the guard is
+`true` only for an error that a call of that method on that canister object
+rejected with, whether the call was direct, a query function or a mutation
+function built from it. An error of another method, of another canister
+object, or of a `client.func` call is `false`, even when it is a
+`ReactorError`, so the guard never types one call's error as another's. The
+canister made with `certified: true` is another object, and so is the same
+canister made by another client. `client.canister()` returns the same object
+for the same module and target, so a canister made again where the error is
+caught is the one the call was made on. A `false` result says only that the
+error is not that call's: it can still be of any `kind`.
+
+## The fields
+
+| Field             | Meaning                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `kind`            | what went wrong: one of the eight kinds below                                                         |
+| `mayHaveExecuted` | whether the call may have taken effect although you cannot tell what it did                           |
+| `method`          | the Candid method called                                                                              |
+| `canisterId`      | the target canister, as text                                                                          |
+| `code`            | a machine-readable sub-reason inside a kind, when there is one (see [Codes](#codes))                  |
+| `rejectCode`      | the IC reject code (1 to 6), when the call was rejected                                               |
+| `httpStatus`      | the HTTP status the replica or a boundary node answered with, when there was one                      |
+| `issues`          | which parts of the arguments or the reply failed to encode or decode: `{ code, path, message }` each  |
+| `err`             | the typed `Err` payload, only when `kind` is `canister_err`                                           |
+| `cause`           | the error that caused this one, when there is one (for example the agent's error)                     |
+| `expiresAt`       | for a write that got no answer: the latest ingress expiry of its sends, nanoseconds on the IC's clock |
+| `message`         | one line: `[ic-reactor] <method> on <canisterId>: <reason>`                                           |
+
+## The eight kinds
+
+| `kind`            | Meaning                                                                                                                                                                                                                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `invalid_args`    | the arguments could not be encoded, or the target canister id could not be resolved. Nothing was sent                                                                                                                                                                                     |
+| `unauthenticated` | an update was attempted while nobody is signed in. Nothing was sent                                                                                                                                                                                                                       |
+| `not_delivered`   | nothing that matters ran: the request was refused or never taken in, or it was a query that got no answer                                                                                                                                                                                 |
+| `outcome_unknown` | an update went out and no trustworthy answer came back, so the canister may or may not have run it; or a re-send `client.resendOf()` offered did not run, and the write it re-sends may have (its `code`, `httpStatus` or `rejectCode`, and its `cause`, say why the re-send did not run) |
+| `rejected`        | the IC or the canister rejected the call; `rejectCode` says which                                                                                                                                                                                                                         |
+| `invalid_reply`   | a reply arrived but did not decode as the method's result                                                                                                                                                                                                                                 |
+| `canister_err`    | the canister ran the call and answered with the `Err` arm of its result; `err` is typed                                                                                                                                                                                                   |
+| `cancelled`       | the caller abandoned the call: an aborted call, a read whose caller is no longer current, a call on a disposed client, or a read or unsent write whose `timeoutMs` passed (`timeout`)                                                                                                     |
+
+## `mayHaveExecuted`
+
+- **`true` is a warning, not a verdict.** The IC or the network left the
+  outcome open: the canister may have changed state, and you cannot tell.
+  Sending the write again could run it twice. Read the state back before you
+  try again.
+- **`false` means the outcome is known.** The call was refused before it ran,
+  or the canister ran it and answered `Err`. It does not mean "nothing
+  changed" for `canister_err`: a canister may change state before it returns
+  an `Err`. It means the answer is the decision, and sending again is a new
+  decision, not a retry.
+
+A query changes nothing, so a failed read never "may have executed".
+
+### The classification
+
+The client turns every failure of an agent into a kind with one table, for
+an update and for a query:
+
+| Failure                                                                                                           | Update: kind                | Update: `mayHaveExecuted` | Query: kind                 |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------- | --------------------------- |
+| the call was aborted (an `AbortError`, or its signal aborted)                                                     | `cancelled`                 | true                      | `cancelled`                 |
+| reject code 1 or 3                                                                                                | `rejected`                  | false                     | `rejected`                  |
+| reject code 2                                                                                                     | `not_delivered` (retryable) | false                     | `not_delivered` (retryable) |
+| reject code 1, 2 or 3 from the management canister (`aaaaa-aa`)                                                   | `rejected`                  | true                      | `rejected`                  |
+| reject code 4 or 5                                                                                                | `rejected`                  | true                      | `rejected`                  |
+| reject code 6, an unknown code, HTTP 408 or 5xx, a network failure, a polling timeout, a failed certificate check | `outcome_unknown`           | true                      | `not_delivered` (retryable) |
+| HTTP 429                                                                                                          | `not_delivered` (retryable) | false                     | `not_delivered` (retryable) |
+| any other HTTP 4xx, `IngressExpiryInvalid`                                                                        | `not_delivered`             | false                     | `not_delivered`             |
+| a request that could not be built or signed                                                                       | `not_delivered`             | false                     | `not_delivered`             |
+| the signer did not sign it (a declined prompt; the `cause` is the signer's error)                                 | `not_delivered`             | false                     | `not_delivered`             |
+
+A query's `mayHaveExecuted` is `false` in every row.
+
+Three rules sit behind the table.
+
+- **Once the request may be in the IC, the HTTP rows change.** The HTTP rows,
+  `IngressExpiryInvalid`, the "could not be built" row and the signer's row
+  hold for an update only before the request may have been accepted. After the replica answered
+  202 (the client is polling for the reply), a later refusal says nothing
+  about the call, so all of those rows read `outcome_unknown` with
+  `mayHaveExecuted: true`. This is why a 429 on the first send is safe to send
+  again, and a 429 on a later poll is not.
+- **The management canister is the exception for reject codes 1 to 3.** For
+  every other canister, codes 1 to 3 prove no canister code ran. For
+  `aaaaa-aa` they prove nothing, so an update there may have executed.
+- **A re-send `client.resendOf()` offered keeps its write's unknown outcome.**
+  A failure that proves only that the re-send did not run (a row with `false`
+  above, or a refusal before it is sent) says nothing about the earlier
+  attempt, so it reads `outcome_unknown` with `mayHaveExecuted: true`. See
+  [A re-send that did not run](#what-to-do-for-each-kind) below.
+
+### How long a call waits
+
+Unless the call has a `timeoutMs` (below), neither the client nor the agent
+puts a timeout on an HTTP request. A request that gets no HTTP answer, from a proxy that holds it say, waits as long as the
+`fetch` in use waits. That holds for the call or query request, for each
+`read_state` request that polls for an accepted call's answer, and for the
+`read_state` of `client.time()`.
+
+An update (or a certified read) the replica accepted with a 202 is polled for
+with `read_state` for about five minutes in all, then an update rejects
+`outcome_unknown`. That deadline is checked only when a poll is answered: a
+`read_state` request that gets no answer is not cut short by it.
+
+A read made with `client.queryOptions()` stops waiting at any of these points
+as soon as TanStack Query cancels it (`queryClient.cancelQueries(...)`, or its
+last observer unmounts), and rejects `cancelled`. Its `mayHaveExecuted` is
+`false`, except for an update read with `{ update: "idempotent" }` whose call
+request had gone out: that one may have run. The request itself is not torn
+down; nobody waits for its answer.
+
+To stop waiting sooner, give a call a bound with `timeoutMs`, in milliseconds
+(1 to 2147483647):
+
+- on the canister target, `client.canister(actor, { id, timeoutMs })`, it
+  bounds every call made through that canister object: its direct calls, its
+  reads made with `queryOptions`, its mutations, and `client.time()` on it;
+- in the third argument of `client.mutationOptions()`,
+  `{ invalidates, timeoutMs }`, it bounds that mutation's runs in place of the
+  canister's.
+
+The bound counts from the moment the call is made, the wait for the caller's
+identity included. When it passes, the call stops waiting at whatever point it
+is, and rejects with `code: "timeout"`:
+
+| When the bound passed                                                  | `kind`            | `mayHaveExecuted` |
+| ---------------------------------------------------------------------- | ----------------- | ----------------- |
+| a read, at any point (an `{ update: "idempotent" }` read: as a write)  | `cancelled`       | `false`           |
+| a write before its request went out (or while it waited to be re-sent) | `cancelled`       | `false`           |
+| a re-send of a write `client.resendOf()` offered, at any point         | `outcome_unknown` | `true`            |
+| a write whose request went out, while it waits for the answer or polls | `outcome_unknown` | `true`            |
+
+A write that timed out after its request went out may still execute, or may
+have executed already. Treat it as any other unknown outcome: read the state
+back, or offer the same write again with `client.resendOf()` when the method
+deduplicates it. Never send it again blindly: that can run the write twice.
+The client sends nothing again for a timeout, and, as with an abort, the
+request itself is not torn down. An update read with `{ update: "idempotent" }`
+counts as a write here.
+
+`client.resendOf()` and `isReactorError(error, canister, method)` need the
+canister object the call was made on, and a target with another `timeoutMs`
+is another canister object: pass the one the write went through.
+
+Canister objects that differ only in `timeoutMs` share query keys, so their
+reads share one cache entry. When two observers read the same key through
+canisters with different bounds, a fetch is bounded by the options TanStack
+Query was given last.
+
+The errors the client makes itself, without an agent error to classify, are
+simpler:
+
+- `invalid_args`, `unauthenticated` and `canister_err` always say `false`.
+- `cancelled` says `false` when nothing was sent. An update aborted in flight
+  says `true`, as the first row of the table.
+- `invalid_reply` says `true` for an update, because the canister ran it and
+  only the answer is unreadable, and `false` for a query.
+
+### Codes
+
+`code` narrows a kind. The client sets exactly these eleven. Only
+`canister_not_found` comes from the IC's answer; the client decides the others
+itself:
+
+| `code`                          | `kind`                                           | When                                                                                                                                                                                                                                                                                                              |
+| ------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `canister_id_unresolved`        | `invalid_args`                                   | a `{ name }` target the `ic_env` cookie cannot give: on a server, an untrusted host, or no such entry                                                                                                                                                                                                             |
+| `no_certified_path`             | `invalid_args`                                   | a `composite_query` called on a `certified: true` canister                                                                                                                                                                                                                                                        |
+| `effective_canister_id_unknown` | `invalid_args`                                   | a management canister call that cannot be routed from its arguments                                                                                                                                                                                                                                               |
+| `arg_changed`                   | `outcome_unknown`                                | a mutation given an argument `client.resendOf()` offered, which was changed after the write it re-sends went out. Nothing was sent, and that write may have run                                                                                                                                                   |
+| `anonymous_write`               | `unauthenticated`                                | an update or oneway method by a caller who is not signed in                                                                                                                                                                                                                                                       |
+| `identity_unavailable`          | `unauthenticated`                                | the auth's `getIdentity()` rejected                                                                                                                                                                                                                                                                               |
+| `caller_changed`                | `cancelled` or `outcome_unknown`                 | the call was made for a principal that is no longer current. Nothing was sent: `outcome_unknown` for a re-send `client.resendOf()` offered, whose write may have run, `cancelled` otherwise                                                                                                                       |
+| `target_changed`                | `outcome_unknown`                                | a mutation given an argument `client.resendOf()` offered would send it to another method or canister than the write it re-sends: a `{ name }` the `ic_env` cookie maps elsewhere since. Nothing was sent, and that write may have run                                                                             |
+| `client_disposed`               | `cancelled` or `outcome_unknown`                 | a call on a disposed client: `outcome_unknown` for a re-send `client.resendOf()` offered, `cancelled` otherwise                                                                                                                                                                                                   |
+| `timeout`                       | `cancelled` or `outcome_unknown`                 | the call's `timeoutMs` passed: `outcome_unknown` for a write whose request went out or a re-send `client.resendOf()` offered, `cancelled` otherwise (see How long a call waits)                                                                                                                                   |
+| `canister_not_found`            | `not_delivered`, `rejected` or `outcome_unknown` | the IC answered that the canister does not exist: a boundary node's HTTP 400 `canister_not_found` (an id outside every subnet's range), or a replica's reject 3 with IC error code `IC0301` (an id inside a range that holds no canister). A write the IC may already hold keeps the code under `outcome_unknown` |
+
+An aborted call is `cancelled` with no code. On a re-send `client.resendOf()`
+offered, a code that says nothing was sent (any of these but
+`canister_not_found`) comes with kind `outcome_unknown`, as the rows above
+say for the codes a re-send meets most.
+
+## What to do for each kind
+
+| `kind`            | What to do                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `invalid_args`    | Fix the input or the target. Read `issues` for the field and the reason. Nothing was sent.                                                                                                                                                                                                                                                                                                                    |
+| `unauthenticated` | Ask the user to sign in, then send again. `anonymous_write` means nobody is signed in. `identity_unavailable` means the auth could not hand over an identity.                                                                                                                                                                                                                                                 |
+| `not_delivered`   | It is safe to try again. The client already retried a read, and sent an update again where that was proven safe, so this is the end of what it will do alone.                                                                                                                                                                                                                                                 |
+| `outcome_unknown` | Say the outcome is unknown. Read the state back before anything else. Never send again blindly. A re-send `client.resendOf()` offered that did not run says why in its `code`, `httpStatus` or `rejectCode`, and its `cause`: the write it re-sends is still offered while its sender is the caller.                                                                                                          |
+| `rejected`        | Read `rejectCode`. Code 4 is a reject the canister chose, and code 5 is a trap. If `mayHaveExecuted` is `true`, read the state back before sending again.                                                                                                                                                                                                                                                     |
+| `invalid_reply`   | The generated module and the canister disagree about the method's result: regenerate the module from the canister's current `.did`. For an update, it did run.                                                                                                                                                                                                                                                |
+| `canister_err`    | Show or act on the typed `err`. The canister's answer is final. Sending again is a new decision. A mutation has already refreshed its reads.                                                                                                                                                                                                                                                                  |
+| `cancelled`       | Usually ignore it: the caller moved on. A `caller_changed` read lands nowhere, and the component reads the new caller's key. A `caller_changed` write (held back offline or by its `scope` across an account switch) was never sent: say so, since what was asked did not happen. Ignore it in a global error handler as well, except code `timeout`: that is a real timeout the user waited for, so show it. |
+
+**A re-send that did not run is not the end of the write.** A re-send of a
+write `client.resendOf()` offered can be refused before it goes out (codes
+`caller_changed`, `target_changed`, `arg_changed`, `client_disposed`,
+`identity_unavailable`, `canister_id_unresolved`, an argument that no longer
+encodes, or a `timeout` while it waits for the caller's identity or to be
+sent again after a 429), or turned away when it is sent (an HTTP 4xx such as
+429, or reject code 1 to 3). Each proves only that the re-send did not run.
+The earlier attempt may have run all the same, so the re-send rejects
+`outcome_unknown` with `mayHaveExecuted: true`: its `code`, `httpStatus`,
+`rejectCode` or `issues` say why the re-send did not run, its `cause` is the
+re-send's own error, and its `expiresAt` is the latest of the write's sends.
+Its `message` says only that the re-send did not run. The write stays kept,
+so `client.resendOf()` of this error offers it again while its sender is the
+caller and its argument and canister are what they were, and the mutation's
+error keeps leading back to it. Read the state back before
+anything else, as for any `outcome_unknown`. A re-send the signer does not
+sign, such as a declined prompt, rejects the same way, with the signer's own
+error as its `cause`. The same failures of a first send mean what the table
+above says: nothing ran.
+
+For every `mayHaveExecuted: true` failure of a write, a mutation has already
+invalidated the canister's reads, so the page shows what the canister holds
+when the re-read lands. See [Writes](/docs/ic-reactor/guides/writes/).
+
+### In React
+
+A query's or mutation's `error` is `ReactorError<E> | null`. A function over
+the kinds is a good place for the wording. The `never` check makes TypeScript
+tell you when a kind is added:
+
+```tsx
+import type { ReactorError } from "@ic-reactor/core"
+
+export function describe(error: ReactorError<unknown>): string {
+  switch (error.kind) {
+    case "invalid_args":
+      return error.issues?.[0]?.message ?? "The input is not valid."
+    case "unauthenticated":
+      return "Sign in first."
+    case "not_delivered":
+      return "The request did not get through. Try again."
+    case "outcome_unknown":
+      return "The outcome is unknown. It may have gone through: check before sending again."
+    case "rejected":
+      return error.mayHaveExecuted
+        ? `Rejected (code ${error.rejectCode}). It may have run: check before sending again.`
+        : `Rejected (code ${error.rejectCode}).`
+    case "invalid_reply":
+      return "The canister's answer did not match its interface."
+    case "canister_err":
+      return "The canister refused."
+    case "cancelled":
+      return "Cancelled."
+    default: {
+      const unhandled: never = error
+      return String(unhandled)
+    }
+  }
+}
+```
+
+A canister's own `Err` is typed. For the ICRC-1 ledger's `icrc1_transfer`, a
+mutation's `error` narrows like this:
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function TransferStatus() {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  const error = transfer.error // ReactorError<TransferError> | null
+  if (error?.kind === "canister_err" && error.err.tag === "InsufficientFunds") {
+    return <p>The balance is {error.err.value.balance.toString()}.</p>
+  }
+  return error ? <p>{error.message}</p> : null
+}
+```
+
+## Recipes
+
+### A write with an unknown outcome
+
+After `mayHaveExecuted: true`, do not send the same write again until you know
+what happened. Two ways to know:
+
+- **Read the state back.** Read the balance, the profile or the list the write
+  changed, and decide from what you find. In React, the mutation has already
+  invalidated the canister's reads, so the page shows it. A read-back that
+  finds nothing is final only once no send of the write can still start: for
+  `outcome_unknown` (and `cancelled` with `mayHaveExecuted: true`),
+  `error.expiresAt` is the latest ingress expiry its sends were signed with,
+  in nanoseconds on the IC's clock, about five minutes after the send (a
+  `client.resendOf()` re-send that did not run carries the latest of the
+  write's sends). Past
+  it, the IC starts no send of the write: the
+  [IC interface specification](https://docs.internetcomputer.org/references/ic-interface-spec/https-interface/)
+  says the IC neither accepts a call nor moves one from `received` to
+  `processing` once its `ingress_expiry` is past. The expiry does not stop a
+  send that started before it, so a method that awaits another canister can
+  still commit after that, and this makes a read-back final only for a
+  method that commits without awaiting (an ICRC-1 transfer does), and only
+  from a certified read of state newer than the expiry. Compare with a
+  margin, since the host's clock may differ from the IC's. `expiresAt` is not enumerable, so
+  `JSON.stringify(error)` leaves it out.
+- **Let the canister deduplicate.** If the method can tell a repeat from a new
+  call, send the same argument again. The ICRC-1 ledger does: a second
+  transfer from the same account identical to the first, `created_at_time`
+  and `memo` included, is answered `Duplicate`, which means the first one
+  went through. Give each transfer its own `memo`, or two different
+  transfers of the same amount stamped with the same time look like one (the
+  IC's time, which `client.time()` reads, moves about once a second),
+  and the second is reported as done when it never ran. It is the ledger's
+  feature: `client.resendOf()` offers the re-send only for a key you say the
+  canister deduplicates on, and only to the account that sent it (see
+  [Writes](/docs/ic-reactor/guides/writes/#sending-the-same-write-again)).
+
+```ts
+import { isReactorError } from "@ic-reactor/core"
+import type { Account } from "./generated/icrc1"
+import { client, ledger } from "./ledger"
+
+/** Sends a transfer, and after an unknown outcome sends the same argument once more. */
+export async function transferOnce(to: Account, amount: bigint) {
+  const arg = {
+    to,
+    amount,
+    fee: null,
+    // This transfer's own: only a repeat of this argument is a duplicate.
+    memo: crypto.getRandomValues(new Uint8Array(16)),
+    from_subaccount: null,
+    // The IC's clock, in nanoseconds, which the ledger checks the stamp
+    // against; it makes a repeat detectable.
+    created_at_time: await client.time(ledger),
+  }
+  try {
+    return await ledger.icrc1_transfer(arg)
+  } catch (error) {
+    // Offered only after an unknown outcome, while its sender is the caller.
+    const again = client.resendOf(error, ledger, "icrc1_transfer", {
+      dedupedBy: (sent) => sent.created_at_time,
+    })
+    if (again === undefined) throw error
+    try {
+      return await again.send() // the identical argument, as the same sender
+    } catch (second) {
+      if (
+        isReactorError(second, ledger, "icrc1_transfer") &&
+        second.kind === "canister_err" &&
+        second.err.tag === "Duplicate"
+      ) {
+        return second.err.value.duplicate_of // the first one went through
+      }
+      throw second
+    }
+  }
+}
+```
+
+### Mapping kinds to exit codes or HTTP statuses
+
+A command-line tool or a route handler turns a kind into an exit code or an
+HTTP status. Type the table with `satisfies Record<ReactorErrorKind, number>`:
+a kind added later then fails the type check.
+
+```ts
+import { isReactorError, type ReactorErrorKind } from "@ic-reactor/core"
+
+const STATUS = {
+  invalid_args: 400,
+  unauthenticated: 401,
+  rejected: 502,
+  invalid_reply: 502,
+  canister_err: 502,
+  outcome_unknown: 504,
+  not_delivered: 503,
+  cancelled: 503,
+} as const satisfies Record<ReactorErrorKind, number>
+
+export function statusOf(error: unknown): number {
+  return isReactorError(error) ? STATUS[error.kind] : 500
+}
+```
+
+Two examples do this in full. The
+[Node agent tool](/docs/ic-reactor/examples/node-agent-tool/) gives each kind an exit code
+and a sentence of advice. The [Next.js SSR example](/docs/ic-reactor/examples/next-ssr/)
+has a route handler that maps `kind` to an HTTP status and uses `httpStatus` to
+tell a refusal that passes (429, 408, 5xx) from one that stands (any other
+4xx).
+
+### Cancelled reads in a global handler
+
+A read built by one caller can be cancelled when another becomes current. If
+you log errors in one place, such as a listener on
+`client.queryClient.getQueryCache()`, skip the `cancelled` kind there, except
+one with code `timeout`: that read timed out after `timeoutMs`, and is worth
+showing. A
+component that reads with `useQuery` never shows it: it renders again under
+the new caller's key. The
+[SSR page](/docs/ic-reactor/guides/ssr/#a-read-the-hydrating-render-built-may-be-cancelled-once)
+shows the listener, and the one case where a read the hydrating render built
+is cancelled once.

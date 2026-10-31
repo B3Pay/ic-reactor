@@ -1,0 +1,573 @@
+---
+title: Writes
+description: "client.mutationOptions with TanStack Query: invalidation after a write, and when an update is sent again"
+editUrl: https://github.com/B3Pay/ic-reactor/edit/main/docs/src/content/docs/guides/writes.mdx
+---
+
+A write is a TanStack Query mutation. `client.mutationOptions` builds its
+options and `useMutation` runs them. The client takes care of the rules that
+are easy to get wrong: who signs the call, which reads to refresh afterwards,
+and, above all, when an update may be sent again.
+
+## A first write
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+export function Send({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  return (
+    <button disabled={transfer.isPending} onClick={() => transfer.mutate(arg)}>
+      Send
+    </button>
+  )
+}
+```
+
+`mutate(variables)` follows the same rule as a read: nothing for a method
+without arguments, the value for one, a tuple `[a, b]` for two or more. Here
+`mutate(arg)` sends the one argument. On success, `data` is the method's
+result: for a result `variant { Ok : T; Err : E }`, the `Ok` value. An `Err`
+rejects as kind `canister_err`.
+
+`mutationOptions` throws a `TypeError` for a method the service does not have.
+Its `mutationKey` is `["ic-reactor", network, canisterId, method]`. Built from
+the client `useClient()` returns, it ends with the caller the render shows as
+well, `["ic-reactor", network, canisterId, method, caller]`, so a filter on
+the shorter key still finds it.
+
+## Who signs
+
+A write calls as the caller current **when `mutate()` was called**, or not at
+all; not the one current when the options were built. TanStack Query can run a
+write later: paused while the browser is offline, queued behind another
+mutation of its `scope`, or retried by a `retry` of the app's. If someone else
+is current by the time it is sent, the client refuses it: kind `cancelled`,
+code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. A
+mutation restored from a persister is refused the same way whoever is signed
+in, since TanStack runs no `onMutate` for it and who started it is not known:
+call `mutate()` again. A write run on a `QueryClient` other than
+`client.queryClient` keeps the rule only through the client's `onMutate` (see
+`onMutate` below).
+
+A write needs a signed-in caller. If nobody is signed in, or the client was
+built with `identity: "anonymous"`, the client refuses it before sending
+anything: kind `unauthenticated`, code `anonymous_write`,
+`mayHaveExecuted: false`.
+
+Built from the `useClient()` of a render, the options send only as the caller
+that render shows. A press handled before an account switch reached the
+render (the switch and the click in one batch) is refused: kind `cancelled`,
+code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. The
+refusal reaches the callbacks of the options the press used (an `onError`
+given to `useMutation`); the mutation that the render for the new caller shows
+starts over, idle, since the key holds the caller. That is true of any
+outcome, a write whose outcome is unknown included: an app that must keep
+showing it across a switch (to read the sender's balance back, say) keeps it
+in its own state, from the promise `mutateAsync` returns. The handler needs no check
+of its own; disable the button for a caller who is not signed in:
+
+```tsx
+import { useAuth, useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+export function SendAsShown({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const { status, principal: shown } = useAuth()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+
+  return (
+    <button
+      disabled={status !== "signed-in" || transfer.isPending}
+      onClick={() => transfer.mutate(arg)}
+    >
+      Send as {shown}
+    </button>
+  )
+}
+```
+
+A handler that signs in and then writes (`await client.signIn()`, then
+`transfer.mutate(arg)`) presses with the options of the last render React
+committed. The render for the user normally commits before the handler goes
+on, and the write goes out as the user; while that render cannot commit, such
+as when it suspends on the user's data, the press has the previous caller's
+options and is refused. Let the render that shows the user press, or make a
+direct call.
+
+A direct call on a canister (`await ledger.icrc1_transfer(arg)`) is not held
+to a render: it signs as whoever is signed in when it runs. In a component,
+send writes through `mutationOptions`.
+
+See [Auth](/docs/ic-reactor/guides/auth/) for sign-in and caller changes.
+
+## What a write refreshes
+
+After a write settles, the client invalidates the reads it may have changed.
+The rule:
+
+- **Which reads.** Every read of the canister written to, for every caller,
+  certified or not. An update read made with `{ update: "idempotent" }` is
+  included, and it runs once more as a replicated call.
+- **When.** After a success, after a `canister_err`, and after any failure with
+  `mayHaveExecuted: true`. A canister may change state before it returns an
+  `Err`, and after a lost reply the re-read shows whether the write happened,
+  so nothing else is needed after an unknown outcome.
+- **When not.** Not after a failure that proves nothing ran: `invalid_args`,
+  `unauthenticated`, `not_delivered`, a reject with code 1 or 3, and a
+  `cancelled` before sending.
+- **Waiting.** The invalidation is awaited: the mutation stays pending until
+  the active reads have been fetched again, so `isPending` covers the refresh.
+
+To choose the reads yourself, pass `invalidates` as the third argument. The
+list replaces the default, so name the written canister too if its reads
+change. Each item is a canister (all its reads) or a `[canister, method]` pair
+(one method's reads), for every caller. An empty list invalidates nothing.
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+export function SendQuietly({
+  arg,
+  otherId,
+}: {
+  arg: TransferArg
+  otherId: string
+}) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const other = client.canister<Actor>(actor, { id: otherId })
+
+  // Only the balances of this ledger, and everything of another canister.
+  const refreshBalances = client.mutationOptions(ledger, "icrc1_transfer", {
+    invalidates: [[ledger, "icrc1_balance_of"], other],
+  })
+  // Nothing: the page refreshes by itself, or the read must stay cached.
+  const refreshNothing = client.mutationOptions(ledger, "icrc1_transfer", {
+    invalidates: [],
+  })
+
+  const transfer = useMutation(refreshBalances)
+  const quiet = useMutation(refreshNothing)
+  return (
+    <>
+      <button onClick={() => transfer.mutate(arg)}>Send</button>
+      <button onClick={() => quiet.mutate(arg)}>Send, refresh nothing</button>
+    </>
+  )
+}
+```
+
+`invalidates` takes canisters of the same client. A canister of another client
+throws a `TypeError`. The reads of a canister are found by their key, which
+starts with `"ic-reactor"`; see [Reads](/docs/ic-reactor/guides/reads/#finding-a-key-clientquerykey).
+
+## When an update is sent again
+
+An update has no safe retry in general. Every attempt at an update is a new
+request on the Internet Computer, so a second attempt after an unknown outcome
+can run the write twice. Two rules follow.
+
+- **Never add `retry` to a write.** `retry` is `false` in the client's
+  options, and it must stay `false`. Spreading the options and setting
+  `retry: 3` compiles, and it makes TanStack Query send the update again
+  after failures that do not prove it never got in: a lost reply, a timeout, a
+  5xx. The write then runs twice.
+- **Never call an update from `useQuery`.** TanStack Query may run a query
+  function again whenever it refetches. Call update methods from `useMutation`
+  or directly. `queryOptions` does not compile for an update of a generated
+  `Actor`, and throws for one at run time, to stop you; see
+  [Reads](/docs/ic-reactor/guides/reads/#update-methods) for the one exception.
+
+The client itself sends an update again in exactly two cases, because only
+these two prove the first attempt was never accepted:
+
+| Failure                                   | Re-send                               |
+| ----------------------------------------- | ------------------------------------- |
+| reject code 2 (`SYS_TRANSIENT`)           | after 300 ms, then after 600 ms       |
+| HTTP 429, before the request got in       | after 300 ms, then after 600 ms       |
+| anything else, a network failure included | never: the call fails with that error |
+
+Neither applies to the management canister, `aaaaa-aa`: the client never
+re-sends an update there.
+
+That is at most two re-sends. If they all fail, the call fails with the last
+error, kind `not_delivered`, `mayHaveExecuted: false`. The agents the client
+builds never retry on their own (`retryTimes` is 0), so these two rules are the
+only re-sending.
+
+What to do after `mayHaveExecuted: true` is yours to decide. Read the state
+back, then decide whether to send again. The [Errors page](/docs/ic-reactor/guides/errors/)
+has the recipe, and the next section the one case where sending the same
+write again is safe.
+
+## Sending the same write again
+
+Sending the same argument again after `mayHaveExecuted: true` is safe only
+when the canister deduplicates it: it runs the same argument from the same
+sender at most once. The ICRC-1 ledger does, for a transfer with
+`created_at_time` set: the second one is answered `Duplicate`, which means the
+first went through. Stamp `created_at_time` with `await client.time(ledger)`:
+the IC's time in nanoseconds, from a certificate verified against the
+network's root key, rather than the host's clock. Its request is signed with
+an ingress expiry taken from the host's clock, as every request is: a host
+clock so far off that the IC refuses its requests cannot read the time
+either, and no call works until that clock is fixed. That time moves about once a second, so
+two transfers stamped in the same second need their own `memo` each, or the
+second is answered `Duplicate` without running. Most methods do not
+deduplicate. For them a second send
+can run the write twice, so read the state back instead.
+
+`client.resendOf(error, canister, method, { dedupedBy })` offers that re-send.
+`dedupedBy` states what the canister deduplicates on, read from the
+argument. The client cannot check it: name only a field the canister really
+deduplicates on. The call returns `undefined`, so nothing is offered, unless
+all of these hold:
+
+- `error` is one a write of that method on that canister rejected with (the
+  mutation's `error`, or what a direct call threw), and its
+  `mayHaveExecuted` is `true`. Any other failure proves what happened.
+- The argument is an object (a record, a variant, or the tuple of several
+  arguments), and `dedupedBy` finds a key in it: neither `undefined` nor
+  `null`. A transfer without `created_at_time` is not deduplicated by the
+  ledger, so it is not offered.
+- The argument is still what was sent: it encodes to the same bytes. If the
+  app changed that object since, it is not offered.
+- The canister object still resolves to the canister the write went to. A
+  `{ name }` that the `ic_env` cookie maps to another canister since (a local
+  redeploy) is not offered: that canister has never seen the transfer, and
+  would run it.
+- Whoever sent it is the caller now. After a sign-out, or a sign-in as
+  another account, nothing is offered: the same argument from another sender
+  is a new transfer, paid in full. Signing back in as the sender offers it
+  again. `useClient()` returns a view pinned to the caller its render shows;
+  the offer still follows the live caller, whom the write goes out as.
+
+The offer's `arg` is the attempt's own argument, the object `mutate` was
+given, and `from` is its sender. Send it with `mutate(again.arg)` on the same
+mutation, which keeps its pending state and invalidation, or with
+`again.send()`. Either one goes out only as the same write, and otherwise
+sends nothing:
+
+- only as `from`: if someone else is the caller by then, it is refused (code
+  `caller_changed`);
+- only to the method and canister the write went to: `again.send()` always
+  goes there, and a mutation whose canister now resolves elsewhere is refused
+  (code `target_changed`);
+- only with the bytes the write sent: `again.send()` sends those bytes, and
+  `mutate(again.arg)` is refused (code `arg_changed`) if the object was
+  changed since.
+
+A re-send that did not run is not the end of the write, whether it was
+refused or turned away when sent (an HTTP 429 or another 4xx, reject code 1
+to 3). The first attempt may have run all the same, so it rejects
+`outcome_unknown` with `mayHaveExecuted: true`, its `code`, `httpStatus` or
+`rejectCode` and its `cause` say why the re-send did not run, and
+`client.resendOf(transfer.error)` offers the write again while its sender is
+the caller. Read the state back before anything else (see
+[Errors](/docs/ic-reactor/guides/errors/#what-to-do-for-each-kind)).
+
+Once offered, that object stays held to that write on every mutation of the
+client, for good: another account that sends the same object is cancelled
+too. Build a new argument object for each new transfer, and for another
+account, and never change one you sent.
+
+```tsx
+import { useAuth, useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+// `arg` has `created_at_time` set and a `memo` of its own: build a new one for
+// each new transfer (and when the account changes), and send that same one again.
+export function SendOnce({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  // Re-renders when the caller changes, and the offer follows.
+  useAuth()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  const again = client.resendOf(transfer.error, ledger, "icrc1_transfer", {
+    dedupedBy: (sent) => sent.created_at_time,
+  })
+  return (
+    <>
+      <button
+        disabled={transfer.isPending}
+        onClick={() => transfer.mutate(arg)}
+      >
+        Send
+      </button>
+      {again && (
+        <button
+          disabled={transfer.isPending}
+          onClick={() => transfer.mutate(again.arg)}
+        >
+          Send the same transfer again
+        </button>
+      )}
+    </>
+  )
+}
+```
+
+`again.bytes` is the Candid bytes the attempt sent, the ones `send()` sends
+again: a copy on every read, for an audit log or a consent screen.
+
+A `canister_err` is a known outcome, so `resendOf` offers nothing after it.
+When the canister says the failure is temporary (an ICRC-1
+`TemporarilyUnavailable`), send the same argument object again with
+`transfer.mutate(arg)`. Encoding is deterministic, so a deduplicating method
+sees the same bytes and the same key, and answers `Duplicate` if an earlier
+attempt ran.
+
+`Resend` is not exported. To keep an offer in state, type it from the method:
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import type { Actor } from "./generated/icrc1"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+type TransferResend = NonNullable<
+  ReturnType<typeof client.resendOf<Actor, "icrc1_transfer">>
+>
+```
+
+## The bytes a write sends
+
+`client.encode(canister, method, vars)` returns the Candid bytes a call of
+`method` with `vars` sends, as a `Uint8Array`. It uses the call path's own
+encoder and variables rule, so the bytes are the ones that go out, not a
+second encoding of the same value. Pass them where the exact argument is
+wanted, such as the `arg` of an ICRC-21 consent request:
+
+```ts
+import { client, ledger } from "./ledger"
+import type { TransferArg } from "./generated/icrc1"
+
+export function consentArg(transfer: TransferArg): Uint8Array {
+  return client.encode(ledger, "icrc1_transfer", transfer)
+}
+```
+
+It sends nothing and needs no canister id, so it works for a `{ name }` the
+`ic_env` cookie does not resolve yet. It checks only the variables, not the
+caller or the canister id. Variables that do not encode throw `invalid_args`
+with the `issues` a call of them rejects with.
+
+## Typed errors
+
+The mutation's `error` is `ReactorError<E> | null`, where `E` is the method's
+`Err` type. Narrow on `kind` to read a typed `err`, and look at
+`mayHaveExecuted` for the rest:
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+export function SendWithMessage({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  const error = transfer.error
+
+  let message: string | undefined
+  if (error?.kind === "canister_err") {
+    // The ledger ran the call and refused it. error.err is a TransferError.
+    message =
+      error.err.tag === "InsufficientFunds"
+        ? `Balance is only ${error.err.value.balance}`
+        : `The ledger refused: ${error.err.tag}`
+  } else if (error?.mayHaveExecuted) {
+    message = "Unknown outcome: check the balance before sending again."
+  } else if (error) {
+    message = error.message
+  }
+
+  return (
+    <>
+      <button
+        disabled={transfer.isPending}
+        onClick={() => transfer.mutate(arg)}
+      >
+        Send
+      </button>
+      {message && <p role="alert">{message}</p>}
+    </>
+  )
+}
+```
+
+## Adding your own callbacks
+
+The options have an `onMutate` and an `onSettled` of their own. Together they
+resolve the canister a run writes to and invalidate its reads, so replacing
+either one drops the invalidation. Call the client's from yours.
+
+**`onSettled`:** call the client's with every argument you get, and return its
+promise so the mutation settles once the reads are fetched again.
+
+```tsx
+import type { ReactorError } from "@ic-reactor/core"
+import { useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import {
+  actor,
+  type Actor,
+  type TransferArg,
+  type TransferError,
+} from "./generated/icrc1"
+
+export function SendThenToast({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const options = client.mutationOptions(ledger, "icrc1_transfer")
+  const transfer = useMutation({
+    ...options,
+    // Typed, because a callback of yours leaves TanStack nothing else to
+    // infer the error type from.
+    onSettled: async (
+      data,
+      error: ReactorError<TransferError> | null,
+      variables,
+      onMutateResult,
+      context
+    ) => {
+      await options.onSettled(data, error, variables, onMutateResult, context)
+      if (!error) toast.success("Sent")
+    },
+  })
+  return <button onClick={() => transfer.mutate(arg)}>Send</button>
+}
+```
+
+**`onMutate`:** for an optimistic update, call the client's `onMutate` with
+both arguments and spread its result into yours:
+`{ ...options.onMutate(variables, context), previous }`. TanStack Query hands
+the result to `onSettled`, which is how the client finds the reads to
+invalidate. An `onMutate` that replaces the client's, as TanStack's own
+optimistic recipe is written, keeps the write and its invalidation together
+only from TanStack Query 5.89 on (`@ic-reactor/react` needs 5.90.2 or newer).
+The spread form works everywhere. Either form keeps the caller on the client's
+own `queryClient`: its `MutationCache` reads who started each run. On another
+`QueryClient`, only the client's `onMutate` reads it, so from 5.89 on a write
+whose `onMutate` replaced it there is refused (`caller_changed`). Before 5.89,
+which passes no run context, TanStack must call the client's `onMutate` itself
+there, as a method of the run's options: one of yours that calls it leaves
+the write refused, and one that replaces it, sent as the caller current when
+it is sent.
+
+This example shows a new name at once and puts the old one back on failure.
+The client's `onSettled` then re-reads the profile, so the page ends with what
+the canister holds.
+
+```tsx
+import { principal } from "@candid-core/schema"
+import type { ReactorError } from "@ic-reactor/core"
+import { useAuth, useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor, type Profile } from "./generated/backend"
+
+export function Rename({ name }: { name: string }) {
+  const client = useClient()
+  const { principal: caller } = useAuth()
+  const backend = client.canister<Actor>(actor, {
+    id: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  })
+  const options = client.mutationOptions(backend, "set_name")
+
+  const rename = useMutation({
+    ...options,
+    onMutate: async (variables, context) => {
+      const targets = options.onMutate(variables, context)
+      const [who, next] = variables
+      const key = client.queryKey(backend, "get_profile", who)
+      // A read in flight would land after this and overwrite the change.
+      await client.queryClient.cancelQueries({ queryKey: key })
+      const previous = client.queryClient.getQueryData<Profile>(key)
+      client.queryClient.setQueryData<Profile>(key, { name: next })
+      return { ...targets, key, previous }
+    },
+    // Typed, as in the previous example.
+    onError: (_error: ReactorError, _variables, result) => {
+      if (result?.previous)
+        client.queryClient.setQueryData(result.key, result.previous)
+    },
+    onSettled: (data, error: ReactorError | null, variables, result, context) =>
+      options.onSettled(data, error, variables, result, context),
+  })
+
+  return (
+    <button onClick={() => rename.mutate([principal(caller), name])}>
+      Rename
+    </button>
+  )
+}
+```
+
+The key comes from `client.queryKey(backend, "get_profile", who)`, built for
+the caller now. A key written by hand would match nothing. The
+[Vite wallet example](/docs/ic-reactor/examples/vite-wallet/) has a longer version for an
+address book, in `src/optimistic-contacts.ts`.
+
+## Outside React
+
+A direct call on a canister is a write when the method is an update. It touches
+no cache, so nothing is invalidated: refresh what you need yourself.
+
+```ts
+import { principal } from "@candid-core/schema"
+import { isReactorError, parseUnits } from "@ic-reactor/core"
+import { client, ledger } from "./ledger"
+
+try {
+  // `client` here is anonymous, so this is refused. Build the client with an
+  // Identity, or with an auth that is signed in, to send.
+  const block = await ledger.icrc1_transfer({
+    to: { owner: principal("aaaaa-aa"), subaccount: null },
+    amount: parseUnits("1.5", 8),
+    fee: null,
+    memo: null,
+    from_subaccount: null,
+    created_at_time: null,
+  })
+  console.log("block", block)
+  await client.queryClient.invalidateQueries({
+    queryKey: client.queryKey(ledger),
+  })
+} catch (error) {
+  if (!isReactorError(error, ledger, "icrc1_transfer")) throw error
+  if (error.kind === "canister_err") {
+    console.error("refused:", error.err.tag) // error.err is a TransferError
+  } else if (error.mayHaveExecuted) {
+    console.error("unknown outcome: read the balance before sending again")
+  } else {
+    console.error(error.kind, error.message)
+  }
+}
+```
+
+`isReactorError(error, ledger, "icrc1_transfer")` narrows to the
+`ReactorError` of that method, so `err` is its `TransferError`; it is `false`
+for an error of any other call (see
+[Errors](/docs/ic-reactor/guides/errors/#testing-for-a-reactorerror)). A direct update is re-sent by the client under the
+same two rules as above, and under no others.
