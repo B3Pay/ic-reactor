@@ -251,10 +251,12 @@ export type ClientOptions = {
        *
        * - `agentOptions`: the host, root key and `shouldFetchRootKey` of the
        *   client's own agents, and its `fetch`, when you gave one.
-       * - `identityProvider`: the Internet Identity to sign in with. A trusted
-       *   `ic_env` cookie's `INTERNET_IDENTITY_PROVIDER` (with its
+       * - `identityProvider`: the Internet Identity to sign in with. The
+       *   `INTERNET_IDENTITY_PROVIDER` of an `ic_env` cookie believed in full,
+       *   on a local page or with `allowEnvConfig: true` (with its
        *   `PUBLIC_CANISTER_ID:internet_identity`, or
-       *   `rdmx6-jaaaa-aaaaa-aaadq-cai`); else, for `"local"` or a local host,
+       *   `rdmx6-jaaaa-aaaaa-aaadq-cai`); never that of a cookie believed for
+       *   canister ids only, as on `<id>.icp0.io`; else, for `"local"` or a local host,
        *   icp-cli's built-in one at `http://id.ai.localhost:<port>/authorize`;
        *   else absent, which `AuthClient` reads as mainnet's.
        *
@@ -419,7 +421,8 @@ export interface Client {
    * - `no_browser`: there is no page, so no cookie to read (a server render,
    *   a web worker).
    * - `untrusted_host`: the cookie is not trusted for this network, so it was
-   *   not read.
+   *   not read; or a page that is not local holds more than one `ic_env`
+   *   cookie and they differ, so none is believed.
    * - `absent`: the cookie was read and has no principal text under that
    *   name.
    *

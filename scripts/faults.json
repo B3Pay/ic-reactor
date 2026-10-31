@@ -596,8 +596,8 @@
     "testName": "on a page whose host the cookie is not trusted for",
     "why": "a { name } the client must not resolve sent anyway, to the id an untrusted ic_env cookie names",
     "file": "src/network.ts",
-    "search": "  if (!net.trustsEnv) {",
-    "replace": "  if (!net.trustsEnv && false) {"
+    "search": "  const value = net.trustsEnv ? cookieEntry(key) : null\n",
+    "replace": "  const value = cookieEntry(key)\n"
   },
   {
     "id": "ir2t-zero-arg-query-key-is-prefix",
@@ -1273,8 +1273,8 @@
     "testName": "is unresolved on an ordinary web page",
     "why": "a { name } resolved from an ic_env cookie the page cannot trust, so the call goes to whichever ledger a sibling subdomain named",
     "file": "src/network.ts",
-    "search": "  if (!net.trustsEnv) {",
-    "replace": "  if (!net.trustsEnv && false) {"
+    "search": "  const value = net.trustsEnv ? cookieEntry(key) : null\n",
+    "replace": "  const value = cookieEntry(key)\n"
   },
   {
     "id": "ir9-cookie-trusted-for-a-local-replica-alone",
@@ -2130,7 +2130,7 @@
     "testName": "takes the trusted cookie",
     "why": "a trusted ic_env cookie's INTERNET_IDENTITY_PROVIDER ignored, so \"env\" on a local page has no identity provider",
     "file": "src/network.ts",
-    "search": "  const authorizeUrl = cookieAuthorizeUrl(env)\n",
+    "search": "  const authorizeUrl = full ? cookieAuthorizeUrl() : undefined\n",
     "replace": "  const authorizeUrl = undefined as string | undefined\n"
   },
   {
@@ -2150,8 +2150,8 @@
     "testName": "does not read a provider from a cookie it does not trust",
     "why": "the identity provider read from an ic_env cookie the client does not trust, which any sibling subdomain can write",
     "file": "src/network.ts",
-    "search": "  const env = net.trustsEnv ? readCanisterEnv() : undefined\n",
-    "replace": "  const env = readCanisterEnv()\n"
+    "search": "  const full = net.trustsEnv && !net.envIdsOnly\n",
+    "replace": "  const full = !net.envIdsOnly\n"
   },
   {
     "id": "790-auth-any-host-is-local",
@@ -2300,8 +2300,8 @@
     "testName": "when allowEnvConfig: true trusts the cookie",
     "why": "\"ic\" never reads a provider from the cookie, though allowEnvConfig: true makes the client trust it",
     "file": "src/network.ts",
-    "search": "  const env = net.trustsEnv ? readCanisterEnv() : undefined\n",
-    "replace": "  const env =\n    net.trustsEnv && network !== \"ic\" ? readCanisterEnv() : undefined\n"
+    "search": "  const full = net.trustsEnv && !net.envIdsOnly\n",
+    "replace": "  const full = net.trustsEnv && !net.envIdsOnly && network !== \"ic\"\n"
   },
   {
     "id": "790-auth-cookie-provider-any-scheme",
@@ -5971,8 +5971,8 @@
     "id": "icp0-cookie-http-identity-provider",
     "package": "core",
     "test": "tests/client-auth-network.test.ts",
-    "testName": "takes an icp0.io canister's cookie provider over https: only",
-    "why": "an icp0.io page's cookie hands an http: Internet Identity URL to the auth factory",
+    "testName": "takes an icp0.io canister's cookie provider over https: with allowEnvConfig: true",
+    "why": "an icp0.io page's cookie, believed in full with allowEnvConfig: true, hands an http: Internet Identity URL to the auth factory",
     "file": "src/network.ts",
     "search": "(protocol === \"http:\" && pageIsLocal())",
     "replace": "protocol === \"http:\""
@@ -6436,5 +6436,35 @@
     "why": "with server.ws: false the warning still says the open pages were reloaded, though the reload reached none and they keep the old cookie",
     "search": "          (server.config.server as { ws?: unknown } | undefined)?.ws !== false\n",
     "replace": "          true\n"
+  },
+  {
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "file": "src/network.ts",
+    "id": "ids-only-cookie-names-sign-in",
+    "testName": "takes no provider from a cookie believed for canister ids only, on <id>.icp0.io",
+    "why": "a cookie believed for canister ids only, on a canister's icp0.io page, chooses the sign-in page and the canister that mints its delegations, which are not canister ids",
+    "search": "  const full = net.trustsEnv && !net.envIdsOnly\n",
+    "replace": "  const full = net.trustsEnv\n"
+  },
+  {
+    "package": "core",
+    "test": "tests/env-cookie-copies.test.ts",
+    "file": "src/network.ts",
+    "id": "differing-env-cookies-believed",
+    "testName": "name no canister on a canister's icp0.io page, for \"env\" and \"ic\": the frontend's listed last",
+    "why": "copies of the ic_env cookie that differ are read as the first one listed, which need not be the one the frontend's canister set",
+    "search": "      ).size > 1\n",
+    "replace": "      ).size > 2\n"
+  },
+  {
+    "package": "core",
+    "test": "tests/env-cookie-copies.test.ts",
+    "file": "src/network.ts",
+    "id": "differing-env-cookies-refused-locally",
+    "testName": "leave the first believed, as before",
+    "why": "a local page refuses copies of the ic_env cookie that differ, which a redeploy there often leaves at another path",
+    "search": "    return !pageIsLocal() &&\n",
+    "replace": "    return !false &&\n"
   }
 ]
