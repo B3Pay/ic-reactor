@@ -1,6 +1,7 @@
 /**
  * An identity switch between two Ed25519 identities on one client: the caller
- * the canister sees changes, and so do the query keys.
+ * the canister sees changes, and so do the query keys, and the reads of the
+ * identity that left are removed from the cache.
  */
 import { createClient } from "@ic-reactor/core"
 import { describe, expect, it } from "vitest"
@@ -36,19 +37,22 @@ describe("an identity switch on the local replica", () => {
       const bobOptions = client.queryOptions(hello, "whoami")
       expect(bobOptions.queryKey[2]).toBe(bobText)
       expect(bobOptions.queryKey).not.toEqual(aliceOptions.queryKey)
-      // Alice's answer stays under her key and is not served to Bob.
+      // Alice's answer is not served to Bob: the switch removed it.
+      expect(
+        client.queryClient.getQueryData(aliceOptions.queryKey)
+      ).toBeUndefined()
       expect(
         client.queryClient.getQueryData(bobOptions.queryKey)
       ).toBeUndefined()
       await expect(client.queryClient.fetchQuery(bobOptions)).resolves.toBe(
         bobText
       )
-      expect(client.queryClient.getQueryData(aliceOptions.queryKey)).toBe(
-        aliceText
-      )
 
-      // And back.
+      // And back: Bob's answer goes the same way.
       switchTo(alice)
+      expect(
+        client.queryClient.getQueryData(bobOptions.queryKey)
+      ).toBeUndefined()
       await expect(hello.whoami()).resolves.toBe(aliceText)
     } finally {
       client.dispose()
