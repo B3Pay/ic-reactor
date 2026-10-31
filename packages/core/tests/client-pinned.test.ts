@@ -231,13 +231,15 @@ describe("a client pinned to a principal", () => {
     // The client's own read, refused because its caller left, keeps D20's
     // error even where the key holds data, and once that caller is back.
     const own = { ...client.queryOptions(who, "whoami"), retry: false }
-    client.queryClient.setQueryData(own.queryKey, "earlier", { updatedAt: 1 })
     let statusSeen: string | undefined
     const unsubscribe = client.subscribe(() => {
       statusSeen ??= client.queryClient.getQueryState(pinned.queryKey)?.status
     })
     await auth.signOut()
     unsubscribe()
+    // The sign-out removed the user's reads; this is data that reaches the
+    // key after its caller left (a hydration, or the app's setQueryData).
+    client.queryClient.setQueryData(own.queryKey, "earlier", { updatedAt: 1 })
     await expect(client.queryClient.fetchQuery(own)).rejects.toMatchObject({
       kind: "cancelled",
       code: "caller_changed",

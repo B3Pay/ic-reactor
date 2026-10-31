@@ -222,9 +222,9 @@ describe("an update read with { update: 'idempotent' }", () => {
       { methodName: "address", caller: ALICE },
       { methodName: "address", caller: BOB },
     ])
-    expect(queryClient.getQueryData(aliceOptions.queryKey)).toBe(
-      `home:${ALICE}`
-    )
+    // Alice's reads left the cache when Bob became current, and the refused
+    // read put nothing under her key.
+    expect(queryClient.getQueryData(aliceOptions.queryKey)).toBeUndefined()
     expect(queryClient.getQueryData(bobOptions.queryKey)).toBe(`home:${BOB}`)
   })
 

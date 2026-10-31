@@ -17,8 +17,25 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+#### Changed
+
+- A sign-out, an expired session or a switch of account now removes the
+  previous principal's reads from the client's `QueryClient`, before any
+  listener, or any component, hears of the change. Their keys already kept
+  them from the new caller's reads. Now they also leave memory, where
+  devtools, a read by key prefix (`getQueriesData({ queryKey: ["ic-reactor"] })`)
+  or a persister that saves the cache could still reach them in a shared
+  browser. The anonymous reads and the app's own queries stay. Migration:
+  none for an app that builds its options from `useClient()`. Switching back
+  to an account reads its data again instead of showing a cached copy.
+
 ### Docs
 
+- The auth guide's "Data" note says what a sign-out removes from the cache,
+  and how to keep a persister from restoring a signed-in principal's reads on
+  a shared page. The consumer guide (`packages/core/llms.txt`) says the same.
 - The reads guide says what to certify: a read whose value decides where
   value goes or what a person approves (a recipient, a deposit address, an
   allowance, the details someone confirms), through a canister made with
