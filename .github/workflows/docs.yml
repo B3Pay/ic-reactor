@@ -3,7 +3,10 @@ name: Deploy Docs
 # The 4.x line's docs deploy, from main. A Pages deploy replaces the whole
 # site, so each deploy carries every line (scripts/assemble-docs-site.mjs):
 #
-# - /v4/ built from this commit;
+# - /v4/ built from this commit, as pages that send each reader to the same
+#   page at https://b3pay.net/docs/ic-reactor/, where b3pay-site.yml publishes
+#   the 4.x docs (--v4-moved-to), with the build's Markdown copies and
+#   llms.txt beside them;
 # - /v3/ rebuilt from the v3 branch on every deploy, with v3's llms.txt and
 #   llms-full.txt beside it (option A of the 4.0 GA flip; the owner's to
 #   overturn). The v3 branch has no docs deploy of its own. A 3.x docs build
@@ -11,13 +14,21 @@ name: Deploy Docs
 # - /v2/, the static 2.x site kept from gh-pages;
 # - /candid-core/, Candid Core's site, built from B3Pay/Meant's main
 #   with its own generator (`node website/build.mjs`, Node built-ins only),
-#   in a job of its own (`candid-core-site`). The library switcher and the
-#   docs home link it there. A change to that repository's site reaches this
-#   one at the next deploy: the daily run below, or a dispatch. A generator
-#   that fails on that main stops the deploy; a dispatch with
-#   `candid-core-ref` set to a commit that builds publishes in the meantime;
-# - the root: / and the 404 page go to /v4/, /llms.txt is the 4.x guide
+#   in a job of its own (`candid-core-site`), as pages that send each reader
+#   to the same page at https://b3pay.net/docs/meant/, where B3Pay/Meant
+#   publishes it (--candid-core-moved-to). The build names the pages, and the
+#   link check below checks the 4.x pages' links into it. A page added to
+#   that repository's site gets its page here at the next deploy: the daily
+#   run below, or a dispatch. A generator that fails on that main stops the
+#   deploy; a dispatch with `candid-core-ref` set to a commit that builds
+#   publishes in the meantime;
+# - the root: / goes to https://b3pay.net/docs/ic-reactor/, the 404 page
+#   sends a miss to its line's home or to /v4/, /llms.txt is the 4.x guide
 #   (packages/core/llms.txt), and /llms-full.txt stays the frozen 3.x file.
+#
+# The 3.x and 2.x docs stay here (the owner's call, 2026-10-31). Before it
+# publishes, the build checks that b3pay.net serves IC Reactor's docs, with
+# the API reference, and Meant's.
 #
 # Option B, a static /v3/ snapshot: commit one 3.x build to gh-pages:v3/
 # (with Pages' source set to GitHub Actions first, or that push starts a
@@ -45,7 +56,7 @@ on:
   workflow_dispatch:
     inputs:
       candid-core-ref:
-        description: "The B3Pay/Meant ref whose site is published at /candid-core/"
+        description: "The B3Pay/Meant ref whose pages /candid-core/ sends on to b3pay.net"
         type: string
         default: main
 
@@ -87,7 +98,7 @@ jobs:
         run: |
           set -euo pipefail
           node website/build.mjs
-          echo "Candid Core's site at /candid-core/ is built from B3Pay/Meant@$(git rev-parse HEAD)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Candid Core's pages at /candid-core/, sent on to b3pay.net, are those of B3Pay/Meant@$(git rev-parse HEAD)." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Hand the site on
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -184,6 +195,31 @@ jobs:
         # instead of silently publishing a site whose /v2 URLs all 404.
         continue-on-error: true
 
+      # b3pay.net must serve the docs /v4/ and /candid-core/ send readers to.
+      # When its IC Reactor home, an API reference page or its Meant home is
+      # missing, the deploy stops and the live site stays as it was. The API
+      # reference is what b3pay.net gets only from the module this
+      # repository publishes, not from the copy it pinned before.
+      - name: Check that b3pay.net serves the moved docs
+        run: |
+          set -euo pipefail
+          # The page is read whole before it is searched: piped into
+          # `grep -q`, which stops at the title, curl fails on the rest of a
+          # page longer than the pipe holds, and pipefail fails the check.
+          check() {
+            if ! page=$(curl -fsSL --retry 3 --max-time 30 "$1"); then
+              echo "::error::$1 could not be read"
+              exit 1
+            fi
+            if ! grep -q "$2" <<<"$page"; then
+              echo "::error::$1 does not serve a page with $2"
+              exit 1
+            fi
+          }
+          check https://b3pay.net/docs/ic-reactor/ "<title>[^<]*IC Reactor"
+          check https://b3pay.net/docs/ic-reactor/libs/functions/createclient/ "<title>createClient"
+          check https://b3pay.net/docs/meant/ "<title>Meant</title>"
+
       - name: Merge existing + new docs
         run: |
           set -euo pipefail
@@ -200,7 +236,9 @@ jobs:
             --candid-core candid-core-site \
             --root-llms packages/core/llms.txt \
             --root-llms-full v3-line/llms-full.txt \
-            --cname CNAME
+            --cname CNAME \
+            --v4-moved-to https://b3pay.net/docs/ic-reactor/ \
+            --candid-core-moved-to https://b3pay.net/docs/meant/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5

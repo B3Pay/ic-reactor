@@ -31,6 +31,17 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 - `Docs on b3pay.net` runs b3pay.net's reusable workflow from that site's
   `main` (67911ef), and checks the module with the site's tools from `main`,
   now that the folder items its sidebar lists are there.
+- ic-reactor.b3pay.net keeps the 3.x and 2.x docs, and sends readers of the
+  4.x docs and of Candid Core's pages to b3pay.net: each page under `/v4/`
+  and `/candid-core/` moves to the same page at
+  `https://b3pay.net/docs/ic-reactor/` or `https://b3pay.net/docs/meant/`,
+  with its query and fragment, and `/` goes to
+  `https://b3pay.net/docs/ic-reactor/`. The 4.x build's Markdown copies and
+  `llms.txt` stay under `/v4/`, and `/llms.txt` is still the 4.x guide.
+  `scripts/assemble-docs-site.mjs` takes `--v4-moved-to` and
+  `--candid-core-moved-to`, and the deploy stops before it publishes when
+  b3pay.net does not serve IC Reactor's docs, with the API reference, or
+  Meant's.
 - The `v4` branch, where 4 was developed until the 4.0 GA flip, is retired.
   CI, e2e, CodeQL, the dependency review and the two published-package checks
   run on `main` only, and `verify-test-fails` takes its default base from
