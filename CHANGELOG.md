@@ -30,12 +30,36 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   browser. The anonymous reads and the app's own queries stay. Migration:
   none for an app that builds its options from `useClient()`. Switching back
   to an account reads its data again instead of showing a cached copy.
+- On a canister's own `<id>.icp0.io` page, where the client believes the
+  `ic_env` cookie for canister ids without `allowEnvConfig`, it now takes
+  canister ids from it and nothing else. The `auth` factory is no longer
+  handed the cookie's `INTERNET_IDENTITY_PROVIDER` and
+  `PUBLIC_CANISTER_ID:internet_identity` there, so
+  `new AuthClient(network)` signs in with mainnet's Internet Identity.
+  Migration: an app on `icp0.io` that signs in with its own Internet Identity
+  names it in the factory,
+  `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`,
+  or writes `allowEnvConfig: true`.
+- Off a local page, when a page receives more than one `ic_env` cookie and
+  they differ, the client believes none of them: a `{ name }` target is
+  refused with the reason `untrusted_host` (a call on it rejects
+  `canister_id_unresolved`), and neither their root key nor their Internet
+  Identity is taken. Copies that are the same are believed, and a local page
+  reads the first, as before. Migration: none for an app that bakes its
+  canister ids into the build, as a mainnet app should. An app that names
+  canisters on `icp0.io` can be refused after a deploy that changes the
+  cookie, on a page whose browser still holds the previous copy for another
+  directory, until a page in that directory is loaded again.
 
 ### Docs
 
 - The auth guide's "Data" note says what a sign-out removes from the cache,
   and how to keep a persister from restoring a signed-in principal's reads on
   a shared page. The consumer guide (`packages/core/llms.txt`) says the same.
+- The client guide says what the cookie is believed for on `<id>.icp0.io`,
+  and what copies of it that differ are believed for, and tells a mainnet app
+  to bake its canister ids into the build. The auth guide's identity-provider
+  rules, the Vite plugin guide and `packages/core/llms.txt` say the same.
 - A "Deploy to a frontend canister" guide: the response headers to serve the
   app with from DFINITY's asset canister (`.ic-assets.json5`) or from icp-cli's
   static-site recipe (`_headers`), and what each one does. A
