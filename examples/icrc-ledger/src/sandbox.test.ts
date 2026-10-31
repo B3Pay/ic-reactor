@@ -438,8 +438,13 @@ describe("the ckBTC deposit address, an update read with { update: 'idempotent' 
     expect(one).toBe(sandboxBtcAddress(account(SEED_1)))
     expect(two).toBe(sandboxBtcAddress(account(SEED_2)))
     expect(oneAgain).toBe(one)
-    // Back to seed 1, its address is still cached: two calls in all.
-    expect(minterCalls(sandbox).map((r) => r.caller)).toEqual([SEED_1, SEED_2])
+    // Each switch removed the reads of the seed that left, so seed 1's
+    // address is read again: three calls in all.
+    expect(minterCalls(sandbox).map((r) => r.caller)).toEqual([
+      SEED_1,
+      SEED_2,
+      SEED_1,
+    ])
   })
 
   it("is refused while signed out, before anything is sent", async () => {

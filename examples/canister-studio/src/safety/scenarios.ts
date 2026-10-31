@@ -650,23 +650,25 @@ const afterCaller = (key: QueryKey): string => JSON.stringify(key.slice(3))
 
 const cacheIsolation: Scenario = {
   id: "cache-isolation",
-  title: "One read, two principals, two cache entries",
-  rule: "Keys are [\"ic-reactor\", network, caller, canisterId, method, args]: one principal's cached answer is never served to another; after a sign-in, sign-out or switch, the new caller's key is empty until it loads.",
+  title: "One read, two principals, nothing kept for the one who left",
+  rule: "Keys are [\"ic-reactor\", network, caller, canisterId, method, args]: one principal's cached answer is never served to another; after a sign-in, sign-out or switch, the new caller's key is empty until it loads, and the reads of the principal who left are removed from the cache.",
   narrative:
-    "The same balance read, with the same argument, is made by seed 1 and then by seed 2. Their keys differ only in the caller segment, so each principal gets its own cache entry, and seed 2 starts with nothing even though seed 1's answer is cached. After a sign-out the anonymous key is empty too: nothing cached for a principal is shown to anyone else.",
+    "The same balance read, with the same argument, is made by seed 1 and then by seed 2. Their keys differ only in the caller segment, so each principal gets its own cache entry, and seed 2 starts with nothing. The switch also removes seed 1's entry, and the sign-out removes seed 2's: what one principal read is not left in the page's memory for whoever uses it next. After the sign-out the anonymous key is empty too.",
   expected:
-    "Two keys that differ only at the caller; seed 2's and the anonymous key start empty; 2 entries in the cache.",
+    "Two keys that differ only at the caller; seed 2's and the anonymous key start empty; seed 1's entry is gone after the switch, and no entry is left after the sign-out.",
   code: `const account = { owner: seed2, subaccount: null }
-await client.queryClient.fetchQuery(
-  client.queryOptions(ledger, "icrc1_balance_of", account)) // as seed 1
+const first = client.queryOptions(ledger, "icrc1_balance_of", account)
+await client.queryClient.fetchQuery(first) // as seed 1
 auth.switchTo(2)
+client.queryClient.getQueryData(first.queryKey) // undefined: removed
 client.queryClient.getQueryData(
   client.queryKey(ledger, "icrc1_balance_of", account)) // undefined
 await client.queryClient.fetchQuery(
   client.queryOptions(ledger, "icrc1_balance_of", account)) // as seed 2
 await auth.signOut()
 client.queryClient.getQueryData(
-  client.queryKey(ledger, "icrc1_balance_of", account)) // undefined`,
+  client.queryKey(ledger, "icrc1_balance_of", account)) // undefined
+client.queryClient.getQueryCache().getAll().length // 0`,
   run: () =>
     runInLab({ fund: START_BALANCE }, async (lab, r) => {
       const { auth } = lab.kit
@@ -691,6 +693,11 @@ client.queryClient.getQueryData(
 
       auth.switchTo(2)
       r.note("auth.switchTo(2)", lab.client.caller())
+      r.same(
+        "Seed 1's entry is removed",
+        queryClient.getQueryData(key1),
+        undefined
+      )
       r.same(
         "Seed 2's key starts empty",
         queryClient.getQueryData(keyNow()),
@@ -734,10 +741,11 @@ client.queryClient.getQueryData(
         0
       )
       r.same(
-        "Entries in the cache (one per principal)",
-        // The lab's client owns this cache: every entry is one of its reads.
+        "Entries left in the cache",
+        // The lab's client owns this cache: every entry is one of its reads,
+        // and the sign-out removed seed 2's.
         queryClient.getQueryCache().getAll().length,
-        2
+        0
       )
       return value1 === undefined
         ? {}
