@@ -1,0 +1,181 @@
+---
+title: Deploy to a frontend canister
+description: Serve the app from an asset canister with a strict Content-Security-Policy and the other security headers, keep it off raw domains, and know what the HTTP gateway checks
+editUrl: https://github.com/B3Pay/ic-reactor/edit/main/docs/src/content/docs/guides/deploy.mdx
+---
+
+A frontend canister serves the app's HTML and JavaScript, and a signed-in
+person's session lives in that page: one injected script, or a framed
+"Approve" button, acts as that person. An asset canister sends no security
+headers unless its configuration asks for them. This page gives a
+configuration that the [wallet example](/docs/ic-reactor/examples/vite-wallet/) deploys,
+says what each line does, and what the HTTP gateway checks for you.
+
+## The headers
+
+For DFINITY's asset canister (`dfx deploy`, or icp-cli's
+`@dfinity/asset-canister` recipe), put `.ic-assets.json5` in Vite's `public/`.
+`vite build` copies it into `dist/`, and the asset canister reads it from the
+directory it is synced from:
+
+```json5
+// public/.ic-assets.json5
+[
+  {
+    match: "**/*",
+    // The asset canister's own security headers, with the ones below in
+    // place of its Content-Security-Policy.
+    security_policy: "hardened",
+    headers: {
+      "Content-Security-Policy": "default-src 'none'; script-src 'self'; connect-src 'self' https://icp-api.io; img-src 'self' data:; style-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
+    allow_raw_access: false,
+  },
+]
+```
+
+```yaml
+# icp.yaml
+canisters:
+  - name: frontend
+    recipe:
+      type: "@dfinity/asset-canister@v2.3.0"
+      configuration:
+        version: 0.30.2
+        build:
+          - pnpm run build
+        dir: dist
+```
+
+`icp deploy frontend` builds the app and uploads `dist/`. On a local network,
+check what the page is served with:
+
+```sh
+curl -sI http://frontend.local.localhost:8000/
+```
+
+Vite's dev server sends none of these headers, and its hot reload needs
+inline scripts that this policy refuses, so check a deployed canister. Open
+it with the browser's console showing: a resource the policy refuses is
+reported there.
+
+### What each line does
+
+- `security_policy: "hardened"` adds the asset canister's own security
+  headers to every file: `Strict-Transport-Security` (HTTPS only, for a
+  year), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: same-origin`, `X-XSS-Protection`, and a
+  `Permissions-Policy` that turns off every feature it lists. A header in
+  `headers` replaces the policy's header of the same name. `"standard"` adds
+  the same set with the canister's own CSP, which lets the page call any
+  canister (`connect-src https://*.icp0.io`) and load styles and fonts from
+  anywhere, and asset sync warns that it should be tightened.
+- `default-src 'none'` refuses everything the other directives do not allow:
+  frames, plugins, workers, media.
+- `script-src 'self'`: ic-reactor, `@candid-core/schema`, `@icp-sdk/core` and
+  `@icp-sdk/auth` run no `eval`, `new Function` or WebAssembly in a browser,
+  and Vite's production build has no inline script, so the app's own files
+  are all the page runs.
+- `connect-src 'self' https://icp-api.io`: where the client's calls go.
+  `network: "env"` calls through the page's origin on `<id>.icp0.io` and on a
+  local network, and through `https://icp-api.io` on a custom domain;
+  `network: "ic"` calls `https://icp-api.io`. Sign-in needs nothing here:
+  Internet Identity runs in a window of its own.
+- `img-src 'self' data:`, `style-src 'self'`, `font-src 'self'`: the app's own
+  files, and `data:` images. Add a font or style host here if the app uses
+  one. A library that inserts `<style>` elements as it runs needs more than
+  `'self'`.
+- `frame-ancestors 'none'`, with the policy's `X-Frame-Options: DENY`: no
+  other page can frame the app and steer a click.
+- `base-uri 'none'` and `form-action 'none'`: no `<base>` element can
+  redirect the app's relative URLs, and no form submits anywhere. Forms
+  handled in JavaScript, with `preventDefault()`, are not affected.
+- `Cross-Origin-Opener-Policy: same-origin-allow-popups` keeps windows the
+  page did not open from reaching it, while the Internet Identity window it
+  opens can still answer it. `same-origin` cuts that window off too: it has
+  no `window.opener`, so its answer never reaches the page, and the sign-in
+  cannot complete.
+- `allow_raw_access: false` answers a request for `<id>.raw.icp0.io` with a
+  redirect (308) to the same path on `https://<id>.icp0.io`. See
+  [What the gateway checks](#what-the-gateway-checks).
+
+An app with redirect sign-in serves `/.well-known/ii-auth-callbacks` from the
+same canister: add the entries of
+[Redirect sign-in](/docs/ic-reactor/guides/auth/#redirect-sign-in) to the same array.
+
+### A copy button
+
+The asset canister's `Permissions-Policy` turns `clipboard-write` off, so
+`navigator.clipboard.writeText` rejects with `NotAllowedError` on the
+deployed page, though it works under the dev server. An app that copies an
+address or a principal gives a `Permissions-Policy` of its own in `headers`,
+which replaces the whole list:
+
+```json5
+"Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), midi=(), display-capture=(), clipboard-read=(), clipboard-write=(self)",
+```
+
+Chrome warns once in the console for each feature of the asset canister's
+own list that it does not know. The warnings are harmless.
+
+## The static-site recipe
+
+icp-cli's `@dfinity/static-site` recipe deploys a different canister,
+`dfinity/certified-assets`. It adds no security headers of its own, and reads
+a `_headers` file in the synced directory (in a Vite app, `public/`) in place
+of `.ic-assets.json5`. The same headers, without `X-XSS-Protection` and with
+a shorter `Permissions-Policy`:
+
+```text
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; connect-src 'self' https://icp-api.io; img-src 'self' data:; style-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: same-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), midi=(), display-capture=(), clipboard-read=(), clipboard-write=()
+```
+
+```yaml
+# icp.yaml
+canisters:
+  - name: frontend
+    recipe:
+      type: "@dfinity/static-site@v0.4.2"
+      configuration:
+        build:
+          - pnpm run build
+        dir: dist
+```
+
+It has no `allow_raw_access`: it serves its `raw` host as it serves the
+other.
+
+## What the gateway checks
+
+A browser does not check a canister's answer itself. On `<id>.icp0.io` the
+HTTP gateway does: it passes a response on only if it matches the
+canister's certified state, and both asset canisters certify each file with
+the headers above. So no node can change the app's code, or loosen its
+policy, on the way. Trusting the app's code is trusting that gateway. The
+client's own checks, the signatures on query replies and the certificates of
+[certified reads](/docs/ic-reactor/guides/reads/), cover the calls the code makes, not the
+code.
+
+On `<id>.raw.icp0.io` the gateway checks nothing: whichever node answers can
+serve any page. Never link to a raw URL. `allow_raw_access: false` sends
+whoever follows one to the checked domain, but a node that lies there can
+answer in its place, so the redirect protects visitors from honest mistakes,
+not from that node.
+
+Internet Identity gives each origin its own principals, so a page on the
+raw domain gets other principals for the same people, which hold none of
+their assets.
+Do not list a raw origin among the app's alternative origins
+(`/.well-known/ii-alternative-origins`): that would give a page nobody checks
+the principals of the real app.
+
+For the canister ids a mainnet build calls, see
+[Deploy to mainnet](/docs/ic-reactor/guides/client/#deploy-to-mainnet).

@@ -245,6 +245,11 @@ domain once you register one. It sets an `ic_env` cookie like the Vite
 plugin's, with the `PUBLIC_CANISTER_ID:<name>` entries icp-cli sets on the
 canisters and mainnet's root key.
 
+Serve it with the response headers of
+[Deploy to a frontend canister](/docs/ic-reactor/guides/deploy/), which also sends visitors
+of its raw host to `<id>.icp0.io`: the HTTP gateway checks no page on
+`raw.icp0.io`.
+
 What `network: "env"` does on each of these pages:
 
 | The page                           | The host             | The root key        | `{ name: "backend" }`                   |
