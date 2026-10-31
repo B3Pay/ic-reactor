@@ -56,7 +56,7 @@
   "homepage": "https://ic-reactor.b3pay.net/v4/packages/vite-plugin/",
   "peerDependencies": {
     "@candid-core/cli": "0.3.0",
-    "@icp-sdk/core": "^6.1.0",
+    "@icp-sdk/core": "^6.1.1",
     "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
   },
   "peerDependenciesMeta": {
@@ -66,11 +66,11 @@
   },
   "devDependencies": {
     "@candid-core/cli": "0.3.0",
-    "@icp-sdk/core": "^6.1.0",
-    "@noble/curves": "^2.2.0",
-    "@types/node": "^26.5.1",
+    "@icp-sdk/core": "^6.1.1",
+    "@noble/curves": "^2.4.0",
+    "@types/node": "^26.6.5",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.5"
   }
 }
