@@ -267,7 +267,8 @@ export function Balance() {
 - `principal(caller)` turns the caller's text into a `Principal`, the branded
   text the generated module takes. The read's key holds the caller, so each
   account's balance is cached apart, and nobody is shown another account's
-  balance after a switch.
+  balance after a switch, which also removes the last account's reads from
+  the cache.
 - A transfer refreshes the ledger's reads when it settles, so the balance
   updates without code of its own. See
   [Writes](/docs/ic-reactor/guides/writes/#what-a-write-refreshes).
