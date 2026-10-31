@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [core/src/client.ts:101](https://github.com/B3Pay/ic-reactor/blob/cd4c701ce278affefc56cd7128634e1ec9d35897/packages/core/src/client.ts#L101)
+Defined in: [core/src/client.ts:101](https://github.com/B3Pay/ic-reactor/blob/ce557f08e58ca542badaab65172d569c0ec0c62a/packages/core/src/client.ts#L101)
 
 A sign-in the client can own: what `@icp-sdk/auth` 10's `AuthClient` and the
 `auth` of `createTestClient()` from `@ic-reactor/core/testing` both are, with
@@ -34,7 +34,7 @@ it is handed, and reads a new object for the same principal as a renewal.
 
 > **getPrincipal**(): \{ `toText`: `string`; \} \| `undefined`
 
-Defined in: [core/src/client.ts:103](https://github.com/B3Pay/ic-reactor/blob/cd4c701ce278affefc56cd7128634e1ec9d35897/packages/core/src/client.ts#L103)
+Defined in: [core/src/client.ts:103](https://github.com/B3Pay/ic-reactor/blob/ce557f08e58ca542badaab65172d569c0ec0c62a/packages/core/src/client.ts#L103)
 
 Who calls are accepted as, or `undefined` when nobody can act.
 
@@ -48,7 +48,7 @@ Who calls are accepted as, or `undefined` when nobody can act.
 
 > **getStatus**(): `object`
 
-Defined in: [core/src/client.ts:112](https://github.com/B3Pay/ic-reactor/blob/cd4c701ce278affefc56cd7128634e1ec9d35897/packages/core/src/client.ts#L112)
+Defined in: [core/src/client.ts:112](https://github.com/B3Pay/ic-reactor/blob/ce557f08e58ca542badaab65172d569c0ec0c62a/packages/core/src/client.ts#L112)
 
 Who is signed in. Only `"signed-in"` makes the client call as
 [AuthLike.getPrincipal](#getprincipal); every other state calls anonymously. The
@@ -80,7 +80,7 @@ for it. It is [AuthState.expiresAt](/docs/ic-reactor/libs/interfaces/authstate/#
 
 > **getIdentity**(): `Promise`\<`Identity`\>
 
-Defined in: [core/src/client.ts:130](https://github.com/B3Pay/ic-reactor/blob/cd4c701ce278affefc56cd7128634e1ec9d35897/packages/core/src/client.ts#L130)
+Defined in: [core/src/client.ts:130](https://github.com/B3Pay/ic-reactor/blob/ce557f08e58ca542badaab65172d569c0ec0c62a/packages/core/src/client.ts#L130)
 
 The identity to sign calls with while signed in.
 
@@ -94,7 +94,7 @@ The identity to sign calls with while signed in.
 
 > **subscribe**(`listener`): () => `void`
 
-Defined in: [core/src/client.ts:132](https://github.com/B3Pay/ic-reactor/blob/cd4c701ce278affefc56cd7128634e1ec9d35897/packages/core/src/client.ts#L132)
+Defined in: [core/src/client.ts:132](https://github.com/B3Pay/ic-reactor/blob/ce557f08e58ca542badaab65172d569c0ec0c62a/packages/core/src/client.ts#L132)
 
 Calls `listener` after each change of who is signed in. Returns a function that stops listening.
 
@@ -114,7 +114,7 @@ Calls `listener` after each change of who is signed in. Returns a function that 
 
 > **signIn**(`options?`): `Promise`\<`unknown`\>
 
-Defined in: [core/src/client.ts:133](https://github.com/B3Pay/ic-reactor/blob/cd4c701ce278affefc56cd7128634e1ec9d35897/packages/core/src/client.ts#L133)
+Defined in: [core/src/client.ts:133](https://github.com/B3Pay/ic-reactor/blob/ce557f08e58ca542badaab65172d569c0ec0c62a/packages/core/src/client.ts#L133)
 
 #### Parameters
 
@@ -132,7 +132,7 @@ Defined in: [core/src/client.ts:133](https://github.com/B3Pay/ic-reactor/blob/cd
 
 > **signOut**(`options?`): `Promise`\<`unknown`\>
 
-Defined in: [core/src/client.ts:134](https://github.com/B3Pay/ic-reactor/blob/cd4c701ce278affefc56cd7128634e1ec9d35897/packages/core/src/client.ts#L134)
+Defined in: [core/src/client.ts:134](https://github.com/B3Pay/ic-reactor/blob/ce557f08e58ca542badaab65172d569c0ec0c62a/packages/core/src/client.ts#L134)
 
 #### Parameters
 
@@ -150,7 +150,7 @@ Defined in: [core/src/client.ts:134](https://github.com/B3Pay/ic-reactor/blob/cd
 
 > `optional` **dispose**(): `void`
 
-Defined in: [core/src/client.ts:136](https://github.com/B3Pay/ic-reactor/blob/cd4c701ce278affefc56cd7128634e1ec9d35897/packages/core/src/client.ts#L136)
+Defined in: [core/src/client.ts:136](https://github.com/B3Pay/ic-reactor/blob/ce557f08e58ca542badaab65172d569c0ec0c62a/packages/core/src/client.ts#L136)
 
 Releases what the auth holds. Called once, from [Client.dispose](/docs/ic-reactor/libs/interfaces/client/#dispose).
 
