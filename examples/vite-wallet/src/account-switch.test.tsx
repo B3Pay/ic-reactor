@@ -1,7 +1,8 @@
 // Scenario 3: a switch of account empties the page for the next caller.
-// Every read is keyed by its caller, so after a switch the balance, the
-// profile and the contacts start from nothing for the new account, and an
-// answer read for the previous account never shows up under the new one.
+// Every read is keyed by its caller, and the switch removes the previous
+// account's reads from the cache, so the balance, the profile and the
+// contacts start from nothing for the new account, and an answer read for
+// the previous account never shows up under the new one.
 import { principal } from "@candid-core/schema"
 import { act, cleanup, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
@@ -80,7 +81,7 @@ describe("switching accounts", () => {
     await screen.findByText("2 ICP", {}, patiently)
   })
 
-  it("lets a read made for the previous account land under its own key only", async () => {
+  it("drops a read made for the previous account that answers after the switch", async () => {
     wallet = twoAccounts()
     renderWithWallet(wallet, <Balance refreshMs={60_000} />)
     await screen.findByText("7 ICP", {}, patiently)
@@ -101,8 +102,15 @@ describe("switching accounts", () => {
     release()
 
     await screen.findByText("2 ICP", {}, patiently)
-    // Seed 1's late answer (9 ICP) was never shown to seed 2.
+    // Seed 1's late answer (9 ICP) was never shown to seed 2, and the switch
+    // left no read of seed 1's in the cache for it to land in.
     expect(page()).not.toContain("9 ICP")
     expect(page()).not.toContain("7 ICP")
+    expect(
+      client.queryClient
+        .getQueryCache()
+        .findAll()
+        .filter((query) => query.queryKey[2] === SEED_1)
+    ).toEqual([])
   })
 })

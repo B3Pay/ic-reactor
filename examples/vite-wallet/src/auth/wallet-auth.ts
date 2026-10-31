@@ -12,8 +12,8 @@
 // pick the source. Signing in with one signs the other out, so a reload never
 // finds two sessions. Whoever this auth reports is who every call is signed
 // by, and the query keys carry their principal: a switch from one account to
-// another (scenario 3) leaves the previous account's cached answers under
-// keys the next account's reads never use.
+// another (scenario 3) removes the previous account's cached answers, and
+// the next account's reads never use their keys.
 import type { AuthLike } from "@ic-reactor/core"
 import { AnonymousIdentity } from "@icp-sdk/core/agent"
 import type { DevAccounts } from "./dev-accounts.ts"
