@@ -16,9 +16,12 @@
 // On a refusal (`canister_err`) or a failure, `onError` restores the list as
 // it was, then the client's re-read shows what the backend really holds.
 //
-// The cached list is found with `client.queryKey(backend, "contacts")`, built
-// for the caller now. A key typed out by hand would leave the caller out, and
-// match nothing the client caches or invalidates.
+// The cached list is found with `client.queryKey(certifiedBackend,
+// "contacts")`, built for the caller now: the address book reads it certified,
+// and a certified read has a key of its own. A key typed out by hand would
+// leave the caller out, and match nothing the client caches or invalidates.
+// The writes go through `backend`: an update is certified either way, and its
+// `invalidates` covers the certified reads of the canister as well.
 import type { ReactorError } from "@ic-reactor/core"
 import { useClient } from "@ic-reactor/react"
 import {
@@ -59,7 +62,7 @@ function restore(queryClient: QueryClient, snapshot: Snapshot | undefined) {
 /** `add_contact`, shown in the list before the backend answers. */
 export function useAddContact() {
   const client = useClient()
-  const { backend } = useCanisters()
+  const { backend, certifiedBackend } = useCanisters()
   // Only the contact list can change: the profile read is left alone.
   const options = client.mutationOptions(backend, "add_contact", {
     invalidates: [[backend, "contacts"]],
@@ -70,7 +73,7 @@ export function useAddContact() {
       const targets = options.onMutate(contact, context)
       const snapshot = await showOptimistically(
         client.queryClient,
-        client.queryKey(backend, "contacts"),
+        client.queryKey(certifiedBackend, "contacts"),
         (list) => [...list, contact]
       )
       return { ...targets, snapshot }
@@ -87,7 +90,7 @@ export function useAddContact() {
 /** `remove_contact`, gone from the list before the backend answers. */
 export function useRemoveContact() {
   const client = useClient()
-  const { backend } = useCanisters()
+  const { backend, certifiedBackend } = useCanisters()
   const options = client.mutationOptions(backend, "remove_contact", {
     invalidates: [[backend, "contacts"]],
   })
@@ -97,7 +100,7 @@ export function useRemoveContact() {
       const targets = options.onMutate(name, context)
       const snapshot = await showOptimistically(
         client.queryClient,
-        client.queryKey(backend, "contacts"),
+        client.queryKey(certifiedBackend, "contacts"),
         (list) => list.filter((contact) => contact.name !== name)
       )
       return { ...targets, snapshot }
