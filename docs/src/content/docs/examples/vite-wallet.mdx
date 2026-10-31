@@ -32,10 +32,12 @@ backend canister of the example's own.
 - **Optimistic updates:** an address book whose adds and removes show at once
   and roll back on a refusal or a failure, while the client's own
   invalidation still runs; paying a contact refreshes both balances and not
-  the address book.
+  the address book. The address book is a certified read, because a contact
+  decides where a payment goes.
 
 The guides behind it: [Auth](/v4/guides/auth/) for the two sign-in sources,
-[Writes](/v4/guides/writes/) for transfers and optimistic updates, and
+[Writes](/v4/guides/writes/) for transfers and optimistic updates,
+[Reads](/v4/guides/reads/#what-to-certify) for what to certify, and
 [the Vite plugin](/v4/guides/vite-plugin/) for the cookie and the `/api` proxy.
 [Build an ICRC-1 wallet](/v4/build/icrc1-wallet/) builds its sign-in, balance
 and transfer step by step, against mainnet.

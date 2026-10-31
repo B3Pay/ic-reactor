@@ -53,6 +53,22 @@ function add(name: string, owner: string) {
 }
 
 describe("the address book", () => {
+  it("reads the list certified, as a replicated call: a contact decides where a payment goes", async () => {
+    const made = await renderBook()
+    const release = made.holdNext("add_contact")
+    add("Carol", SEED_2)
+    release()
+    await waitFor(
+      () => expect(screen.queryByText("saving…")).toBeNull(),
+      patiently
+    )
+
+    // The first read and the one after the write: never a plain query.
+    const reads = made.requests.filter((r) => r.methodName === "contacts")
+    expect(reads.length).toBeGreaterThanOrEqual(2)
+    expect(reads.map((r) => r.endpoint)).toEqual(reads.map(() => "call"))
+  })
+
   it("shows an added contact before the backend answers, then reads the list again", async () => {
     const made = await renderBook()
     const release = made.holdNext("add_contact")
