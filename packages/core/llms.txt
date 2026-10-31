@@ -95,6 +95,29 @@ with the local id in `.env.development` and the mainnet id
 `allowEnvConfig: true` on `ic0.app`; on a custom domain only when every
 subdomain is yours.
 
+Serve the frontend canister with security headers. For DFINITY's asset
+canister, put `.ic-assets.json5` in Vite's `public/` (icp-cli's static-site
+recipe reads the same headers from a `_headers` file):
+
+```json5
+[
+  {
+    match: "**/*",
+    security_policy: "hardened",
+    headers: {
+      "Content-Security-Policy": "default-src 'none'; script-src 'self'; connect-src 'self' https://icp-api.io; img-src 'self' data:; style-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
+    allow_raw_access: false,
+  },
+]
+```
+
+A `Cross-Origin-Opener-Policy` of `same-origin` cuts off the Internet
+Identity window, so sign-in never completes. The HTTP gateway checks a page
+against the canister's certified state on `<id>.icp0.io`, not on
+`<id>.raw.icp0.io`: never link to the raw domain.
+
 `createClient` throws a `TypeError` for an option it does not have (`host`
 goes inside `network`), an `allowEnvConfig` or `fetchRootKey` that is not a
 boolean (environment text: `=== "true"`), a `rootKey` that is not 133 bytes

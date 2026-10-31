@@ -4,7 +4,9 @@ The real-replica suite of ic-reactor 4: a small Rust canister, `hello_actor`,
 deployed to a local icp-cli 1.2.0 network, and twelve vitest cases that call
 it through the published API of `@ic-reactor/core`, `@ic-reactor/react` and
 `@ic-reactor/vite-plugin`, with the module `candid-core-cli gen` writes from
-its `.did`.
+its `.did`. Seven more deploy the response headers of the docs guide "Deploy
+to a frontend canister" to DFINITY's two asset canisters, and check what they
+serve.
 
 ## Running it
 
@@ -25,7 +27,8 @@ Then `pnpm test` in `e2e/` (or `pnpm test-e2e` at the root, or
    only a fallback, and CI checks that its global one matches the pins), and
    that `src/declarations` matches the `.did` (`pnpm gen:check`);
 2. starts a local network (`icp network start -d`, port 8000) and deploys
-   `hello_actor`;
+   the canisters of `icp.yaml` (`icp deploy`): `hello_actor`, and the two
+   frontend canisters;
 3. calls `greet` once with `icp` to check the deployment;
 4. runs `vitest run`;
 5. stops the network, also when a step fails.
@@ -39,7 +42,7 @@ pnpm icp:stop
 ```
 
 `global-setup.ts` asks `icp` for the network's URL and root key and the
-canister's id, and fails the run when there is none. A run that finds no test
+canisters' ids, and fails the run when there is none. A run that finds no test
 file fails too: there is no `passWithNoTests`.
 
 ## The canister
@@ -64,17 +67,36 @@ wire.
 `candid-core-cli gen` writes from it: run `pnpm gen` after a change to the
 `.did`, and commit both. Prettier leaves them alone.
 
+## The frontend canisters
+
+Two more canisters of `icp.yaml` serve one page each, with the headers of the
+docs guide "Deploy to a frontend canister"
+(`docs/src/content/docs/guides/deploy.mdx`), on the recipes and versions the
+guide names:
+
+| Canister         | Recipe                                                      | Uploads                                                                      |
+| ---------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `asset_canister` | `@dfinity/asset-canister@v2.3.0`, the asset canister 0.30.2 | `frontends/index.html` and the wallet example's `public/.ic-assets.json5`    |
+| `static_site`    | `@dfinity/static-site@v0.4.2` (certified-assets)            | `frontends/index.html` and the `_headers` of the guide's static-site section |
+
+Their builds run `frontends/build.mjs`, which copies those files into
+`frontends/dist/` as they are, so the cases check the example's and the
+guide's own text. Bump a recipe here, in the guide and in the wallet example
+together: a case checks that the three agree.
+
 ## The cases
 
 The files run one at a time (`fileParallelism: false`): they share the
 canister's counter, and the anonymous-write case reads it back. Each runs in
 jsdom, where `auth` sign-in, the `ic_env` cookie and `ReactorProvider` exist;
-the agent sends with Node's `fetch`.
+the agent sends with Node's `fetch`. `frontend-headers.test.ts` runs in Node:
+it needs no page.
 
-| File               | Case                                                                                                                                                                                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `calls.test.ts`    | A query (direct and through `queryOptions`, sent as a query); an update through `mutationOptions`, which invalidates the canister's reads; a certified read (`{ id, certified: true }`); the root key fetched from the local replica.                                                                   |
-| `errors.test.ts`   | A reject 4 and a trap (reject 5), both `rejected` and may have executed; a Result `Err` as `canister_err`, which did not leave the outcome open; an anonymous write refused before sending (`unauthenticated`, `anonymous_write`); an unresolved `{ name }` (`invalid_args`, `canister_id_unresolved`). |
-| `identity.test.ts` | A switch between two Ed25519 identities on one client: the caller the canister sees, `client.caller()` and the query keys all follow it.                                                                                                                                                                |
-| `vite-env.test.ts` | A Vite dev server with `@ic-reactor/vite-plugin`, started in the test: the page load's `ic_env` cookie resolves `{ name: "hello_actor" }`, and the call goes through the server's `/api` proxy.                                                                                                         |
-| `react.test.tsx`   | `ReactorProvider`, `useClient` and `useQuery`: the component renders what the canister answers, as whoever is signed in, and again after a switch.                                                                                                                                                      |
+| File                       | Case                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `calls.test.ts`            | A query (direct and through `queryOptions`, sent as a query); an update through `mutationOptions`, which invalidates the canister's reads; a certified read (`{ id, certified: true }`); the root key fetched from the local replica.                                                                                                                                                                                                                                                                                              |
+| `errors.test.ts`           | A reject 4 and a trap (reject 5), both `rejected` and may have executed; a Result `Err` as `canister_err`, which did not leave the outcome open; an anonymous write refused before sending (`unauthenticated`, `anonymous_write`); an unresolved `{ name }` (`invalid_args`, `canister_id_unresolved`).                                                                                                                                                                                                                            |
+| `identity.test.ts`         | A switch between two Ed25519 identities on one client: the caller the canister sees, `client.caller()` and the query keys all follow it.                                                                                                                                                                                                                                                                                                                                                                                           |
+| `vite-env.test.ts`         | A Vite dev server with `@ic-reactor/vite-plugin`, started in the test: the page load's `ic_env` cookie resolves `{ name: "hello_actor" }`, and the call goes through the server's `/api` proxy.                                                                                                                                                                                                                                                                                                                                    |
+| `react.test.tsx`           | `ReactorProvider`, `useClient` and `useQuery`: the component renders what the canister answers, as whoever is signed in, and again after a switch.                                                                                                                                                                                                                                                                                                                                                                                 |
+| `frontend-headers.test.ts` | The guide's headers, as both frontend canisters serve them through the local HTTP gateway: every header the example and the guide give, certified (the response's `ic-certificateexpression` names it); the asset canister's `hardened` headers; its raw host (`<id>.raw.icp0.io`) redirected (308) to `<id>.icp0.io` with the path and query, and the static site's raw host served. Also that the guide, core's `llms.txt` and the example show the same `.ic-assets.json5`, and that the guide names the recipes deployed here. |
