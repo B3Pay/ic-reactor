@@ -19,6 +19,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### CI (not published)
 
+- The docs also publish to b3pay.net, as `b3pay-module.json` describes: the
+  pages, the API reference and `packages/core/llms.txt`, served at
+  `/docs/ic-reactor/` once b3pay.net's registry reads this repository's
+  `b3pay-site` branch. The new `Docs on b3pay.net` workflow builds and checks
+  the module with b3pay.net's reusable workflow on pull requests that touch
+  the docs, and on `main` commits it to that branch. The `/v4/` site and its
+  deploy are unchanged. `pnpm -C docs run api` writes the API reference alone,
+  and its files are now named in lowercase, as their routes are; no address
+  changes.
 - The `v4` branch, where 4 was developed until the 4.0 GA flip, is retired.
   CI, e2e, CodeQL, the dependency review and the two published-package checks
   run on `main` only, and `verify-test-fails` takes its default base from

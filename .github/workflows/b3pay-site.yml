@@ -1,0 +1,52 @@
+# Publishes these docs to b3pay.net, where they are served at
+# https://b3pay.net/docs/ic-reactor/: the pages of docs/src/content/docs, the
+# API reference TypeDoc generates, and packages/core/llms.txt, as
+# b3pay-module.json describes. b3pay.net's reusable workflow builds and checks
+# the module, then builds the whole site with it, so a page that would break
+# the site fails here. On main it also commits the built module to this
+# repository's b3pay-site branch, which b3pay.net serves, and asks b3pay.net
+# to rebuild. It never writes to b3pay.net.
+name: Docs on b3pay.net
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "packages/core/src/**"
+      - "packages/react/src/**"
+      - "packages/core/llms.txt"
+      - "pnpm-lock.yaml"
+      - "b3pay-module.json"
+      - ".github/workflows/b3pay-site.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - "packages/core/src/**"
+      - "packages/react/src/**"
+      - "packages/core/llms.txt"
+      - "pnpm-lock.yaml"
+      - "b3pay-module.json"
+      - ".github/workflows/b3pay-site.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  module:
+    name: Docs module
+    # A commit of B3Pay/b3pay.net, not a branch: the publish job holds a token
+    # that can push to this repository.
+    uses: B3Pay/b3pay.net/.github/workflows/publish-module.yml@e06da8a599cf611ac79c2e1cc1dd2ed56e9fc980
+    with:
+      # Only main publishes: a pull request, or a manual run on another
+      # branch, only checks.
+      publish: ${{ github.ref == 'refs/heads/main' }}
+      # The site's tools at the same commit, until it is on b3pay.net's main:
+      # main's do not know the folder items this sidebar lists.
+      site-ref: e06da8a599cf611ac79c2e1cc1dd2ed56e9fc980
+      prepare: corepack enable && pnpm install --frozen-lockfile && pnpm -C docs run api
+    permissions:
+      contents: write
+    secrets:
+      deploy-hook: ${{ secrets.B3PAY_SITE_DEPLOY_HOOK }}
