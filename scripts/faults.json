@@ -6436,5 +6436,35 @@
     "why": "with server.ws: false the warning still says the open pages were reloaded, though the reload reached none and they keep the old cookie",
     "search": "          (server.config.server as { ws?: unknown } | undefined)?.ws !== false\n",
     "replace": "          true\n"
+  },
+  {
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "file": "src/network.ts",
+    "id": "ids-only-cookie-names-sign-in",
+    "testName": "takes no provider from a cookie believed for canister ids only, on <id>.icp0.io",
+    "why": "a cookie believed for canister ids only, on a canister's icp0.io page, chooses the sign-in page and the canister that mints its delegations, which are not canister ids",
+    "search": "  const full = net.trustsEnv && !net.envIdsOnly\n",
+    "replace": "  const full = net.trustsEnv\n"
+  },
+  {
+    "package": "core",
+    "test": "tests/env-cookie-copies.test.ts",
+    "file": "src/network.ts",
+    "id": "differing-env-cookies-believed",
+    "testName": "name no canister on a canister's icp0.io page, for \"env\" and \"ic\": the frontend's listed last",
+    "why": "copies of the ic_env cookie that differ are read as the first one listed, which need not be the one the frontend's canister set",
+    "search": "      ).size > 1\n",
+    "replace": "      ).size > 2\n"
+  },
+  {
+    "package": "core",
+    "test": "tests/env-cookie-copies.test.ts",
+    "file": "src/network.ts",
+    "id": "differing-env-cookies-refused-locally",
+    "testName": "leave the first believed, as before",
+    "why": "a local page refuses copies of the ic_env cookie that differ, which a redeploy there often leaves at another path",
+    "search": "    return !pageIsLocal() &&\n",
+    "replace": "    return !false &&\n"
   }
 ]
