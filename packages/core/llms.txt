@@ -83,9 +83,13 @@ development `ReactorProvider` throws when it is handed such a client.
 
 Deploying to mainnet (`icp deploy -e ic`): with `"env"`, a canister's own
 `<id>.icp0.io` (or `<id>.raw.icp0.io`) page believes its cookie's canister
-ids (a public suffix: no sibling can set it), never its root key. On
-`<id>.ic0.app` and custom domains `{ name }` does not resolve. For a page that
-works everywhere, name canisters `{ id: import.meta.env.VITE_BACKEND_ID }`,
+ids (a public suffix: no sibling can set it) and nothing else: never its root
+key or its `INTERNET_IDENTITY_PROVIDER` (sign-in stays mainnet's). Off a local
+page, when the page receives more than one `ic_env` cookie and they differ,
+none is believed (`{ name }` gets `untrusted_host`). On `<id>.ic0.app` and
+custom domains `{ name }` does not resolve. For a mainnet app, which should not
+depend on the cookie, and a page that works everywhere, name canisters
+`{ id: import.meta.env.VITE_BACKEND_ID }`,
 with the local id in `.env.development` and the mainnet id
 (`icp canister status backend -e ic -i`) in `.env.production`. Never set
 `allowEnvConfig: true` on `ic0.app`; on a custom domain only when every
@@ -112,7 +116,9 @@ Who calls (exactly one):
   `signIn()` rejects with the error. `network`
   is `{ agentOptions, identityProvider? }`: the client's host and root key
   (and its `fetch`, when you gave one), and the Internet Identity to sign in
-  with (the `ic_env` cookie's, or icp-cli's built-in one for a local host). Absent on a mainnet client, it
+  with (that of an `ic_env` cookie believed in full, on a local page or with
+  `allowEnvConfig: true`, never a canister's `icp0.io` page's; or icp-cli's
+  built-in one for a local host). Absent on a mainnet client, it
   means mainnet's. Absent on any other network (a project that deploys its
   own `internet_identity`, `"env"` on a local page with no
   `INTERNET_IDENTITY_PROVIDER` in the cookie, a replica with its own root
