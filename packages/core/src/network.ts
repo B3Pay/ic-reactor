@@ -150,7 +150,9 @@ export interface ResolvedNetwork {
   /**
    * Present when the cookie is believed for canister ids only, as on a
    * canister's own `icp0.io` page by default: its root key is never taken,
-   * and its Internet Identity URL only over `https:`.
+   * nor its sign-in entries (`INTERNET_IDENTITY_PROVIDER` and
+   * `PUBLIC_CANISTER_ID:internet_identity` as the canister that mints
+   * delegations), so sign-in keeps `AuthClient`'s defaults.
    */
   readonly envIdsOnly?: true
 }
@@ -580,13 +582,35 @@ const refuseSharedParent = (allowEnvConfig: boolean | undefined): void => {
   )
 }
 
-/** The cookie's entries. Only ever called for a trusted page. */
-const readCanisterEnv = (): Readonly<Record<string, unknown>> | undefined =>
-  safeGetCanisterEnv()
+/**
+ * Entry `key` of the `ic_env` cookie, as `@icp-sdk/core` reads it, or `null`
+ * when a page that is not local receives more than one `ic_env` cookie and
+ * they differ. A browser keeps one for each path or domain a cookie was set
+ * for, and `@icp-sdk/core` reads the first it lists, which need not be the
+ * one the frontend's canister set last, so differing copies are believed for
+ * nothing. A local page reads the first, as before: a redeploy there often
+ * leaves an older copy at another path, and only the machine itself can set
+ * one. Only ever called for a trusted page.
+ */
+const cookieEntry = (key: string): unknown => {
+  try {
+    return !pageIsLocal() &&
+      new Set(
+        document.cookie
+          .split(";")
+          .map((cookie) => cookie.trim())
+          .filter((cookie) => cookie.startsWith("ic_env="))
+      ).size > 1
+      ? null
+      : safeGetCanisterEnv()?.[key]
+  } catch {
+    return undefined
+  }
+}
 
 /** The root key the cookie carries, or `undefined` when it carries none. */
 const cookieRootKey = (): Uint8Array | undefined => {
-  const rootKey = readCanisterEnv()?.IC_ROOT_KEY
+  const rootKey = cookieEntry("IC_ROOT_KEY")
   return rootKey instanceof Uint8Array ? rootKey : undefined
 }
 
@@ -729,7 +753,8 @@ export const agentOptionsFor = (net: ResolvedNetwork): AgentNetworkOptions => ({
  *
  * - `no_browser`: there is no page, so no cookie jar to read.
  * - `untrusted_host`: the cookie is there to read but not trusted for this
- *   network, so it was not read.
+ *   network, so it was not read; or a page that is not local holds more
+ *   than one `ic_env` cookie and they differ, so none is believed.
  * - `absent`: the cookie was read and has no usable entry under that name.
  *   An entry that is not principal text counts as absent.
  */
@@ -770,23 +795,26 @@ export const resolveCanisterId = (
     )
   }
 
-  if (!net.trustsEnv) {
+  // A cookie that is not trusted is not read; one that is, but disagrees with
+  // another `ic_env` cookie of the page, is refused the same way.
+  const value = net.trustsEnv ? cookieEntry(key) : null
+  if (value === null) {
     const origin = pageOrigin()
     return fail(
       "untrusted_host",
-      `the ic_env cookie is not trusted for this network (agent host ${net.host}` +
-        // The agent host is often the library's mainnet fallback rather than
-        // anywhere the reader recognises, so name the page too.
-        `${origin ? `, page ${origin}` : ""}), so it was not read. ` +
-        `It is trusted only when both the agent host and the page are a local replica ` +
-        `(localhost, *.localhost or a loopback address), or, for canister ids, on a canister's own ` +
-        `<id>.icp0.io page with a mainnet host, because elsewhere a sibling subdomain can write it. ` +
-        `Use { id } (bake the id in at build time) or, only if you trust every subdomain of this domain, ` +
-        `set allowEnvConfig: true, which trusts the cookie's canister ids, and its root key for a replica that is not mainnet.`
+      net.trustsEnv
+        ? `the page's ic_env cookies differ. Use { id } (bake the id in at build time).`
+        : `the ic_env cookie is not trusted for this network (agent host ${net.host}` +
+            // The agent host is often the library's mainnet fallback rather
+            // than anywhere the reader recognises, so name the page too.
+            `${origin ? `, page ${origin}` : ""}), so it was not read. ` +
+            `It is trusted only when both the agent host and the page are a local replica ` +
+            `(localhost, *.localhost or a loopback address), or, for canister ids, on a canister's own ` +
+            `<id>.icp0.io page with a mainnet host, because elsewhere a sibling subdomain can write it. ` +
+            `Use { id } (bake the id in at build time) or, only if you trust every subdomain of this domain, ` +
+            `set allowEnvConfig: true, which trusts the cookie's canister ids, and its root key for a replica that is not mainnet.`
     )
   }
-
-  const value = readCanisterEnv()?.[key]
   if (typeof value !== "string" || value === "") {
     return fail(
       "absent",
@@ -856,14 +884,11 @@ const verifiesAsMainnet = (net: ResolvedNetwork): boolean =>
 
 /**
  * The cookie's `INTERNET_IDENTITY_PROVIDER`, when it is an `https:` URL, or an
- * `http:` one on a local page (never one believed for ids only, a canister's
- * `icp0.io` page). Over plain `http:` from a page that is not local, anyone on
- * the path could stand in for the sign-in page.
+ * `http:` one on a local page. Over plain `http:` from a page that is not
+ * local, anyone on the path could stand in for the sign-in page.
  */
-const cookieAuthorizeUrl = (
-  env: Readonly<Record<string, unknown>> | undefined
-): string | undefined => {
-  const value = env?.INTERNET_IDENTITY_PROVIDER
+const cookieAuthorizeUrl = (): string | undefined => {
+  const value = cookieEntry("INTERNET_IDENTITY_PROVIDER")
   if (typeof value !== "string" || value === "") return undefined
   try {
     const { protocol } = new URL(value)
@@ -876,10 +901,8 @@ const cookieAuthorizeUrl = (
 }
 
 /** The cookie's `PUBLIC_CANISTER_ID:internet_identity`, when it is principal text. */
-const cookieInternetIdentity = (
-  env: Readonly<Record<string, unknown>> | undefined
-): string | undefined => {
-  const value = env?.["PUBLIC_CANISTER_ID:internet_identity"]
+const cookieInternetIdentity = (): string | undefined => {
+  const value = cookieEntry("PUBLIC_CANISTER_ID:internet_identity")
   return typeof value === "string" &&
     value !== "" &&
     principalProblem(value) === undefined
@@ -903,13 +926,14 @@ const builtInAuthorizeUrl = (host: string): string | undefined => {
  * What the client tells its `auth` factory: the agent options of its own
  * agents, and the identity provider to sign in with, by these rules in order.
  *
- * 1. A trusted `ic_env` cookie that names `INTERNET_IDENTITY_PROVIDER` over
- *    `https:` (or `http:` on a local page): that URL, with the cookie's
- *    `PUBLIC_CANISTER_ID:internet_identity`, or
+ * 1. An `ic_env` cookie believed in full (never one believed for canister ids
+ *    only, as on a canister's `icp0.io` page by default) that names
+ *    `INTERNET_IDENTITY_PROVIDER` over `https:` (or `http:` on a local page):
+ *    that URL, with the cookie's `PUBLIC_CANISTER_ID:internet_identity`, or
  *    Internet Identity's own id when it names none.
- * 2. A trusted cookie that names an `internet_identity` canister but no URL
- *    (the project deploys its own): none, and a gap unless the network is
- *    mainnet's. Its URL cannot be derived from its id.
+ * 2. A cookie believed in full that names an `internet_identity` canister but
+ *    no URL (the project deploys its own): none, and a gap unless the network
+ *    is mainnet's. Its URL cannot be derived from its id.
  * 3. `"local"`, or a network object whose host is local: icp-cli's built-in
  *    Internet Identity on that host's port.
  * 4. `"env"` on a local page: none, and a gap. The agent's host is the
@@ -926,9 +950,11 @@ export const authNetworkFor = (
   net: ResolvedNetwork
 ): AuthNetworkResolution => {
   const agentOptions = agentOptionsFor(net)
-  const env = net.trustsEnv ? readCanisterEnv() : undefined
-  const authorizeUrl = cookieAuthorizeUrl(env)
-  const projectCanister = cookieInternetIdentity(env)
+  // Who signs a person in is not a canister id, so a cookie believed for ids
+  // only does not choose it.
+  const full = net.trustsEnv && !net.envIdsOnly
+  const authorizeUrl = full ? cookieAuthorizeUrl() : undefined
+  const projectCanister = full ? cookieInternetIdentity() : undefined
 
   if (authorizeUrl !== undefined) {
     return {
