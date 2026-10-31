@@ -338,6 +338,8 @@ Keys are `["ic-reactor", network, caller, canisterId, method, args]`, so one
 principal's cached answer is never served to another: after a sign-in,
 sign-out or switch, the new caller's key is empty (`data` is `undefined`)
 until it loads, and a read made for the previous caller never lands in it.
+A sign-out, an expired session or a switch also removes the previous
+caller's reads from the cache; the anonymous reads stay.
 Keep it so: build the options in render from that render's `useClient()`,
 listing it in the dependencies of any `useMemo` or effect built from it
 (React Compiler does), and add nothing that carries data across keys

@@ -650,12 +650,12 @@ const afterCaller = (key: QueryKey): string => JSON.stringify(key.slice(3))
 
 const cacheIsolation: Scenario = {
   id: "cache-isolation",
-  title: "One read, two principals, two cache entries",
+  title: "One read, two principals, two keys",
   rule: "Keys are [\"ic-reactor\", network, caller, canisterId, method, args]: one principal's cached answer is never served to another; after a sign-in, sign-out or switch, the new caller's key is empty until it loads.",
   narrative:
-    "The same balance read, with the same argument, is made by seed 1 and then by seed 2. Their keys differ only in the caller segment, so each principal gets its own cache entry, and seed 2 starts with nothing even though seed 1's answer is cached. After a sign-out the anonymous key is empty too: nothing cached for a principal is shown to anyone else.",
+    "The same balance read, with the same argument, is made by seed 1 and then by seed 2. Their keys differ only in the caller segment, so each principal gets its own cache entry, and seed 2 starts with nothing, whatever the cache holds for seed 1. After a sign-out the anonymous key is empty too: nothing cached for a principal is shown to anyone else.",
   expected:
-    "Two keys that differ only at the caller; seed 2's and the anonymous key start empty; 2 entries in the cache.",
+    "Two keys that differ only at the caller; seed 2's and the anonymous key start empty.",
   code: `const account = { owner: seed2, subaccount: null }
 await client.queryClient.fetchQuery(
   client.queryOptions(ledger, "icrc1_balance_of", account)) // as seed 1
@@ -732,12 +732,6 @@ client.queryClient.getQueryData(
           queryKey: lab.client.queryKey(lab.ledger),
         }).length,
         0
-      )
-      r.same(
-        "Entries in the cache (one per principal)",
-        // The lab's client owns this cache: every entry is one of its reads.
-        queryClient.getQueryCache().getAll().length,
-        2
       )
       return value1 === undefined
         ? {}
