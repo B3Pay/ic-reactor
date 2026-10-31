@@ -17,6 +17,25 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### Docs
+
+- The reads guide says what to certify: a read whose value decides where
+  value goes or what a person approves (a recipient, a deposit address, an
+  allowance, the details someone confirms), through a canister made with
+  `certified: true`, and the rest plainly. It says what a certified read
+  costs (as long as an update call, and cycles from the canister), and how
+  two canister objects of one canister keep the two apart. The consumer
+  guide (`packages/core/llms.txt`), its "Do not" list and the `ic-reactor`
+  skill say the same.
+
+### Examples (not published)
+
+- The Vite wallet reads its address book certified, through a second
+  canister object of the backend made with `certified: true`: a contact
+  decides where a payment goes. Its optimistic adds and removes find the
+  list by that read's key, and a test checks the list is read as a
+  replicated call.
+
 ### CI (not published)
 
 - The docs also publish to b3pay.net, as `b3pay-module.json` describes: the
