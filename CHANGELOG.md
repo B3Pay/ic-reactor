@@ -28,6 +28,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   deploy are unchanged. `pnpm -C docs run api` writes the API reference alone,
   and its files are now named in lowercase, as their routes are; no address
   changes.
+- `Docs on b3pay.net` runs b3pay.net's reusable workflow from that site's
+  `main` (67911ef), and checks the module with the site's tools from `main`,
+  now that the folder items its sidebar lists are there.
 - The `v4` branch, where 4 was developed until the 4.0 GA flip, is retired.
   CI, e2e, CodeQL, the dependency review and the two published-package checks
   run on `main` only, and `verify-test-fails` takes its default base from

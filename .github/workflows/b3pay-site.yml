@@ -37,14 +37,11 @@ jobs:
     name: Docs module
     # A commit of B3Pay/b3pay.net, not a branch: the publish job holds a token
     # that can push to this repository.
-    uses: B3Pay/b3pay.net/.github/workflows/publish-module.yml@e06da8a599cf611ac79c2e1cc1dd2ed56e9fc980
+    uses: B3Pay/b3pay.net/.github/workflows/publish-module.yml@67911ef22a3d47012b285a8880375231ed79a526
     with:
       # Only main publishes: a pull request, or a manual run on another
       # branch, only checks.
       publish: ${{ github.ref == 'refs/heads/main' }}
-      # The site's tools at the same commit, until it is on b3pay.net's main:
-      # main's do not know the folder items this sidebar lists.
-      site-ref: e06da8a599cf611ac79c2e1cc1dd2ed56e9fc980
       prepare: corepack enable && pnpm install --frozen-lockfile && pnpm -C docs run api
     permissions:
       contents: write
