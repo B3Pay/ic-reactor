@@ -11,7 +11,7 @@
     "gen": "candid-core-cli gen src/actor/hello_actor.did -o src/declarations",
     "gen:check": "candid-core-cli gen src/actor/hello_actor.did -o src/declarations --check",
     "icp:start": "icp network start -d",
-    "icp:deploy": "icp deploy hello_actor",
+    "icp:deploy": "icp deploy",
     "icp:stop": "icp network stop",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
   },

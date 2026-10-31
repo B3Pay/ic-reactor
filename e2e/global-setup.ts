@@ -1,8 +1,8 @@
 /**
  * Runs once before the suite, in the vitest process. It asks the `icp` CLI on
  * PATH (the 1.2.0 this package installs, under `pnpm exec`) where the local
- * network is and which id `hello_actor` was deployed with, and hands both to
- * the test files through `inject("replica")`.
+ * network is and which ids the canisters of icp.yaml were deployed with, and
+ * hands them to the test files through `inject("replica")`.
  */
 import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
@@ -15,6 +15,11 @@ export interface Replica {
   readonly rootKey: string
   /** The id `icp deploy` gave `hello_actor`. */
   readonly canisterId: string
+  /** The ids of the two frontend canisters, `asset_canister` and `static_site`. */
+  readonly frontends: {
+    readonly assetCanister: string
+    readonly staticSite: string
+  }
 }
 
 declare module "vitest" {
@@ -36,7 +41,7 @@ const icp = (...args: string[]): string => {
     const stderr = (error as { stderr?: string }).stderr?.trim()
     throw new Error(
       `\`icp ${args.join(" ")}\` failed${stderr ? `: ${stderr}` : ""}. ` +
-        "The e2e suite needs a local network with hello_actor deployed: run `bash test.sh` in e2e/.",
+        "The e2e suite needs a local network with the canisters of icp.yaml deployed: run `bash test.sh` in e2e/.",
       { cause: error }
     )
   }
@@ -46,13 +51,15 @@ export default function setup(project: TestProject): void {
   const status = JSON.parse(icp("network", "status", "-e", "local", "--json"))
   const host = String(status.api_url).replace(/\/+$/, "")
   const rootKey = String(status.root_key)
-  const canisterId = icp(
-    "canister",
-    "status",
-    "hello_actor",
-    "-e",
-    "local",
-    "-i"
-  )
-  project.provide("replica", { host, rootKey, canisterId })
+  const idOf = (name: string): string =>
+    icp("canister", "status", name, "-e", "local", "-i")
+  project.provide("replica", {
+    host,
+    rootKey,
+    canisterId: idOf("hello_actor"),
+    frontends: {
+      assetCanister: idOf("asset_canister"),
+      staticSite: idOf("static_site"),
+    },
+  })
 }

@@ -41,6 +41,12 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### CI (not published)
 
+- The e2e suite deploys the guide's headers to both asset canisters, with the
+  recipe versions the guide names, and checks what they serve through the
+  local HTTP gateway (`e2e/src/frontend-headers.test.ts`, seven more cases):
+  every header, certified; the asset canister's raw host redirected with its
+  path and query; and the guide's copy of `.ic-assets.json5` and its
+  `_headers` the same as what was deployed.
 - The docs also publish to b3pay.net, as `b3pay-module.json` describes: the
   pages, the API reference and `packages/core/llms.txt`, served at
   `/docs/ic-reactor/` once b3pay.net's registry reads this repository's
