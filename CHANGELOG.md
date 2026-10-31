@@ -17,6 +17,28 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### Docs
+
+- A "Deploy to a frontend canister" guide: the response headers to serve the
+  app with from DFINITY's asset canister (`.ic-assets.json5`) or from icp-cli's
+  static-site recipe (`_headers`), and what each one does. A
+  Content-Security-Policy that lets the page run its own files only and call
+  its own origin and `https://icp-api.io`, a `Cross-Origin-Opener-Policy` of
+  `same-origin-allow-popups` (`same-origin` cuts off the Internet Identity
+  window, and the sign-in never completes), the asset canister's `hardened`
+  policy, and `allow_raw_access: false`. It says what the HTTP gateway checks
+  on `<id>.icp0.io` and not on `<id>.raw.icp0.io`, why a raw origin must not
+  be an Internet Identity alternative origin, and how to let a copy button
+  write to the clipboard. The consumer guide (`packages/core/llms.txt`) gives
+  the same `.ic-assets.json5`.
+
+### Examples (not published)
+
+- `vite-wallet` deploys the app itself too: `pnpm icp:deploy` builds it and
+  uploads it to an asset canister, `frontend`, served at
+  http://frontend.local.localhost:8000 with the guide's headers
+  (`public/.ic-assets.json5`, scenario 10).
+
 ### CI (not published)
 
 - The docs also publish to b3pay.net, as `b3pay-module.json` describes: the

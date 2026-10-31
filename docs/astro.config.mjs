@@ -128,6 +128,7 @@ export default defineConfig({
             { label: "SSR and hydration", slug: "guides/ssr" },
             { label: "Testing", slug: "guides/testing" },
             { label: "The Vite plugin", slug: "guides/vite-plugin" },
+            { label: "Deploy to a frontend canister", slug: "guides/deploy" },
           ],
         },
         {
