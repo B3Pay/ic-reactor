@@ -366,8 +366,40 @@ directly rejects `invalid_args` with code `no_certified_path`, and
 `queryOptions` throws a `TypeError`. That one is checked only when the code
 runs: the type of a canister object does not say whether it is certified.
 
-A certified read is slower than a plain query, as a replicated call is. Use it
-for the values you must be able to trust, and plain reads for the rest.
+### What to certify
+
+A plain query is answered by one replica, and the client accepts a reply that
+replica signed, so a faulty or malicious replica can answer with a value of
+its own. A certified read is checked against the subnet's certificate.
+
+Certify a read whose value decides where value goes or what a person
+approves: a recipient, a deposit address, an allowance, the details of a
+transfer or an approval that someone confirms. Read the rest plainly: a list
+a person browses, a name, a price shown for information.
+
+A certified read costs what an update call costs. It takes as long, because
+it goes through consensus, and the canister pays cycles for it, where a plain
+query is free. So certify only the reads that decide something. Two canister
+objects of one canister keep the two apart, and a write through either
+invalidates the reads of both:
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/backend"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+const id = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+// Profiles and lists, read plainly.
+export const backend = client.canister<Actor>(actor, { id })
+// Payees and deposit addresses, read certified.
+export const certifiedBackend = client.canister<Actor>(actor, {
+  id,
+  certified: true,
+})
+```
+
+The [Vite wallet](/v4/examples/vite-wallet/) reads its address book this
+way: a contact is who a payment goes to.
 
 ## Outside React
 

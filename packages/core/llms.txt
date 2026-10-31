@@ -375,7 +375,13 @@ rule, checked at run time: the value for one argument, a tuple for several,
 `invalid_args`). `mutationOptions`, `queryKey` and `resendOf` take
 `<A, any>` the same way; for a generic `A` only `queryOptions` widens the
 variables, so cast them for the other three.
-The target `{ id, certified: true }` certifies `query` replies.
+The target `{ id, certified: true }` certifies `query` replies: they are sent
+as replicated calls and checked against the subnet's certificate, where a plain
+query's reply is signed by the one replica that answered. A certified read
+costs what an update costs (as long, and the canister pays cycles). Certify the
+reads that decide where value goes or what a person approves (a recipient, a
+deposit address, an allowance, the details shown before someone confirms) and
+read the rest plainly, through two canister objects of one id.
 
 ## Writes
 
@@ -599,3 +605,6 @@ function Profile() {
 - Send a write as the anonymous identity: pass `identity: "anonymous"`, never
   an `AnonymousIdentity` you were handed.
 - Treat every failed write as "not executed": read `mayHaveExecuted`.
+- Pay, or ask a person to approve, a value a plain query read: read
+  recipients, deposit addresses, allowances and approval details through a
+  `certified: true` canister.
