@@ -93,13 +93,15 @@ network the client calls:
 
 The client picks the identity provider by these rules, in order:
 
-1. The `ic_env` cookie is trusted (see [The client](/docs/ic-reactor/guides/client/)) and
-   names `INTERNET_IDENTITY_PROVIDER`: that URL, with the cookie's
+1. The `ic_env` cookie is believed in full, on a local page or with
+   `allowEnvConfig: true` (see [The client](/docs/ic-reactor/guides/client/)), and names
+   `INTERNET_IDENTITY_PROVIDER`: that URL, with the cookie's
    `PUBLIC_CANISTER_ID:internet_identity`, or Internet Identity's own id,
    `rdmx6-jaaaa-aaaaa-aaadq-cai`, when it names none. The
    [Vite plugin](/docs/ic-reactor/guides/vite-plugin/) writes this cookie in dev and
-   preview.
-2. The trusted cookie names an `internet_identity` canister but no URL: the
+   preview. On a canister's own `<id>.icp0.io` page the cookie is believed
+   for canister ids only, so neither this rule nor the next applies there.
+2. That cookie names an `internet_identity` canister but no URL: the
    project deploys its own Internet Identity, whose sign-in page cannot be
    derived from its id. No provider.
 3. The network is `"local"`, or an object whose host is local: icp-cli's

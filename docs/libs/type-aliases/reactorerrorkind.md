@@ -7,7 +7,7 @@ prev: true
 
 > **ReactorErrorKind** = `"invalid_args"` \| `"unauthenticated"` \| `"not_delivered"` \| `"outcome_unknown"` \| `"rejected"` \| `"invalid_reply"` \| `"canister_err"` \| `"cancelled"`
 
-Defined in: [core/src/errors.ts:54](https://github.com/B3Pay/ic-reactor/blob/c885bf6c431f40503ba80497a667379a3a255c56/packages/core/src/errors.ts#L54)
+Defined in: [core/src/errors.ts:54](https://github.com/B3Pay/ic-reactor/blob/cd4c701ce278affefc56cd7128634e1ec9d35897/packages/core/src/errors.ts#L54)
 
 What kind of failure a [ReactorError](/docs/ic-reactor/libs/type-aliases/reactorerror/) reports.
 
