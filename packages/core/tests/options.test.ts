@@ -119,6 +119,7 @@ describe("queryOptions", () => {
     const a = client.caller()
     await shows(a)
     const keyOfA: QueryKey = observer.options.queryKey
+    const optionsOfA = observer.options
 
     // A's next read is held in flight, past the switch to B.
     const held = deferred()
@@ -137,10 +138,18 @@ describe("queryOptions", () => {
     await sleep(100)
     expect(observer.getCurrentResult().data).toBe(b)
 
+    // A's reads left the cache when B became current, and A's slow answer
+    // did not bring them back.
+    expect(client.queryClient.getQueryData(keyOfA)).toBeUndefined()
+
     // A read of A's key that starts now runs A's query function, made for A:
     // it must not be sent as B, whose answer would land under A's key.
-    await client.queryClient.refetchQueries({ queryKey: keyOfA })
-    expect(client.queryClient.getQueryData(keyOfA)).toBe(a)
+    const sent = requestsFor(replica, "who").length
+    await client.queryClient
+      .fetchQuery({ ...optionsOfA, staleTime: 0 })
+      .catch((error: unknown) => error)
+    expect(requestsFor(replica, "who")).toHaveLength(sent)
+    expect(client.queryClient.getQueryData(keyOfA)).toBeUndefined()
 
     // Back to A: A's key shows A's data and nobody else's.
     auth.switchTo(1)
@@ -695,7 +704,7 @@ describe("mutationOptions", () => {
 
   it("does not invalidate after a write cancelled before it was sent", async () => {
     const replica = replicaWith({ [SHAPES]: whoCanister(new Map()) })
-    const auth = createTestAuth({ seed: 1 })
+    const auth = createTestAuth({ seed: 1, signedIn: false })
     // The identity of the write's caller arrives only after they signed out.
     const asked = deferred()
     const gate = deferred()
@@ -710,8 +719,11 @@ describe("mutationOptions", () => {
     })
     const client = clientWithAuth(replica, slowAuth)
     const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    // A read the write would invalidate, made before anyone signed in: the
+    // sign-out below keeps the anonymous reads.
     const read = client.queryOptions(canister, "one", 1n)
     await client.queryClient.fetchQuery(read)
+    await client.signIn()
 
     slow = true
     const write = new MutationObserver(
@@ -760,22 +772,37 @@ describe("mutationOptions", () => {
   it("invalidates the reads of every caller, certified or not", async () => {
     const holds = new Map<string, Promise<void>>()
     const replica = replicaWith({ [SHAPES]: whoCanister(holds) })
-    const auth = createTestAuth({ seed: 1 })
+    const auth = createTestAuth({ seed: 1, signedIn: false })
     const client = clientWithAuth(replica, auth)
     const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
     const certified = client.canister<shapes.Actor>(shapes.actor, {
       id: SHAPES,
       certified: true,
     })
+    // Reads by nobody signed in, which a sign-in keeps, and by A.
+    const anonymous = client.queryOptions(canister, "who", undefined)
+    const certifiedAnonymous = client.queryOptions(certified, "one", 1n)
+    await client.queryClient.fetchQuery(anonymous)
+    await client.queryClient.fetchQuery(certifiedAnonymous)
+    await client.signIn()
     const asA = client.queryOptions(canister, "who", undefined)
     const certifiedAsA = client.queryOptions(certified, "one", 1n)
     await client.queryClient.fetchQuery(asA)
     await client.queryClient.fetchQuery(certifiedAsA)
-    auth.switchTo(2)
+    // And one of B's, as a persister restores it into the cache.
+    const b = createTestAuth({ seed: 2 }).getPrincipal()!.toText()
+    const asB = [...asA.queryKey.slice(0, 2), b, ...asA.queryKey.slice(3)]
+    client.queryClient.setQueryData(asB, b)
     await client
       .mutationOptions(canister, "note")
       .onSettled(undefined, null, "x")
-    for (const { queryKey } of [asA, certifiedAsA]) {
+    for (const queryKey of [
+      anonymous.queryKey,
+      certifiedAnonymous.queryKey,
+      asA.queryKey,
+      certifiedAsA.queryKey,
+      asB,
+    ]) {
       expect(client.queryClient.getQueryState(queryKey)?.isInvalidated).toBe(
         true
       )

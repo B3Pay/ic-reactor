@@ -1650,7 +1650,19 @@ export function createClientWith(
     }
     scheduleExpiry()
     if (state === notified) return
+    const changed = state.principal !== notified.principal
     notified = state
+    // A sign-out, an expired session or a switch of account removes the
+    // reads made as anyone but the new caller and the anonymous one, before
+    // a listener renders: they stay out of the next person's reach in a
+    // shared browser, and out of a persister that saves the cache.
+    if (changed) {
+      queryClient.removeQueries({
+        queryKey: [KEY_ROOT, network.keySegment],
+        predicate: ({ queryKey: [, , caller] }) =>
+          caller !== state.principal && caller !== ANONYMOUS,
+      })
+    }
     clearRefusals(state.principal)
     for (const listener of [...listeners]) {
       // A listener may dispose the client; the rest are then not told.

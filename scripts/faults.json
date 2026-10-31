@@ -6438,6 +6438,26 @@
     "replace": "          true\n"
   },
   {
+    "id": "signout-reads-kept",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "keeps no read of a principal that signed out, and keeps the anonymous ones",
+    "why": "a sign-out leaves the signed-out principal's decoded reads in the client's cache, where the next person in a shared browser, a read by key prefix or a persister still finds them",
+    "file": "src/client.ts",
+    "search": "    if (changed) {\n      queryClient.removeQueries({\n",
+    "replace": "    if (changed && false) {\n      queryClient.removeQueries({\n"
+  },
+  {
+    "id": "signout-anonymous-reads-removed",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "keeps no read of a principal that signed out, and keeps the anonymous ones",
+    "why": "a change of caller also removes the anonymous reads, which are public, so a page refetches what it already showed",
+    "file": "src/client.ts",
+    "search": "          caller !== state.principal && caller !== ANONYMOUS,\n",
+    "replace": "          caller !== state.principal,\n"
+  },
+  {
     "package": "core",
     "test": "tests/client-auth-network.test.ts",
     "file": "src/network.ts",
