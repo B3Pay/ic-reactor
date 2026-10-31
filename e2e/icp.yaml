@@ -8,6 +8,25 @@ canisters:
         package: hello_actor
         candid: src/actor/hello_actor.did
 
+  # The response headers of the docs guide "Deploy to a frontend canister", on
+  # DFINITY's two asset canisters: frontends/build.mjs writes what each one
+  # uploads, and src/frontend-headers.test.ts reads what it serves.
+  - name: asset_canister
+    recipe:
+      type: "@dfinity/asset-canister@v2.3.0"
+      configuration:
+        version: 0.30.2
+        build:
+          - node frontends/build.mjs asset-canister
+        dir: frontends/dist/asset-canister
+  - name: static_site
+    recipe:
+      type: "@dfinity/static-site@v0.4.2"
+      configuration:
+        build:
+          - node frontends/build.mjs static-site
+        dir: frontends/dist/static-site
+
 networks:
   # The implicit `local` network, with its network launcher pinned. Left at
   # "latest", `icp network start` asks the GitHub API which release that is,

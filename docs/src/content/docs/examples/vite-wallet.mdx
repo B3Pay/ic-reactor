@@ -33,6 +33,10 @@ backend canister of the example's own.
   and roll back on a refusal or a failure, while the client's own
   invalidation still runs; paying a contact refreshes both balances and not
   the address book.
+- **Deployed with security headers:** `pnpm icp:deploy` also serves the
+  production build from an asset canister, with the Content-Security-Policy,
+  `Cross-Origin-Opener-Policy` and raw-domain redirect of
+  [Deploy to a frontend canister](/v4/guides/deploy/).
 
 The guides behind it: [Auth](/v4/guides/auth/) for the two sign-in sources,
 [Writes](/v4/guides/writes/) for transfers and optimistic updates, and

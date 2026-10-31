@@ -91,6 +91,10 @@
         {
           "label": "The Vite plugin",
           "page": "guides/vite-plugin"
+        },
+        {
+          "label": "Deploy to a frontend canister",
+          "page": "guides/deploy"
         }
       ]
     },
