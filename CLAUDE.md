@@ -59,10 +59,15 @@ Not in this tree: `@ic-reactor/parser`, `@ic-reactor/codegen` and
 
 ## Docs
 
-The docs site in `docs/` is served under `/v4/` (`base` in
-`docs/astro.config.mjs`); `/v3/` is rebuilt from the `v3` branch.
-`.github/workflows/docs.yml` deploys both lines together from `main`
-(`scripts/assemble-docs-site.mjs` assembles the site).
+The docs site in `docs/` is built under `/v4/` (`base` in
+`docs/astro.config.mjs`). Its pages are a module of b3pay.net, served at
+`https://b3pay.net/docs/ic-reactor/` (`b3pay-module.json`,
+`.github/workflows/b3pay-site.yml`). `.github/workflows/docs.yml` deploys
+ic-reactor.b3pay.net from `main` (`scripts/assemble-docs-site.mjs` assembles
+it): `/v3/`, rebuilt from the `v3` branch, and `/v2/` stay there, and each
+`/v4/` and `/candid-core/` page sends readers to its page on b3pay.net. The
+deploy stops when b3pay.net does not serve IC Reactor's docs, with the API
+reference, or Meant's.
 
 ## Development
 

@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/dfinity/icp-cli/refs/tags/v1.2.0/docs/schemas/icp-yaml-schema.json
 
-# The wallet's local backend, for the icp-cli 1.2.0 this example installs
+# The wallet's local canisters, for the icp-cli 1.2.0 this example installs
 # (`pnpm icp:start`, `pnpm icp:deploy`, `pnpm icp:stop`).
 
 canisters:
@@ -14,6 +14,18 @@ canisters:
         package: backend
         candid: backend/backend.did
         locked: true
+
+  # The app itself, built by Vite and served by an asset canister with the
+  # headers of public/.ic-assets.json5, at http://frontend.local.localhost:8000.
+  # Its ic_env cookie names the backend, as the Vite plugin's does in dev.
+  - name: frontend
+    recipe:
+      type: "@dfinity/asset-canister@v2.3.0"
+      configuration:
+        version: 0.30.2
+        build:
+          - pnpm run build
+        dir: dist
 
 networks:
   # The implicit `local` network, with its network launcher pinned like

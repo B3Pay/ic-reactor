@@ -17,9 +17,10 @@ header names the rule it shows, and each has tests.
 | 4   | Balance with `skipToken` while signed out and `refetchInterval` spread onto the client's options                                                                                                                                                         | `src/Balance.tsx`                                                                      | `pnpm faucet <principal>` in a terminal: the balance changes within 3 s                                |
 | 5   | Send ICP: `parseUnits` input, the fee, a `memo` per transfer and `created_at_time`, typed `canister_err`, and `mayHaveExecuted` (outcome unknown, the client's re-read, "send the same transfer again", offered by `client.resendOf` to its sender only) | `src/SendIcp.tsx`, `src/transfer.ts`                                                   | Send; type `1e3` (refused before sending); send more than you hold (`InsufficientFunds`)               |
 | 6   | Profile reads and writes as the caller; a write while signed out is refused `unauthenticated`                                                                                                                                                            | `src/Profile.tsx`                                                                      | Save a name; save a long one (the backend's `Err`); sign out and save                                  |
-| 7   | Optimistic add and remove that keep the client's `onMutate` and `onSettled`, rolled back on `canister_err` or a failure                                                                                                                                  | `src/optimistic-contacts.ts`, `src/AddressBook.tsx`                                    | Add a contact; add the same name in another case (`DuplicateName`: shown, then rolled back)            |
+| 7   | Optimistic add and remove that keep the client's `onMutate` and `onSettled`, rolled back on `canister_err` or a failure; the list is a certified read, since a contact decides where a payment goes                                                      | `src/optimistic-contacts.ts`, `src/AddressBook.tsx`, `src/use-canisters.ts`            | Add a contact; add the same name in another case (`DuplicateName`: shown, then rolled back)            |
 | 8   | Paying a contact: which reads the write changes (the ledger's, not the backend's)                                                                                                                                                                        | `src/SendToContact.tsx`                                                                | "Pay": your balance and the contact's both change                                                      |
 | 9   | A production build of the same code                                                                                                                                                                                                                      | `vite.config.ts`                                                                       | `pnpm build && pnpm preview`, http://localhost:5185                                                    |
+| 10  | The production build on an asset canister: a Content-Security-Policy that runs the app's own files only, a `Cross-Origin-Opener-Policy` that keeps the II window, the `hardened` headers, and the raw host redirected                                    | `public/.ic-assets.json5`, `icp.yaml`                                                  | `pnpm icp:deploy`, then http://frontend.local.localhost:8000 (and `curl -sI` on it)                    |
 
 The unknown outcome of scenario 5 and the trap of scenario 7 need a fault a
 local network does not make on demand: the tests inject them.
@@ -34,7 +35,7 @@ From the repository root, `pnpm install` and `pnpm build`, then:
 ```sh
 cd examples/vite-wallet
 pnpm icp:start                   # local network on port 8000, with II and the NNS
-pnpm icp:deploy                  # builds and deploys the backend
+pnpm icp:deploy                  # builds and deploys the backend and the app
 pnpm faucet <principal> [amount] # sends local ICP (10 by default) to a principal
 pnpm dev                         # http://localhost:5175
 pnpm icp:stop                    # when you are done
@@ -47,6 +48,13 @@ Dev accounts live in the tab's sessionStorage: a reload keeps them, a new tab
 starts with none. The balance is read again every 3 s while the tab is
 visible (TanStack Query pauses `refetchInterval` in a hidden tab, and reads
 again when it is shown).
+
+`pnpm icp:deploy` also builds the app and serves it from an asset canister
+at http://frontend.local.localhost:8000, with the response headers of
+`public/.ic-assets.json5` (scenario 10); the docs guide "Deploy to a
+frontend canister" says what each one does. Sign in there with a dev
+account: the asset canister's `ic_env` cookie names no Internet Identity, so
+the II button opens mainnet's, not the local one.
 
 "Sign in with Internet Identity" opens the local II in a new window. It is a
 test build that makes no passkey: choose Create, then "Create with passkey",

@@ -92,13 +92,15 @@ network the client calls:
 
 The client picks the identity provider by these rules, in order:
 
-1. The `ic_env` cookie is trusted (see [The client](/v4/guides/client/)) and
-   names `INTERNET_IDENTITY_PROVIDER`: that URL, with the cookie's
+1. The `ic_env` cookie is believed in full, on a local page or with
+   `allowEnvConfig: true` (see [The client](/v4/guides/client/)), and names
+   `INTERNET_IDENTITY_PROVIDER`: that URL, with the cookie's
    `PUBLIC_CANISTER_ID:internet_identity`, or Internet Identity's own id,
    `rdmx6-jaaaa-aaaaa-aaadq-cai`, when it names none. The
    [Vite plugin](/v4/guides/vite-plugin/) writes this cookie in dev and
-   preview.
-2. The trusted cookie names an `internet_identity` canister but no URL: the
+   preview. On a canister's own `<id>.icp0.io` page the cookie is believed
+   for canister ids only, so neither this rule nor the next applies there.
+2. That cookie names an `internet_identity` canister but no URL: the
    project deploys its own Internet Identity, whose sign-in page cannot be
    derived from its id. No provider.
 3. The network is `"local"`, or an object whose host is local: icp-cli's
@@ -846,9 +848,16 @@ another identity. What that means in practice:
   nobody is signed in, the client refuses it before sending:
   `kind: "unauthenticated"`, code `anonymous_write`.
 - **Data.** After a sign-in, a sign-out or a switch, the new keys are empty
-  until they load. Do not use `placeholderData: keepPreviousData` or an
-  `initialData` taken from another key: it would show one principal's data to
-  another.
+  until they load. A sign-out, an expired session or a switch also removes
+  the previous principal's reads from the client's cache before your
+  components re-render, so the next person in the same browser cannot read
+  them back. The anonymous reads stay. Do not use
+  `placeholderData: keepPreviousData` or an `initialData` taken from another
+  key: it would show one principal's data to another. A persister restores
+  what it saved, whoever is signed in by then: on a page people share,
+  persist only the anonymous reads, with a
+  `dehydrateOptions.shouldDehydrateQuery` that checks that the key's caller
+  (its third segment) is `2vxsx-fae`.
 
 A read that waits for a user uses `skipToken` (see
 [Reads](/v4/guides/reads/)):

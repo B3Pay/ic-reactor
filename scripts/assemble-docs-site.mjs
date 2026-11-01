@@ -4,7 +4,12 @@
  *
  * A Pages deploy replaces the site, so every deploy carries every line:
  *
- * - `/v4/`: the 4.x docs, built from this commit (main).
+ * - `/v4/`: the 4.x docs, built from this commit (main). With
+ *   `--v4-moved-to`, they are served at that address instead (b3pay.net's
+ *   IC Reactor module, which .github/workflows/b3pay-site.yml publishes), and
+ *   `/v4/` keeps, for each page of the build, a page that sends the reader to
+ *   the same page there, with the build's Markdown copies and `llms.txt`
+ *   beside them.
  * - `/v3/`: the 3.x docs. By default (`--v3-line`) they are rebuilt from the
  *   `v3` branch on every deploy, with that branch's `llms.txt` and
  *   `llms-full.txt` beside them. Without `--v3-line`, `/v3/` must already be
@@ -16,8 +21,11 @@
  *   (B3Pay/Meant, `node website/build.mjs`) and published as it was
  *   built. It has no versions of its own here: the deploy builds that
  *   repository's `main`. Its pages link each other and their assets
- *   relatively, so they work under any prefix.
- * - the root: `index.html` and `404.html` send readers to `/v4/`,
+ *   relatively, so they work under any prefix. With
+ *   `--candid-core-moved-to`, `/candid-core/` keeps only a page for each of
+ *   them that sends the reader to that page at the new address.
+ * - the root: `index.html` sends readers to `/v4/`, or where the 4.x docs
+ *   moved, `404.html` sends a miss to the line it is under or to `/v4/`,
  *   `llms.txt` is the 4.x consumer guide (`packages/core/llms.txt`), and
  *   `llms-full.txt` is whatever `--root-llms-full` names (the frozen 3.x file
  *   by default), or absent.
@@ -30,7 +38,9 @@
  *     --existing existing-pages --v4 docs/dist --v3-line v3-line \
  *     --candid-core candid-core-site \
  *     --root-llms packages/core/llms.txt --root-llms-full v3-line/llms-full.txt \
- *     --cname CNAME
+ *     --cname CNAME \
+ *     --v4-moved-to https://b3pay.net/docs/ic-reactor/ \
+ *     --candid-core-moved-to https://b3pay.net/docs/meant/
  */
 import {
   cpSync,
@@ -43,7 +53,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs"
-import { basename, join, relative, sep } from "node:path"
+import { basename, dirname, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
 
@@ -153,6 +163,106 @@ const NOT_FOUND = `<!doctype html>
 </html>
 `
 
+const escapeAttribute = (text) =>
+  text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")
+
+/**
+ * A page that sends the reader to `href`, the query and #fragment kept. The
+ * script goes first, so they survive; the refresh is for a reader without
+ * JavaScript, and the canonical link tells a search engine where the page is
+ * now.
+ */
+export function movedPage(href) {
+  const attribute = escapeAttribute(href)
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Moved</title>
+    <link rel="canonical" href="${attribute}" />
+    <script>
+      window.location.replace(${JSON.stringify(href)} + window.location.search + window.location.hash);
+    </script>
+    <meta http-equiv="refresh" content="0; url=${attribute}" />
+  </head>
+  <body>
+    <p>This page has moved to <a href="${attribute}">${attribute}</a>.</p>
+  </body>
+</html>
+`
+}
+
+/**
+ * The address a line moved to: https, with no query or fragment, and a path
+ * ending in "/", since each page's address is resolved against it.
+ */
+function movedAddress(value, option) {
+  let url
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error(`${option} must be an address, not ${value}`)
+  }
+  if (
+    url.protocol !== "https:" ||
+    !url.pathname.endsWith("/") ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error(
+      `${option} must be an https address whose path ends in "/", not ${value}`
+    )
+  }
+  return url
+}
+
+function* files(dir, base = dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) yield* files(path, base)
+    else if (entry.isFile()) yield relative(base, path).split(sep).join("/")
+  }
+}
+
+/**
+ * Writes `to` as the pages of the build `from` that moved: each HTML page
+ * becomes a page sending the reader to `target(path)`, the files `keep`
+ * accepts are copied as built, and nothing else is published.
+ */
+function writeMoved(from, to, target, keep = () => false) {
+  rmSync(to, { recursive: true, force: true })
+  for (const path of files(from)) {
+    const file = join(to, ...path.split("/"))
+    if (path.endsWith(".html")) {
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(file, movedPage(target(path)))
+    } else if (keep(path)) {
+      mkdirSync(dirname(file), { recursive: true })
+      cpSync(join(from, ...path.split("/")), file)
+    }
+  }
+}
+
+/**
+ * Where a page of the 4.x build is in b3pay.net's IC Reactor module: the
+ * same path, but for the docs home and `ic-reactor/`, whose page is the
+ * module's home (b3pay-module.json leaves out `index.mdx` and `404.mdx` and
+ * renames `ic-reactor/index.mdx`).
+ */
+export function v4MovedTarget(base, path) {
+  const route = path.replace(/(^|\/)index\.html$/, "$1")
+  if (route === "" || route === "404.html" || route === "ic-reactor/") {
+    return base.href
+  }
+  return new URL(route, base).href
+}
+
+/** Where a page of Candid Core's flat site is at its new address. */
+export function candidCoreMovedTarget(base, path) {
+  if (path === "index.html" || path === "404.html") return base.href
+  return new URL(path, base).href
+}
+
 function copyDir(from, to) {
   rmSync(to, { recursive: true, force: true })
   mkdirSync(to, { recursive: true })
@@ -177,6 +287,8 @@ function* pages(dir) {
  * @param {string} options.rootLlms the file served at `/llms.txt`
  * @param {string} [options.rootLlmsFull] the file served at `/llms-full.txt`; omit to serve none
  * @param {string} [options.cname] the CNAME file to keep
+ * @param {string} [options.v4MovedTo] where the 4.x docs are served instead of `/v4/`
+ * @param {string} [options.candidCoreMovedTo] where Candid Core's site is served instead of `/candid-core/`
  * @param {(line: string) => void} [options.log]
  */
 export function assembleSite({
@@ -188,11 +300,17 @@ export function assembleSite({
   rootLlms,
   rootLlmsFull,
   cname,
+  v4MovedTo,
+  candidCoreMovedTo,
   log = console.log,
 }) {
   if (!out || !v4 || !candidCore || !rootLlms) {
     throw new Error("assembleSite needs out, v4, candidCore and rootLlms")
   }
+  const v4Moved = v4MovedTo && movedAddress(v4MovedTo, "--v4-moved-to")
+  const candidCoreMoved =
+    candidCoreMovedTo &&
+    movedAddress(candidCoreMovedTo, "--candid-core-moved-to")
   if (existsSync(out) && readdirSync(out).length > 0) {
     throw new Error(`${out} is not empty`)
   }
@@ -239,11 +357,23 @@ export function assembleSite({
     log("Keeping the static /v3/ of the existing site.")
   }
 
-  // The 4.x line, built from this commit.
+  // The 4.x line, built from this commit: its pages, or, once they have
+  // moved, a page for each that sends the reader there. The Markdown copies
+  // and llms.txt stay, for the tools that fetch them, which a page that
+  // redirects cannot serve.
   if (!existsSync(join(v4, "index.html"))) {
     throw new Error(`${v4} holds no built docs (no index.html)`)
   }
-  copyDir(v4, join(out, "v4"))
+  if (v4Moved) {
+    writeMoved(
+      v4,
+      join(out, "v4"),
+      (path) => v4MovedTarget(v4Moved, path),
+      (path) => /\.(md|txt)$/.test(path)
+    )
+  } else {
+    copyDir(v4, join(out, "v4"))
+  }
 
   // Candid Core's site. The 4.x pages link it, so a site without one is
   // refused; the link check (docs/scripts/check-links.mjs) is what checks
@@ -253,7 +383,13 @@ export function assembleSite({
       `${candidCore} holds no built Candid Core site (no index.html)`
     )
   }
-  copyDir(candidCore, join(out, CANDID_CORE_DIR))
+  if (candidCoreMoved) {
+    writeMoved(candidCore, join(out, CANDID_CORE_DIR), (path) =>
+      candidCoreMovedTarget(candidCoreMoved, path)
+    )
+  } else {
+    copyDir(candidCore, join(out, CANDID_CORE_DIR))
+  }
 
   // The site root's guides.
   cpSync(rootLlms, join(out, "llms.txt"))
@@ -284,11 +420,19 @@ export function assembleSite({
 
   if (cname && existsSync(cname)) cpSync(cname, join(out, "CNAME"))
 
-  writeFileSync(join(out, "index.html"), ROOT_INDEX)
+  writeFileSync(
+    join(out, "index.html"),
+    v4Moved ? movedPage(v4Moved.href) : ROOT_INDEX
+  )
   writeFileSync(join(out, "404.html"), NOT_FOUND)
 
+  const moved = [
+    v4Moved && `/v4/ to ${v4Moved.href}`,
+    candidCoreMoved && `/${CANDID_CORE_DIR}/ to ${candidCoreMoved.href}`,
+  ].filter(Boolean)
   log(
     `Assembled ${out}: /${LINES.join("/, /")}/, /${CANDID_CORE_DIR}/, /llms.txt from ${basename(rootLlms)}` +
+      (moved.length ? `, moved: ${moved.join(", ")}` : "") +
       (rootLlmsFull
         ? `, /llms-full.txt from ${rootLlmsFull}`
         : ", no /llms-full.txt")
@@ -317,6 +461,8 @@ if (isMain()) {
       "root-llms": { type: "string" },
       "root-llms-full": { type: "string" },
       cname: { type: "string" },
+      "v4-moved-to": { type: "string" },
+      "candid-core-moved-to": { type: "string" },
     },
   })
   try {
@@ -329,6 +475,8 @@ if (isMain()) {
       rootLlms: values["root-llms"],
       rootLlmsFull: values["root-llms-full"],
       cname: values.cname,
+      v4MovedTo: values["v4-moved-to"],
+      candidCoreMovedTo: values["candid-core-moved-to"],
     })
   } catch (error) {
     console.error(`::error::${error.message}`)

@@ -1,7 +1,9 @@
 // Scenario 7: the address book, with optimistic adds and removes.
 //
-// The list is `useQuery(client.queryOptions(backend, "contacts"))`, skipped
-// while signed out. Adding or removing a contact changes it at once
+// The list is `useQuery(client.queryOptions(certifiedBackend, "contacts"))`,
+// skipped while signed out. It is a certified read: a contact decides where a
+// payment goes, so one replica's word is not enough (use-canisters.ts).
+// Adding or removing a contact changes it at once
 // (optimistic-contacts.ts); a refusal from the backend (a duplicate or an
 // invalid name) or a failure puts it back as it was, and says why. Each row
 // can be paid (scenario 8, SendToContact.tsx).
@@ -18,11 +20,15 @@ import { useCanisters } from "./use-canisters.ts"
 
 export function AddressBook() {
   const client = useClient()
-  const { backend } = useCanisters()
+  const { certifiedBackend } = useCanisters()
   const { status } = useAuth()
   const signedIn = status === "signed-in"
   const contacts = useQuery(
-    client.queryOptions(backend, "contacts", signedIn ? undefined : skipToken)
+    client.queryOptions(
+      certifiedBackend,
+      "contacts",
+      signedIn ? undefined : skipToken
+    )
   )
   const add = useAddContact()
   const remove = useRemoveContact()

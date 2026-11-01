@@ -83,13 +83,40 @@ development `ReactorProvider` throws when it is handed such a client.
 
 Deploying to mainnet (`icp deploy -e ic`): with `"env"`, a canister's own
 `<id>.icp0.io` (or `<id>.raw.icp0.io`) page believes its cookie's canister
-ids (a public suffix: no sibling can set it), never its root key. On
-`<id>.ic0.app` and custom domains `{ name }` does not resolve. For a page that
-works everywhere, name canisters `{ id: import.meta.env.VITE_BACKEND_ID }`,
+ids (a public suffix: no sibling can set it) and nothing else: never its root
+key or its `INTERNET_IDENTITY_PROVIDER` (sign-in stays mainnet's). Off a local
+page, when the page receives more than one `ic_env` cookie and they differ,
+none is believed (`{ name }` gets `untrusted_host`). On `<id>.ic0.app` and
+custom domains `{ name }` does not resolve. For a mainnet app, which should not
+depend on the cookie, and a page that works everywhere, name canisters
+`{ id: import.meta.env.VITE_BACKEND_ID }`,
 with the local id in `.env.development` and the mainnet id
 (`icp canister status backend -e ic -i`) in `.env.production`. Never set
 `allowEnvConfig: true` on `ic0.app`; on a custom domain only when every
 subdomain is yours.
+
+Serve the frontend canister with security headers. For DFINITY's asset
+canister, put `.ic-assets.json5` in Vite's `public/` (icp-cli's static-site
+recipe reads the same headers from a `_headers` file):
+
+```json5
+[
+  {
+    match: "**/*",
+    security_policy: "hardened",
+    headers: {
+      "Content-Security-Policy": "default-src 'none'; script-src 'self'; connect-src 'self' https://icp-api.io; img-src 'self' data:; style-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
+    allow_raw_access: false,
+  },
+]
+```
+
+A `Cross-Origin-Opener-Policy` of `same-origin` cuts off the Internet
+Identity window, so sign-in never completes. The HTTP gateway checks a page
+against the canister's certified state on `<id>.icp0.io`, not on
+`<id>.raw.icp0.io`: never link to the raw domain.
 
 `createClient` throws a `TypeError` for an option it does not have (`host`
 goes inside `network`), an `allowEnvConfig` or `fetchRootKey` that is not a
@@ -112,7 +139,9 @@ Who calls (exactly one):
   `signIn()` rejects with the error. `network`
   is `{ agentOptions, identityProvider? }`: the client's host and root key
   (and its `fetch`, when you gave one), and the Internet Identity to sign in
-  with (the `ic_env` cookie's, or icp-cli's built-in one for a local host). Absent on a mainnet client, it
+  with (that of an `ic_env` cookie believed in full, on a local page or with
+  `allowEnvConfig: true`, never a canister's `icp0.io` page's; or icp-cli's
+  built-in one for a local host). Absent on a mainnet client, it
   means mainnet's. Absent on any other network (a project that deploys its
   own `internet_identity`, `"env"` on a local page with no
   `INTERNET_IDENTITY_PROVIDER` in the cookie, a replica with its own root
@@ -315,6 +344,8 @@ Keys are `["ic-reactor", network, caller, canisterId, method, args]`, so one
 principal's cached answer is never served to another: after a sign-in,
 sign-out or switch, the new caller's key is empty (`data` is `undefined`)
 until it loads, and a read made for the previous caller never lands in it.
+A sign-out, an expired session or a switch also removes the previous
+caller's reads from the cache; the anonymous reads stay.
 Keep it so: build the options in render from that render's `useClient()`,
 listing it in the dependencies of any `useMemo` or effect built from it
 (React Compiler does), and add nothing that carries data across keys
@@ -344,7 +375,13 @@ rule, checked at run time: the value for one argument, a tuple for several,
 `invalid_args`). `mutationOptions`, `queryKey` and `resendOf` take
 `<A, any>` the same way; for a generic `A` only `queryOptions` widens the
 variables, so cast them for the other three.
-The target `{ id, certified: true }` certifies `query` replies.
+The target `{ id, certified: true }` certifies `query` replies: they are sent
+as replicated calls and checked against the subnet's certificate, where a plain
+query's reply is signed by the one replica that answered. A certified read
+costs what an update costs (as long, and the canister pays cycles). Certify the
+reads that decide where value goes or what a person approves (a recipient, a
+deposit address, an allowance, the details shown before someone confirms) and
+read the rest plainly, through two canister objects of one id.
 
 ## Writes
 
@@ -568,3 +605,6 @@ function Profile() {
 - Send a write as the anonymous identity: pass `identity: "anonymous"`, never
   an `AnonymousIdentity` you were handed.
 - Treat every failed write as "not executed": read `mayHaveExecuted`.
+- Pay, or ask a person to approve, a value a plain query read: read
+  recipients, deposit addresses, allowances and approval details through a
+  `certified: true` canister.

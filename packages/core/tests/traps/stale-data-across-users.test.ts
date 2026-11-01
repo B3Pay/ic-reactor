@@ -14,9 +14,10 @@
  *
  * The guarantee: a read's key holds the principal that calls, so after a
  * sign-in, a switch or a sign-out the new caller's key is empty until it
- * loads, a read made for a user is sent as that user and lands under that
- * user's key, and once the caller has changed the read made for the previous
- * one is cancelled instead of being sent as the new one. This file plays a
+ * loads, and a read made for a user is sent as that user and never lands
+ * under another's key. Once the caller has changed, the previous one's reads
+ * leave the cache, and a read made for them is cancelled instead of being
+ * sent as the new one. This file plays a
  * session through real TanStack Query observers (two views of a private
  * ledger: the caller's own balance, which a component rebuilds with the
  * caller, and Alice's, a fixed account that every user of the page looks at)
@@ -126,15 +127,16 @@ it("never shows the balance of one principal to another through a sign-in, a swi
   expect(client.caller()).toBe(BOB)
   await showing(500_000n, 0n)
 
-  // Alice's slow read is answered, to the key it was made for: Bob's views
-  // are as they were.
+  // Alice's slow read is answered: Bob's views are as they were, and her
+  // answer stays out of the cache, which dropped her reads when Bob became
+  // current.
   release()
   await eventually(() =>
     expect(client.queryClient.isFetching({ queryKey: aliceKey })).toBe(0)
   )
   expect(views.mine.getCurrentResult().data).toBe(500_000n)
   expect(views.alices.getCurrentResult().data).toBe(0n)
-  expect(client.queryClient.getQueryData(aliceKey)).toBe(1_000_000n)
+  expect(client.queryClient.getQueryData(aliceKey)).toBeUndefined()
 
   // A read of Alice's key that starts now runs the function made for Alice.
   // It must not go out as Bob, whose answer, zero, would sit under her key.
@@ -143,7 +145,7 @@ it("never shows the balance of one principal to another through a sign-in, a swi
     .fetchQuery({ ...aliceOptions, staleTime: 0 })
     .catch((error: unknown) => error)
   expect(l.sent()).toHaveLength(sentBefore)
-  expect(client.queryClient.getQueryData(aliceKey)).toBe(1_000_000n)
+  expect(client.queryClient.getQueryData(aliceKey)).toBeUndefined()
 
   // Back to Alice, and then to nobody.
   auth.switchTo(1)

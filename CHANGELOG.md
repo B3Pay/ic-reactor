@@ -18,8 +18,12 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 ## Unreleased
 
 This release moves ic-reactor 4 onto Meant, the new name of the candid-core
-pair. Both are pinned exactly, where 4.0.0 required `@candid-core/schema`
-`0.4.0` and `@candid-core/cli` `0.3.0`:
+pair, and changes two things `@ic-reactor/core` does at run time: what the
+client keeps after the caller changes, and what it believes an `ic_env`
+cookie for. Each of those entries, under `@ic-reactor/core` below, says
+what an app does about it. Both packages of the pair are pinned exactly,
+where 4.0.0 required `@candid-core/schema` `0.4.0` and `@candid-core/cli`
+`0.3.0`:
 
 - `@ic-reactor/core`: peer `@meantjs/schema` at exactly `0.6.0`;
 - `@ic-reactor/vite-plugin`: peer `@meantjs/cli` at exactly `0.5.0`, the
@@ -31,11 +35,11 @@ one command, `meant`, where it had `candid-core-cli`. The `@candid-core/*`
 packages get no new version. Meant's release notes say what each of the four
 versions changed; what reaches an app through ic-reactor is below.
 
-No `@ic-reactor/*` export is added or removed (core 13,
-`@ic-reactor/core/testing` 2, react 4, vite-plugin 2), and no call, key or
-error changes at run time.
+The repin adds or removes no `@ic-reactor/*` export (core 13,
+`@ic-reactor/core/testing` 2, react 4, vite-plugin 2), and changes no call,
+key or error at run time.
 
-What an app on 4.0.0 does:
+What an app on 4.0.0 does for the repin:
 
 1. Bump the three `@ic-reactor/*` packages and move to the new pair, then
    remove the old one. The new names are new packages to npm, so each goes in
@@ -82,12 +86,45 @@ What an app on 4.0.0 does:
 
 ### @ic-reactor/core
 
+#### Changed
+
 - Peer `@meantjs/schema` at exactly `0.6.0`, where it was
   `@candid-core/schema` at exactly `0.4.0`. The package imports the schema
   runtime under that name, in its JavaScript and its types.
 - The README and `llms.txt` name the new pair and `meant gen`.
+- A sign-out, an expired session or a switch of account now removes the
+  previous principal's reads from the client's `QueryClient`, before any
+  listener, or any component, hears of the change. Their keys already kept
+  them from the new caller's reads. Now they also leave memory, where
+  devtools, a read by key prefix (`getQueriesData({ queryKey: ["ic-reactor"] })`)
+  or a persister that saves the cache could still reach them in a shared
+  browser. The anonymous reads and the app's own queries stay. Migration:
+  none for an app that builds its options from `useClient()`. Switching back
+  to an account reads its data again instead of showing a cached copy.
+- On a canister's own `<id>.icp0.io` page, where the client believes the
+  `ic_env` cookie for canister ids without `allowEnvConfig`, it now takes
+  canister ids from it and nothing else. The `auth` factory is no longer
+  handed the cookie's `INTERNET_IDENTITY_PROVIDER` and
+  `PUBLIC_CANISTER_ID:internet_identity` there, so
+  `new AuthClient(network)` signs in with mainnet's Internet Identity.
+  Migration: an app on `icp0.io` that signs in with its own Internet Identity
+  names it in the factory,
+  `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`,
+  or writes `allowEnvConfig: true`.
+- Off a local page, when a page receives more than one `ic_env` cookie and
+  they differ, the client believes none of them: a `{ name }` target is
+  refused with the reason `untrusted_host` (a call on it rejects
+  `canister_id_unresolved`), and neither their root key nor their Internet
+  Identity is taken. Copies that are the same are believed, and a local page
+  reads the first, as before. Migration: none for an app that bakes its
+  canister ids into the build, as a mainnet app should. An app that names
+  canisters on `icp0.io` can be refused after a deploy that changes the
+  cookie, on a page whose browser still holds the previous copy for another
+  directory, until a page in that directory is loaded again.
 
 ### @ic-reactor/vite-plugin
+
+#### Changed
 
 - Peer `@meantjs/cli` at exactly `0.5.0`, where it was `@candid-core/cli` at
   exactly `0.3.0`. The plugin resolves `@meantjs/cli` from the app and runs
@@ -102,8 +139,34 @@ What an app on 4.0.0 does:
 - Every page, the README of each package and the skill name `@meantjs/schema`,
   `@meantjs/cli` and `meant gen` where they named the candid-core pair and
   `candid-core-cli gen`. The home page, its library card and the library
-  switcher call the library Meant; its pages are still served at
-  `/candid-core/` until they move.
+  switcher call the library Meant.
+- The auth guide's "Data" note says what a sign-out removes from the cache,
+  and how to keep a persister from restoring a signed-in principal's reads on
+  a shared page. The consumer guide (`packages/core/llms.txt`) says the same.
+- The client guide says what the cookie is believed for on `<id>.icp0.io`,
+  and what copies of it that differ are believed for, and tells a mainnet app
+  to bake its canister ids into the build. The auth guide's identity-provider
+  rules, the Vite plugin guide and `packages/core/llms.txt` say the same.
+- The reads guide says what to certify: a read whose value decides where
+  value goes or what a person approves (a recipient, a deposit address, an
+  allowance, the details someone confirms), through a canister made with
+  `certified: true`, and the rest plainly. It says what a certified read
+  costs (as long as an update call, and cycles from the canister), and how
+  two canister objects of one canister keep the two apart. The consumer
+  guide (`packages/core/llms.txt`), its "Do not" list and the `ic-reactor`
+  skill say the same.
+- A "Deploy to a frontend canister" guide: the response headers to serve the
+  app with from DFINITY's asset canister (`.ic-assets.json5`) or from icp-cli's
+  static-site recipe (`_headers`), and what each one does. A
+  Content-Security-Policy that lets the page run its own files only and call
+  its own origin and `https://icp-api.io`, a `Cross-Origin-Opener-Policy` of
+  `same-origin-allow-popups` (`same-origin` cuts off the Internet Identity
+  window, and the sign-in never completes), the asset canister's `hardened`
+  policy, and `allow_raw_access: false`. It says what the HTTP gateway checks
+  on `<id>.icp0.io` and not on `<id>.raw.icp0.io`, why a raw origin must not
+  be an Internet Identity alternative origin, and how to let a copy button
+  write to the clipboard. The consumer guide (`packages/core/llms.txt`) gives
+  the same `.ic-assets.json5`.
 
 ### Examples (not published)
 
@@ -111,9 +174,47 @@ What an app on 4.0.0 does:
   `gen` scripts run `meant gen`, and their modules are regenerated. Canister
   Studio imports the compiler library from `@meantjs/cli`. Installed from
   npm (`pnpm test:examples:published`), they wait for this release.
+- The Vite wallet reads its address book certified, through a second
+  canister object of the backend made with `certified: true`: a contact
+  decides where a payment goes. Its optimistic adds and removes find the
+  list by that read's key, and a test checks the list is read as a
+  replicated call.
+- `vite-wallet` deploys the app itself too: `pnpm icp:deploy` builds it and
+  uploads it to an asset canister, `frontend`, served at
+  http://frontend.local.localhost:8000 with the guide's headers
+  (`public/.ic-assets.json5`, scenario 10).
 
 ### CI (not published)
 
+- The e2e suite deploys the guide's headers to both asset canisters, with the
+  recipe versions the guide names, and checks what they serve through the
+  local HTTP gateway (`e2e/src/frontend-headers.test.ts`, seven more cases):
+  every header, certified; the asset canister's raw host redirected with its
+  path and query; and the guide's copy of `.ic-assets.json5` and its
+  `_headers` the same as what was deployed.
+- The docs also publish to b3pay.net, as `b3pay-module.json` describes: the
+  pages, the API reference and `packages/core/llms.txt`, served at
+  `/docs/ic-reactor/` once b3pay.net's registry reads this repository's
+  `b3pay-site` branch. The new `Docs on b3pay.net` workflow builds and checks
+  the module with b3pay.net's reusable workflow on pull requests that touch
+  the docs, and on `main` commits it to that branch. The `/v4/` site and its
+  deploy are unchanged. `pnpm -C docs run api` writes the API reference alone,
+  and its files are now named in lowercase, as their routes are; no address
+  changes.
+- `Docs on b3pay.net` runs b3pay.net's reusable workflow from that site's
+  `main` (67911ef), and checks the module with the site's tools from `main`,
+  now that the folder items its sidebar lists are there.
+- ic-reactor.b3pay.net keeps the 3.x and 2.x docs, and sends readers of the
+  4.x docs and of Candid Core's pages to b3pay.net: each page under `/v4/`
+  and `/candid-core/` moves to the same page at
+  `https://b3pay.net/docs/ic-reactor/` or `https://b3pay.net/docs/meant/`,
+  with its query and fragment, and `/` goes to
+  `https://b3pay.net/docs/ic-reactor/`. The 4.x build's Markdown copies and
+  `llms.txt` stay under `/v4/`, and `/llms.txt` is still the 4.x guide.
+  `scripts/assemble-docs-site.mjs` takes `--v4-moved-to` and
+  `--candid-core-moved-to`, and the deploy stops before it publishes when
+  b3pay.net does not serve IC Reactor's docs, with the API reference, or
+  Meant's.
 - The `v4` branch, where 4 was developed until the 4.0 GA flip, is retired.
   CI, e2e, CodeQL, the dependency review and the two published-package checks
   run on `main` only, and `verify-test-fails` takes its default base from

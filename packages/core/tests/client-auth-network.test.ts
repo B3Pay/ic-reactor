@@ -211,22 +211,48 @@ describe("the network an auth factory is handed", () => {
     })
   })
 
-  it("takes an icp0.io canister's cookie provider over https: only, with its internet_identity", () => {
-    const page = "https://bkyz2-fmaaa-aaaaa-qaaaq-cai.icp0.io"
-    stubPage(page, {
-      cookie: cookieWithProvider("http://id.example.com/authorize"),
-    })
-    expect(handedTo("env").identityProvider).toBeUndefined()
+  it.each([
+    ["<id>.icp0.io", "https://bkyz2-fmaaa-aaaaa-qaaaq-cai.icp0.io"],
+    ["<id>.raw.icp0.io", "https://bkyz2-fmaaa-aaaaa-qaaaq-cai.raw.icp0.io"],
+  ])(
+    "takes no provider from a cookie believed for canister ids only, on %s",
+    (_, page) => {
+      // Who signs a person in is not a canister id: the page keeps
+      // AuthClient's defaults, mainnet's Internet Identity.
+      for (const provider of [
+        "https://id.example.com/authorize",
+        "http://id.example.com/authorize",
+      ]) {
+        stubPage(page, {
+          cookie: cookieWithProvider(provider, {
+            "PUBLIC_CANISTER_ID:internet_identity": PROJECT_II,
+          }),
+        })
+        for (const network of ["env", "ic"] as const) {
+          expect(handedTo(network).identityProvider).toBeUndefined()
+        }
+      }
+    }
+  )
 
+  it("takes an icp0.io canister's cookie provider over https: with allowEnvConfig: true, which believes the whole cookie", () => {
+    const page = "https://bkyz2-fmaaa-aaaaa-qaaaq-cai.icp0.io"
     stubPage(page, {
       cookie: cookieWithProvider("https://id.example.com/authorize", {
         "PUBLIC_CANISTER_ID:internet_identity": PROJECT_II,
       }),
     })
-    expect(handedTo("env").identityProvider).toEqual({
+    expect(handedTo("env", { allowEnvConfig: true }).identityProvider).toEqual({
       authorizeUrl: "https://id.example.com/authorize",
       canisterId: PROJECT_II,
     })
+
+    stubPage(page, {
+      cookie: cookieWithProvider("http://id.example.com/authorize"),
+    })
+    expect(
+      handedTo("env", { allowEnvConfig: true }).identityProvider
+    ).toBeUndefined()
   })
 
   it("ignores a trusted cookie's http: provider on a page that is not local, and takes an https: one", () => {

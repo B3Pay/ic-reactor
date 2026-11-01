@@ -663,11 +663,12 @@ The plugin warns once when a page is loaded by a host that is not loopback.
 See [The client](/v4/guides/client/#env-off-localhost). Nothing in the code names a host, a port
 or an id. Deployed with `icp deploy -e ic`, `"env"` still sends through the
 page's origin on `<id>.icp0.io`, where the client believes the asset
-canister's cookie for canister ids, so `{ name }` resolves. On `<id>.ic0.app`
-and on a custom domain it does not: give the canister an `{ id }` baked in at
-build time. `allowEnvConfig: true` is safe on `<id>.icp0.io`, a public suffix,
-and refused on `ic0.app`, because every other canister's page can set a cookie
-there. See
+canister's cookie for canister ids, and for nothing else, so `{ name }`
+resolves and sign-in uses mainnet's Internet Identity. On `<id>.ic0.app` and
+on a custom domain it does not resolve: give the canister an `{ id }` baked in
+at build time, as a mainnet build should on every domain.
+`allowEnvConfig: true` is refused on `ic0.app`, because every other canister's
+page can set a cookie there. See
 [Deploy to mainnet](/v4/guides/client/#deploy-to-mainnet) for each domain and
 [The client](/v4/guides/client/#the-ic_env-cookie) for when the cookie is
 trusted. The [Vite wallet example](/v4/examples/vite-wallet/) is built this way

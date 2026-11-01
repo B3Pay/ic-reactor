@@ -8,7 +8,9 @@
  * to `/v4/`, `/llms.txt` is the 4.x guide, and the selector offers v4, v3 and
  * v2 with v4 first. `/v3/` is rebuilt from `v3` (option A) or kept from a
  * static snapshot (option B), and never dropped. `/candid-core/` is Candid
- * Core's site, built from its own repository on every deploy.
+ * Core's site, built from its own repository on every deploy. Once the 4.x
+ * docs and Candid Core's site have moved to b3pay.net, `/v4/`,
+ * `/candid-core/` and the root send each reader to the same page there.
  *
  * Run by `pnpm test:scripts`.
  */
@@ -84,6 +86,12 @@ function workspace({
   }
   write(join(root, "docs/dist/index.html"), page("v4"))
   write(join(root, "docs/dist/guides/client/index.html"), page("v4"))
+  write(join(root, "docs/dist/ic-reactor/index.html"), page("v4"))
+  // What the build writes beside its pages: a Markdown copy of each, the
+  // guide, and the site's assets.
+  write(join(root, "docs/dist/guides/client.md"), "# Client")
+  write(join(root, "docs/dist/llms.txt"), "4.x llms")
+  write(join(root, "docs/dist/_astro/app.js"), "app")
   write(join(root, "v3-line/docs/dist/index.html"), page("v3", "rebuilt"))
   write(
     join(root, "v3-line/docs/dist/packages/core/index.html"),
@@ -130,7 +138,7 @@ const read = (path) => readFileSync(path, "utf8")
  * Runs the inline script of a generated redirect page against a stub
  * `window.location` at `pathname`, and returns where it sends the browser.
  */
-function redirectTarget(html, pathname) {
+function redirectTarget(html, pathname, { search = "", hash = "" } = {}) {
   const scripts = [
     ...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi),
   ]
@@ -138,6 +146,8 @@ function redirectTarget(html, pathname) {
   let target
   const location = {
     pathname,
+    search,
+    hash,
     replace(url) {
       target = url
     },
@@ -339,6 +349,115 @@ describe("assembleSite, option (B): a static /v3/ snapshot", () => {
   })
 })
 
+// Where docs.yml says the 4.x docs and Candid Core's site moved.
+const MOVED = {
+  v4MovedTo: "https://b3pay.net/docs/ic-reactor/",
+  candidCoreMovedTo: "https://b3pay.net/docs/meant/",
+}
+
+describe("assembleSite once the 4.x docs and Candid Core's site moved", () => {
+  it("leaves at /v4/ a page for each 4.x page that sends the reader to it there", () => {
+    const out = assembleDefault(workspace(), MOVED)
+    for (const [file, target] of [
+      ["v4/index.html", "https://b3pay.net/docs/ic-reactor/"],
+      ["v4/ic-reactor/index.html", "https://b3pay.net/docs/ic-reactor/"],
+      [
+        "v4/guides/client/index.html",
+        "https://b3pay.net/docs/ic-reactor/guides/client/",
+      ],
+    ]) {
+      const html = read(join(out, file))
+      assert.equal(redirectTarget(html, `/${file}`), target, file)
+      assert.ok(
+        html.includes(`<link rel="canonical" href="${target}" />`),
+        file
+      )
+      assert.ok(html.includes(`content="0; url=${target}"`), file)
+      assert.doesNotMatch(html, /version-select/, file)
+    }
+  })
+
+  it("keeps the query and the #fragment", () => {
+    const out = assembleDefault(workspace(), MOVED)
+    assert.equal(
+      redirectTarget(
+        read(join(out, "v4/guides/client/index.html")),
+        "/v4/guides/client/",
+        { search: "?tab=react", hash: "#setup" }
+      ),
+      "https://b3pay.net/docs/ic-reactor/guides/client/?tab=react#setup"
+    )
+  })
+
+  it("keeps the 4.x Markdown copies and llms.txt, and no other file of the build", () => {
+    const out = assembleDefault(workspace(), MOVED)
+    assert.equal(read(join(out, "v4/guides/client.md")), "# Client")
+    assert.equal(read(join(out, "v4/llms.txt")), "4.x llms")
+    assert.equal(existsSync(join(out, "v4/_astro")), false)
+  })
+
+  it("leaves at /candid-core/ only pages that send the reader to the new address", () => {
+    const out = assembleDefault(workspace(), MOVED)
+    assert.equal(
+      redirectTarget(
+        read(join(out, "candid-core/index.html")),
+        "/candid-core/"
+      ),
+      "https://b3pay.net/docs/meant/"
+    )
+    assert.equal(
+      redirectTarget(
+        read(join(out, "candid-core/identities.html")),
+        "/candid-core/identities.html"
+      ),
+      "https://b3pay.net/docs/meant/identities.html"
+    )
+    assert.equal(existsSync(join(out, "candid-core/assets")), false)
+  })
+
+  it("sends the root to the 4.x docs' new address and keeps the other lines", () => {
+    const out = assembleDefault(workspace(), MOVED)
+    assert.equal(
+      redirectTarget(read(join(out, "index.html")), "/"),
+      "https://b3pay.net/docs/ic-reactor/"
+    )
+    assert.match(read(join(out, "v3/index.html")), /rebuilt/)
+    assert.equal(read(join(out, "v2/index.html")), "<p>2.x home</p>")
+    assert.equal(read(join(out, "llms.txt")), "4.x guide")
+    // The 3.x pages still offer v4, whose pages now send the reader on, and
+    // a miss under /v4/ still lands on /v4/, which does too.
+    const options = [
+      ...read(join(out, "v3/index.html")).matchAll(/<option value="(v\d)"/g),
+    ].map((m) => m[1])
+    assert.deepEqual(options, ["v4", "v3", "v2"])
+    assert.equal(
+      redirectTarget(read(join(out, "404.html")), "/v4/missing"),
+      "/v4/"
+    )
+  })
+
+  it("refuses an address that is not an https folder", () => {
+    for (const address of [
+      "http://b3pay.net/docs/ic-reactor/",
+      "https://b3pay.net/docs/ic-reactor",
+      "https://b3pay.net/docs/ic-reactor/?x=1",
+      "https://b3pay.net/docs/ic-reactor/#x",
+      "docs/ic-reactor/",
+    ]) {
+      assert.throws(
+        () => assembleDefault(workspace(), { v4MovedTo: address }),
+        /--v4-moved-to must be/,
+        address
+      )
+      assert.throws(
+        () => assembleDefault(workspace(), { candidCoreMovedTo: address }),
+        /--candid-core-moved-to must be/,
+        address
+      )
+    }
+  })
+})
+
 describe("assemble-docs-site.mjs as docs.yml runs it", () => {
   it("assembles the site from the command line", () => {
     const root = workspace()
@@ -371,6 +490,56 @@ describe("assemble-docs-site.mjs as docs.yml runs it", () => {
     assert.match(
       read(join(root, "final-docs/candid-core/index.html")),
       /Candid Core home/
+    )
+  })
+
+  it("sends /v4/ and /candid-core/ on from the command line", () => {
+    const root = workspace()
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(scriptsDir, "assemble-docs-site.mjs"),
+        "--out",
+        "final-docs",
+        "--existing",
+        "existing-pages",
+        "--v4",
+        "docs/dist",
+        "--v3-line",
+        "v3-line",
+        "--candid-core",
+        "candid-core-site",
+        "--root-llms",
+        "packages/core/llms.txt",
+        "--root-llms-full",
+        "v3-line/llms-full.txt",
+        "--cname",
+        "CNAME",
+        "--v4-moved-to",
+        MOVED.v4MovedTo,
+        "--candid-core-moved-to",
+        MOVED.candidCoreMovedTo,
+      ],
+      { cwd: root, encoding: "utf8" }
+    )
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(
+      result.stdout,
+      /moved: \/v4\/ to https:\/\/b3pay\.net\/docs\/ic-reactor\/, \/candid-core\/ to https:\/\/b3pay\.net\/docs\/meant\//
+    )
+    assert.equal(
+      redirectTarget(
+        read(join(root, "final-docs/v4/guides/client/index.html")),
+        "/v4/guides/client/"
+      ),
+      "https://b3pay.net/docs/ic-reactor/guides/client/"
+    )
+    assert.equal(
+      redirectTarget(
+        read(join(root, "final-docs/candid-core/identities.html")),
+        "/candid-core/identities.html"
+      ),
+      "https://b3pay.net/docs/meant/identities.html"
     )
   })
 

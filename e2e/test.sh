@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Runs the e2e suite on a fresh local network: start it, deploy hello_actor,
-# run vitest, and stop the network again, also when a step fails.
+# Runs the e2e suite on a fresh local network: start it, deploy the canisters
+# of icp.yaml, run vitest, and stop the network again, also when a step fails.
 #
 # Needs `pnpm install` and `pnpm build` at the repository root first (the
 # suite imports the built packages), and Rust with the wasm32-unknown-unknown
@@ -33,7 +33,7 @@ trap stop_network EXIT
 
 echo "===========SETUP========="
 icp network start -d
-icp deploy hello_actor
+icp deploy
 echo "===========SETUP DONE========="
 
 echo "===========VERIFYING DEPLOYMENT========="

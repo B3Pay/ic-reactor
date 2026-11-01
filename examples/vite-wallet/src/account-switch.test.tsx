@@ -80,7 +80,7 @@ describe("switching accounts", () => {
     await screen.findByText("2 ICP", {}, patiently)
   })
 
-  it("lets a read made for the previous account land under its own key only", async () => {
+  it("never shows the next account a late answer to a read for the previous one", async () => {
     wallet = twoAccounts()
     renderWithWallet(wallet, <Balance refreshMs={60_000} />)
     await screen.findByText("7 ICP", {}, patiently)

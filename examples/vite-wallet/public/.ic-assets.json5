@@ -1,0 +1,26 @@
+// The response headers of every file the frontend canister serves. Vite
+// copies public/ into dist/, `icp deploy frontend` uploads dist/, and the
+// asset canister reads this file from there. The docs guide "Deploy to a
+// frontend canister" explains each line, and e2e/ checks what is served.
+[
+  {
+    match: "**/*",
+    // The asset canister's own security headers: Strict-Transport-Security,
+    // X-Frame-Options, X-Content-Type-Options, Referrer-Policy and a
+    // Permissions-Policy that turns off every feature it lists. "hardened"
+    // says that the headers below replace its Content-Security-Policy.
+    security_policy: "hardened",
+    headers: {
+      // The app's own scripts, styles, fonts and images only; calls to the
+      // page's origin ("env") and to icp-api.io ("ic"); no frame, plugin,
+      // <base> or form submission; and never framed itself.
+      "Content-Security-Policy": "default-src 'none'; script-src 'self'; connect-src 'self' https://icp-api.io; img-src 'self' data:; style-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      // Not "same-origin": the Internet Identity window answers the page
+      // that opened it.
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
+    // <id>.raw.icp0.io serves pages no gateway checks: send them to
+    // <id>.icp0.io instead.
+    allow_raw_access: false,
+  },
+]

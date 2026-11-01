@@ -88,8 +88,8 @@ only when both the replica and the page are local, or when you write
 `allowEnvConfig: true`. Any sibling subdomain of a page's domain can write a
 cookie, so write `allowEnvConfig: true` only when every subdomain of the page's
 domain is trusted. `allowEnvConfig: false` never reads the cookie. One more
-page believes the cookie's canister ids by default: a canister's own
-`<id>.icp0.io` page (see [Deploy to mainnet](#deploy-to-mainnet)).
+page believes the cookie's canister ids by default, and nothing else in it: a
+canister's own `<id>.icp0.io` page (see [Deploy to mainnet](#deploy-to-mainnet)).
 
 Whether siblings can write it depends on the Public Suffix List. `icp0.io` and
 `raw.icp0.io` are on it, so no other canister's page can set a cookie that
@@ -100,6 +100,13 @@ On a page under those five, `createClient` refuses `allowEnvConfig: true` with
 a `TypeError`. Even where the opt-in is allowed, the cookie's root key is never
 taken for a mainnet host (the agent keeps mainnet's own), and its Internet
 Identity URL is taken over `http:` only on a local page.
+
+A page can receive more than one `ic_env` cookie. An asset canister sets it
+with no `Path`, so the browser keeps a copy for each directory a page was
+loaded from, and lists them all. Copies that are the same are believed. Off a
+local page, copies that differ are believed for nothing: a `{ name }` target
+is refused with the reason `untrusted_host`, and neither their root key nor
+their Internet Identity is taken. A local page reads the first, as before.
 
 Canisters named in the cookie are called by name: `{ name: "backend" }` reads
 `PUBLIC_CANISTER_ID:backend` from the cookie. See
@@ -237,6 +244,11 @@ domain once you register one. It sets an `ic_env` cookie like the Vite
 plugin's, with the `PUBLIC_CANISTER_ID:<name>` entries icp-cli sets on the
 canisters and mainnet's root key.
 
+Serve it with the response headers of
+[Deploy to a frontend canister](/v4/guides/deploy/), which also sends visitors
+of its raw host to `<id>.icp0.io`: the HTTP gateway checks no page on
+`raw.icp0.io`.
+
 What `network: "env"` does on each of these pages:
 
 | The page                           | The host             | The root key        | `{ name: "backend" }`                   |
@@ -246,17 +258,20 @@ What `network: "env"` does on each of these pages:
 | a custom domain                    | `https://icp-api.io` | mainnet's, built in | not resolved (`canister_id_unresolved`) |
 
 `icp0.io` and `raw.icp0.io` are on the Public Suffix List, so no other
-canister's page can set a cookie that `<id>.icp0.io` receives: the cookie is
-the frontend's own, and its canister ids are believed without
-`allowEnvConfig`. Its root key is not used (the agent keeps mainnet's), and its
-`INTERNET_IDENTITY_PROVIDER` only over `https:`. `ic0.app` is not on the list:
+canister's page can set a cookie that `<id>.icp0.io` receives, and the
+client believes the cookie's canister ids there without `allowEnvConfig`. It
+takes nothing else from it: the agent keeps mainnet's root key, and sign-in
+keeps `AuthClient`'s default, mainnet's Internet Identity, whatever the
+cookie's `INTERNET_IDENTITY_PROVIDER` says. `ic0.app` is not on the list:
 any canister's page can set a cookie there for every other one, so the
 cookie is not believed. A custom domain is not known to be either, and its
 page cannot proxy `/api`, so `"env"` falls back to mainnet's API host.
 
-For an app that works on all three, and on a local network, bake the ids into
-the build instead of naming canisters. With Vite, read them from a mode's env
-file:
+The Public Suffix List keeps other canisters' pages from setting the cookie,
+but a cookie does not say where it came from. So for a mainnet app, bake the
+ids into the build instead of naming canisters: its calls then do not depend
+on the cookie, and the same build works on all three domains and on a local
+network. With Vite, read them from a mode's env file:
 
 ```ts
 import { createClient } from "@ic-reactor/core"
@@ -282,8 +297,9 @@ any of its domains.
 
 `allowEnvConfig: true` is safe only on a page whose every sibling subdomain
 is yours, which is to say a custom domain where no subdomain serves content
-anyone else controls. On `<id>.icp0.io` it adds nothing you need, and on
-`ic0.app` it is never safe.
+anyone else controls. On `<id>.icp0.io` it adds only the cookie's Internet
+Identity, which a mainnet app does not need, and on `ic0.app` it is never
+safe.
 
 ## Who calls
 

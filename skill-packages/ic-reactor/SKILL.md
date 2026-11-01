@@ -81,7 +81,9 @@ This skill describes these versions:
    `useMutation(client.mutationOptions(...))`, or call the canister's methods
    directly outside React. Build options in render from that render's
    `useClient()`, never from a module-scope client, and add neither `retry` to
-   a write nor data carried across keys.
+   a write nor data carried across keys. Read what decides where value goes or
+   what a person approves (a recipient, a deposit address, an allowance)
+   through a `certified: true` canister, and the rest plainly.
 7. **Handle failures** by `isReactorError(error)`, then `kind` and
    `mayHaveExecuted`: when it is `true`, tell the user the outcome is unknown
    and re-read; never re-send by hand. A write that timed out (`timeoutMs`,
