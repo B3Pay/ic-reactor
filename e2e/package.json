@@ -19,22 +19,22 @@
     "@candid-core/schema": "0.4.0",
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/react": "workspace:*",
-    "@icp-sdk/core": "^6.1.0"
+    "@icp-sdk/core": "^6.1.1"
   },
   "devDependencies": {
     "@candid-core/cli": "0.3.0",
     "@ic-reactor/vite-plugin": "workspace:*",
     "@icp-sdk/ic-wasm": "0.11.1",
-    "@icp-sdk/icp-cli": "1.2.0",
-    "@tanstack/react-query": "^5.102.8",
+    "@icp-sdk/icp-cli": "1.7.0",
+    "@tanstack/react-query": "^5.105.0",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
-    "jsdom": "^30.0.1",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "jsdom": "^30.1.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "typescript": "^6.0.3",
-    "vite": "^8.3.4",
-    "vitest": "^5.0.0"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   }
 }
