@@ -67,8 +67,16 @@ npm install --save-dev --save-exact @candid-core/cli@0.3.0
 npm install --save-dev @ic-reactor/vite-plugin # optional, for Vite
 ```
 
-Then read `node_modules/@ic-reactor/core/llms.txt`. The released 3.x packages
-are documented at [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
+Install the CLI at the version above: `npm install --save-dev @candid-core/cli`
+without one installs the newest CLI, which pairs with another schema, and npm
+stops with `ERESOLVE`.
+
+Then follow
+[Getting started](https://ic-reactor.b3pay.net/v4/guides/getting-started/),
+which takes an app from nothing to a first read and a first write, or read
+`node_modules/@ic-reactor/core/llms.txt`, the same rules in one file. The
+released 3.x packages are documented at
+[ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
 
 ## Examples
 
@@ -79,7 +87,8 @@ the [examples docs](https://ic-reactor.b3pay.net/v4/examples/):
   callbacks, and a sandbox that injects faults into transfers.
 - [`vite-wallet`](examples/vite-wallet/): a React and Vite wallet on a local
   icp-cli network, with Internet Identity, a dev-account sign-in, a backend
-  canister and optimistic writes.
+  canister and optimistic writes, and the app deployed to an asset canister
+  with security headers.
 - [`next-ssr`](examples/next-ssr/): a Next.js App Router app over mainnet
   ledgers, with one client per request, lossless hydration and streaming.
 - [`node-agent-tool`](examples/node-agent-tool/): a command-line tool for
@@ -94,9 +103,13 @@ The 3.x examples are on the `v3` branch.
 
 ## Documentation
 
-- Docs site: [ic-reactor.b3pay.net/v4](https://ic-reactor.b3pay.net/v4/)
-  (source: [`./docs`](./docs)), and
-  [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/) for 3.x.
+- Docs site: [b3pay.net/docs/ic-reactor](https://b3pay.net/docs/ic-reactor/)
+  (source: [`./docs`](./docs)); a link under `ic-reactor.b3pay.net/v4/`
+  redirects to the same page there. The 3.x docs are at
+  [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
+- Deploying the app to a frontend canister, with security headers:
+  [Deploy to a frontend canister](https://ic-reactor.b3pay.net/v4/guides/deploy/)
+- Security policy and threat model: [`SECURITY.md`](./SECURITY.md)
 - Changelog: [`CHANGELOG.md`](./CHANGELOG.md)
 - Versioning and support:
   [`docs/src/content/docs/versioning.mdx`](./docs/src/content/docs/versioning.mdx)

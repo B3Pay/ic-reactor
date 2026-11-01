@@ -23,7 +23,7 @@ body:
       options:
         - "@ic-reactor/core"
         - "@ic-reactor/react"
-        - "@ic-reactor/parser"
+        - "@ic-reactor/vite-plugin"
         - "New package"
         - "Documentation"
     validations:

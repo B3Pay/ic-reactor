@@ -1,7 +1,7 @@
 {
   "name": "@ic-reactor/core",
   "version": "4.0.0",
-  "description": "IC Reactor Core Library",
+  "description": "ic-reactor 4 client for Internet Computer canisters: TanStack Query options with caller-scoped keys, one error type that says whether a call may have executed, token-unit helpers and a test client, over a candid-core generated module",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",

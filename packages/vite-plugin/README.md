@@ -19,6 +19,11 @@ type `IcReactorPluginOptions`:
   cookie and proxies `/api` to the local IC network, so the app finds its
   canister IDs and the replica's root key without configuration.
 
+The docs site's [Vite plugin guide](https://ic-reactor.b3pay.net/v4/guides/vite-plugin/)
+covers the same ground, and
+[Getting started](https://ic-reactor.b3pay.net/v4/guides/getting-started/)
+uses the plugin in a new app.
+
 ## Install
 
 The plugin runs the `@candid-core/cli` your app installs, and that CLI has to
@@ -31,6 +36,10 @@ npm install --save-exact @candid-core/schema@0.4.0
 npm install --save-dev --save-exact @candid-core/cli@0.3.0
 npm install --save-dev @ic-reactor/vite-plugin
 ```
+
+Install the CLI at the version above: `npm install --save-dev @candid-core/cli`
+without one installs the newest CLI, which pairs with another schema, and npm
+stops with `ERESOLVE`.
 
 `@icp-sdk/core` 6.1 or later is an optional peer: the plugin loads it only to
 fetch a `.did` from a live canister, and an app on `@ic-reactor/core` has it
