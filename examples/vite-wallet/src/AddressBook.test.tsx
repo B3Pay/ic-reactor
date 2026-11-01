@@ -1,6 +1,6 @@
 // Scenario 7: optimistic adds and removes, rolled back on a refusal or a
 // failure, with the client's own invalidation still run after each one.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import {
   cleanup,
   fireEvent,

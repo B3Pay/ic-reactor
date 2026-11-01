@@ -119,8 +119,8 @@ describe("an entry that exports too much", () => {
 describe("D35: one import path per name", () => {
   /** What the libraries beside ours export, for the tests below. */
   const foreign = new Map([
-    ["principal", ["@candid-core/schema"]],
-    ["isPrincipal", ["@candid-core/schema"]],
+    ["principal", ["@meantjs/schema"]],
+    ["isPrincipal", ["@meantjs/schema"]],
     ["skipToken", ["@tanstack/query-core", "@tanstack/react-query"]],
     ["queryOptions", ["@tanstack/react-query"]],
   ])
@@ -132,9 +132,7 @@ describe("D35: one import path per name", () => {
     )
     const about = failuresAbout(result, '"principal"')
     assert.ok(
-      about.some((failure) =>
-        failure.includes("@candid-core/schema also export")
-      ),
+      about.some((failure) => failure.includes("@meantjs/schema also export")),
       result.failures.join("\n")
     )
   })
@@ -195,7 +193,7 @@ describe("D35: one import path per name", () => {
     assert.equal(result.failures.length, 1, result.failures.join("\n"))
     assert.match(
       result.failures[0],
-      /exports "principal", which @candid-core\/schema also exports/
+      /exports "principal", which @meantjs\/schema also exports/
     )
   })
 
@@ -226,8 +224,8 @@ describe("D35: one import path per name", () => {
     })
     assert.deepEqual(failures, [])
     // The reference list is populated from the installed declarations.
-    assert.deepEqual(real.get("principal"), ["@candid-core/schema"])
-    assert.deepEqual(real.get("validate"), ["@candid-core/schema/validate"])
+    assert.deepEqual(real.get("principal"), ["@meantjs/schema"])
+    assert.deepEqual(real.get("validate"), ["@meantjs/schema/validate"])
     assert.ok(real.get("skipToken")?.includes("@tanstack/query-core"))
     assert.ok(real.get("queryOptions")?.includes("@tanstack/react-query"))
     assert.ok(real.get("useQuery")?.includes("@tanstack/react-query"))
@@ -389,15 +387,15 @@ describe("reading declaration files", () => {
   )
   write("packages/core/dist/testing.d.ts", `export {}\n`)
   write(
-    "node_modules/@candid-core/schema/package.json",
+    "node_modules/@meantjs/schema/package.json",
     JSON.stringify({
-      name: "@candid-core/schema",
+      name: "@meantjs/schema",
       version: "9.0.0",
       exports: { ".": { types: "./schema.d.ts" } },
     })
   )
   write(
-    "node_modules/@candid-core/schema/schema.d.ts",
+    "node_modules/@meantjs/schema/schema.d.ts",
     `export declare function principal(text: string): string\nexport type Principal = string\n`
   )
 
@@ -420,7 +418,7 @@ describe("reading declaration files", () => {
     ],
     foreign: [
       {
-        package: "@candid-core/schema",
+        package: "@meantjs/schema",
         from: ".",
         pin: "9.0.0",
         subpaths: ["."],
@@ -469,7 +467,7 @@ describe("reading declaration files", () => {
     const result = evaluate({ entries: budget.entries, exported, foreign })
     assert.ok(
       failuresAbout(result, '"principal"').some((failure) =>
-        failure.includes("@candid-core/schema")
+        failure.includes("@meantjs/schema")
       ),
       result.failures.join("\n")
     )
@@ -935,18 +933,18 @@ describe("the conditions of one entry", () => {
 
 describe("the version of the schema that packages declare", () => {
   const schema = {
-    "node_modules/@candid-core/schema/package.json": JSON.stringify({
-      name: "@candid-core/schema",
+    "node_modules/@meantjs/schema/package.json": JSON.stringify({
+      name: "@meantjs/schema",
       version: "9.0.0",
       exports: { ".": { types: "./schema.d.ts" } },
     }),
-    "node_modules/@candid-core/schema/schema.d.ts": `export type Principal = string\n`,
+    "node_modules/@meantjs/schema/schema.d.ts": `export type Principal = string\n`,
   }
   const budget = {
     entries: [],
     foreign: [
       {
-        package: "@candid-core/schema",
+        package: "@meantjs/schema",
         from: ".",
         pin: "9.0.0",
         subpaths: ["."],
@@ -964,9 +962,9 @@ describe("the version of the schema that packages declare", () => {
   it("passes when every manifest declares the pinned version", () => {
     assert.deepEqual(
       check({
-        "package.json": { devDependencies: { "@candid-core/schema": "9.0.0" } },
+        "package.json": { devDependencies: { "@meantjs/schema": "9.0.0" } },
         "packages/core/package.json": {
-          dependencies: { "@candid-core/schema": "9.0.0" },
+          dependencies: { "@meantjs/schema": "9.0.0" },
         },
       }),
       []
@@ -977,28 +975,28 @@ describe("the version of the schema that packages declare", () => {
     // The install the check reads is the root's, which is still at the pin:
     // without this check core could move on and nothing would notice.
     const failures = check({
-      "package.json": { devDependencies: { "@candid-core/schema": "9.0.0" } },
+      "package.json": { devDependencies: { "@meantjs/schema": "9.0.0" } },
       "packages/core/package.json": {
-        dependencies: { "@candid-core/schema": "9.0.1" },
+        dependencies: { "@meantjs/schema": "9.0.1" },
       },
     })
     assert.equal(failures.length, 1, failures.join("\n"))
     assert.match(
       failures[0],
-      /packages\/core\/package\.json declares @candid-core\/schema "9\.0\.1" in dependencies, but the export budget is written against exactly 9\.0\.0/
+      /packages\/core\/package\.json declares @meantjs\/schema "9\.0\.1" in dependencies, but the export budget is written against exactly 9\.0\.0/
     )
   })
 
   it("fails on a range, in any dependency field of any package", () => {
     const failures = check({
       "packages/react/package.json": {
-        peerDependencies: { "@candid-core/schema": "^9.0.0" },
+        peerDependencies: { "@meantjs/schema": "^9.0.0" },
       },
     })
     assert.equal(failures.length, 1, failures.join("\n"))
     assert.match(
       failures[0],
-      /packages\/react\/package\.json declares @candid-core\/schema "\^9\.0\.0" in peerDependencies/
+      /packages\/react\/package\.json declares @meantjs\/schema "\^9\.0\.0" in peerDependencies/
     )
   })
 
@@ -1014,18 +1012,18 @@ describe("the version of the schema that packages declare", () => {
     const failures = (() => {
       const files = { ...schema, "pnpm-workspace.yaml": workspace }
       for (const [path, fields] of Object.entries({
-        "package.json": { devDependencies: { "@candid-core/schema": "9.0.0" } },
+        "package.json": { devDependencies: { "@meantjs/schema": "9.0.0" } },
         "e2e/package.json": {
-          devDependencies: { "@candid-core/schema": "^9.0.0" },
+          devDependencies: { "@meantjs/schema": "^9.0.0" },
         },
         "examples/apps/wallet/package.json": {
-          dependencies: { "@candid-core/schema": "9.0.1" },
+          dependencies: { "@meantjs/schema": "9.0.1" },
         },
         "examples/skipped/old/package.json": {
-          dependencies: { "@candid-core/schema": "8.0.0" },
+          dependencies: { "@meantjs/schema": "8.0.0" },
         },
         "examples/apps/wallet/node_modules/dep/package.json": {
-          dependencies: { "@candid-core/schema": "7.0.0" },
+          dependencies: { "@meantjs/schema": "7.0.0" },
         },
       })) {
         files[path] = manifest("some-package", fields)
@@ -1035,11 +1033,11 @@ describe("the version of the schema that packages declare", () => {
     assert.equal(failures.length, 2, failures.join("\n"))
     assert.match(
       failures.join("\n"),
-      /e2e\/package\.json declares @candid-core\/schema "\^9\.0\.0"/
+      /e2e\/package\.json declares @meantjs\/schema "\^9\.0\.0"/
     )
     assert.match(
       failures.join("\n"),
-      /examples\/apps\/wallet\/package\.json declares @candid-core\/schema "9\.0\.1"/
+      /examples\/apps\/wallet\/package\.json declares @meantjs\/schema "9\.0\.1"/
     )
   })
 

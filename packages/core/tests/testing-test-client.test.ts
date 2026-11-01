@@ -11,7 +11,7 @@
  * collapse, and the management canister for effective-canister-id routing.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { c, principal, type WithMode } from "@candid-core/schema"
+import { c, principal, type WithMode } from "@meantjs/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { internalsOf } from "../src/client.js"
 import { isReactorError } from "../src/index.js"
@@ -366,7 +366,7 @@ describe("the handlers' values", () => {
   })
 
   it("return as many values as the maxElements the test client was given", async () => {
-    // A reply of values that take no bytes: past candid-core's default
+    // A reply of values that take no bytes: past `@meantjs/schema`'s default
     // budget, within the one the test asked for.
     type Nulls = { nulls: (() => Promise<null[]>) & WithMode<"query"> }
     const nulls = c.service({ nulls: c.func([], [c.vec(c.null)], "query") })

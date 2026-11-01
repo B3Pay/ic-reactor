@@ -1,4 +1,4 @@
-import type { AnyFieldSchema } from "@candid-core/schema"
+import type { AnyFieldSchema } from "@meantjs/schema"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useFormContext, type EditorProps } from "../context.ts"
 import {

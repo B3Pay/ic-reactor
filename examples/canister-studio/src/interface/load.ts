@@ -1,7 +1,7 @@
 // Isomorphic: what route loaders call to get a canister's interface, and how
 // a page rebuilds schemas from the payload on either side.
-import { serviceMethods, type AnySchema } from "@candid-core/schema"
-import { schemaFromContract } from "@candid-core/schema/contract"
+import { serviceMethods, type AnySchema } from "@meantjs/schema"
+import { schemaFromContract } from "@meantjs/schema/contract"
 import { useMemo } from "react"
 import { checkCanisterId } from "../lib/ids.ts"
 import { CURATED, registryEntry, type RegistryEntry } from "../lib/registry.ts"

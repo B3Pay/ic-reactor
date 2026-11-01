@@ -9,7 +9,7 @@
  * and a persister that saves the cache.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { KEY_ROOT } from "../src/keys.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
 import {

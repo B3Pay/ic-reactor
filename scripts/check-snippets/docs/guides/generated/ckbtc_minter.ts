@@ -1,7 +1,7 @@
 // A hand-trimmed excerpt, for the Reads guide's fences, of the module
-// candid-core-cli generates from the ckBTC minter's .did: only
-// get_btc_address, with its inline argument record named by hand.
-import * as $ from "@candid-core/schema"
+// `meant gen` writes from the ckBTC minter's .did: only get_btc_address,
+// with its inline argument record named by hand.
+import * as $ from "@meantjs/schema"
 
 /**
  * The owner (the caller when null) and subaccount of the ckBTC account the

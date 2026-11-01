@@ -1,6 +1,6 @@
 // The compile steps shared by the server (live canisters) and the browser
 // (pasted .did text, and the fallback when server functions cannot run).
-// Each takes the `@candid-core/cli` functions as an argument, so this module
+// Each takes the `@meantjs/cli` functions as an argument, so this module
 // never imports the 1.9 MB WASM library itself: the server passes its
 // initialised copy, the browser a lazily imported one.
 import type {
@@ -11,13 +11,13 @@ import type {
   didToModule,
   checkCompatible,
   projectDid,
-} from "@candid-core/cli"
-import { serviceMethods } from "@candid-core/schema"
-import { schemaFromContract } from "@candid-core/schema/contract"
+} from "@meantjs/cli"
+import { serviceMethods } from "@meantjs/schema"
+import { schemaFromContract } from "@meantjs/schema/contract"
 import { methodDocsFromModule } from "./docs.ts"
 import type { CanisterInterface, InterfaceErrorCode } from "./types.ts"
 
-/** The `@candid-core/cli` functions the compile steps use. */
+/** The `@meantjs/cli` functions the compile steps use. */
 export interface CandidCli {
   didToContract: typeof didToContract
   didToModule: typeof didToModule

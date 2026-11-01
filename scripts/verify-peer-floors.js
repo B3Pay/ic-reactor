@@ -83,7 +83,7 @@ export const PER_MAJOR = {
  * has to resolve that same copy, as it would in an application. react-dom is
  * not a peer of the bindings (the library never imports it), but its tests
  * render with it, and it is released with react: it follows react's floor.
- * vite-plugin's `vite` peer is in PER_MAJOR; its exact `@candid-core/cli` peer
+ * vite-plugin's `vite` peer is in PER_MAJOR; its exact `@meantjs/cli` peer
  * has one version, which the lockfile already holds, and its optional
  * `@icp-sdk/core` peer (the fetch of a missing `.did`) is pinned to its floor
  * like any other. `withoutOverrides` drops
@@ -133,7 +133,7 @@ function compareVersions(a, b) {
  * `X.Y.Z`, an exact prerelease `X.Y.Z-<tag>`, and `||` between them) and
  * refuses anything else, so a new kind of range fails here loudly instead of
  * being pinned to a guess. A prerelease is accepted only exact, as core pins
- * `@candid-core/schema` (D24): its floor is then the version itself.
+ * `@meantjs/schema` (D24): its floor is then the version itself.
  */
 export function alternativeFloors(range) {
   return range.split("||").map((part) => {

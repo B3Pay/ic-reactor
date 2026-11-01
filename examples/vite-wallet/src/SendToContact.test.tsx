@@ -1,6 +1,6 @@
 // Scenario 8: paying a contact refreshes the ledger's reads (both balances),
 // and leaves the backend's reads alone: the write changed no backend state.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { cleanup, fireEvent, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 import { AddressBook } from "./AddressBook.tsx"

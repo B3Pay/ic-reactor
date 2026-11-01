@@ -59,14 +59,14 @@ jobs:
       - name: AI context check
         run: pnpm check:ai-context
 
-      # stack.json names the candid-core release this branch is tested
-      # against. Each candid-core pin in a tracked package.json, each
-      # `@candid-core/<name>@<version>` in a package.json value or a .md, .mdx
+      # stack.json names the Meant release this branch is tested against.
+      # Each Meant pin in a tracked package.json, each
+      # `@meantjs/<name>@<version>` in a package.json value or a .md, .mdx
       # or .txt file, each docs peer-table row and the two pins in code must
       # be exactly that version, outside the changelogs and the frozen paths;
       # each listed package must be pinned somewhere. A repin changes
-      # stack.json and runs `pnpm sync:stack` (CONTRIBUTING.md, "The
-      # candid-core pins").
+      # stack.json and runs `pnpm sync:stack` (CONTRIBUTING.md, "The Meant
+      # pins").
       - name: Stack pins
         run: pnpm check:stack
 
@@ -76,7 +76,7 @@ jobs:
       # The public surface is the plan in scripts/export-budget.mjs and no
       # more: it reads the declarations just built and fails on a name the
       # plan does not list, on more names than an entry's cap, on a name two
-      # entries export, on a name @candid-core/schema or TanStack Query
+      # entries export, on a name @meantjs/schema or TanStack Query
       # already exports (D35: one import path per name), and on an `exports`
       # subpath or a publishable package the plan has no entry for.
       - name: Export budget
@@ -251,7 +251,7 @@ jobs:
         run: pnpm verify:peer-floors
 
   # Every other job runs on Linux. The Vite plugin starts child processes
-  # (`icp`, `candid-core-cli`) and handles paths, where Windows differs: an
+  # (`icp`, `meant`) and handles paths, where Windows differs: an
   # npm-installed icp-cli is `icp.cmd` there, which spawn cannot start
   # (#905). This runs the plugin's whole test suite on Windows. Its first run
   # here found messages naming `did\ledger.did` where Linux names
@@ -304,7 +304,7 @@ jobs:
   # The packages declare engines.node >=22.12.0 (#896): the first Node 22 that
   # loads an ES module with require(), and a floor that can only fall later
   # without a major release. Every other job runs the newest Node 22, so this
-  # one runs the package tests and a candid-core-cli gen on the floor itself,
+  # one runs the package tests and a `meant gen` on the floor itself,
   # after checking that every package's manifest and docs page still name it.
   # Some dev tools here (jsdom, undici) declare a newer Node than the floor,
   # and pnpm checks engines against the workspace's nodeVersion, not this
@@ -373,7 +373,7 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: candid-core-cli gen
+      - name: meant gen
         working-directory: e2e
         run: pnpm gen:check
 

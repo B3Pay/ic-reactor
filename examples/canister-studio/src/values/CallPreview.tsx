@@ -1,4 +1,4 @@
-import { decodeArgs } from "@candid-core/schema/codec"
+import { decodeArgs } from "@meantjs/schema/codec"
 import { useMemo, type JSX } from "react"
 import { ModeBadge } from "../components/Badge.tsx"
 import { CopyButton } from "../components/CopyButton.tsx"

@@ -17,7 +17,7 @@
 import Form from "next/form"
 import Link from "next/link"
 import { Suspense } from "react"
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import { BalanceTable } from "@/components/BalanceTable"
 import { LEDGERS, SAMPLE_OWNER } from "@/ledgers"
 import { parseOwner } from "@/server/parse-owner"

@@ -1,7 +1,7 @@
 # @ic-reactor/core
 
 > **This is ic-reactor 4.** It replaces the 3.x runtime with a thin layer over
-> a candid-core generated module. 3.x is documented at
+> a module Meant generates. 3.x is documented at
 > https://ic-reactor.b3pay.net/v3/packages/core and takes security fixes until
 > 90 days after the 4.0 release.
 
@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg)](https://www.typescriptlang.org/)
 
-ic-reactor 4 is a thin layer over a `candid-core-cli gen` module: a client with
+ic-reactor 4 is a thin layer over a `meant gen` module: a client with
 caller-scoped query keys, one error union that says whether a call may have
 executed, network resolution, strict token-unit helpers and a test client.
 
@@ -25,15 +25,15 @@ lists its exports and peers.
 
 ```bash
 npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
-npm install --save-exact @candid-core/schema@0.4.0
-npm install --save-dev --save-exact @candid-core/cli@0.3.0
+npm install --save-exact @meantjs/schema@0.6.0
+npm install --save-dev --save-exact @meantjs/cli@0.5.0
 ```
 
-`@candid-core/schema` is a peer at exactly that version: the module
-`candid-core-cli gen` writes imports it, so the generator
-(`@candid-core/cli@0.3.0`) has to pair with it too. Install the CLI at that
-version: without a version, npm installs the newest CLI, and when that one
-pairs with another schema, npm stops with `ERESOLVE`.
+`@meantjs/schema` is a peer at exactly that version: the module `meant gen`
+writes imports it, so the generator (`@meantjs/cli@0.5.0`) has to pair with it
+too. Install the CLI at that version: without a version, npm installs the
+newest CLI, and when that one pairs with another schema, npm stops with
+`ERESOLVE`.
 
 With React, install `@tanstack/query-core` at the exact version your
 `@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
@@ -48,7 +48,7 @@ Generate a module from the canister's `.did` file, here the ICRC-1 ledger's
 `icrc1.did`:
 
 ```bash
-npx candid-core-cli gen icrc1.did -o src/generated
+npx @meantjs/cli gen icrc1.did -o src/generated
 ```
 
 Then call the canister. A client with `identity: "anonymous"` only reads, and

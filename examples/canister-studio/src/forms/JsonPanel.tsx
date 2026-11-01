@@ -1,4 +1,4 @@
-import type { AnyFieldSchema } from "@candid-core/schema"
+import type { AnyFieldSchema } from "@meantjs/schema"
 import { useState, type ReactNode } from "react"
 import { draftValues, pathLabel, type Draft, type DraftNote } from "./engine.ts"
 import { argsToJson, parseArgsJson } from "./json.ts"

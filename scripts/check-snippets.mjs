@@ -26,7 +26,7 @@
  * and a document whose snippets assume another one gets its own, because
  * documents can disagree. On the `v4` line the app holds only what no
  * library export provides (`app/globals.ts`), the modules
- * `candid-core-cli gen` writes (`app/generated/`, for the guide's
+ * `meant gen` writes (`app/generated/`, for the guide's
  * `./generated/icrc1` and `./generated/backend`) and the third-party
  * declarations (`ambient.d.ts`). The 3.x fixtures went with the 3.x runtime.
  *

@@ -85,7 +85,7 @@ log to tell which side sent what:
   renderer, the certified section held until the first part is read.
 
 `src/canisters/` is generated from `icrc1.did` by `pnpm gen`
-(`candid-core-cli gen`), committed, and never edited.
+(`meant gen`), committed, and never edited.
 
 ## A tab that is still signed in
 

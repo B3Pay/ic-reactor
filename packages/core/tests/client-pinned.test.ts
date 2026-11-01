@@ -14,7 +14,7 @@
  * whoever is current when it runs.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { c } from "@candid-core/schema"
+import { c } from "@meantjs/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { Principal } from "@icp-sdk/core/principal"
 import {

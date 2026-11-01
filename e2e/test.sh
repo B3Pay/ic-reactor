@@ -22,7 +22,7 @@ fi
 echo "icp $actual, $(ic-wasm --version)"
 
 echo "===========CHECKING DECLARATIONS========="
-# src/declarations is what `candid-core-cli gen` writes from the .did.
+# src/declarations is what `meant gen` writes from the .did.
 pnpm gen:check
 
 stop_network() {

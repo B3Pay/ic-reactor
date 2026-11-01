@@ -29,7 +29,7 @@ When it is done, the project holds these files:
 - icrc1.did the ledger's interface
 - src/
   - generated/
-    - icrc1.ts written by `candid-core-cli gen`
+    - icrc1.ts written by `meant gen`
   - ledger.ts the ledger, its token, and how amounts are shown
   - App.tsx the client and the page
   - SignIn.tsx
@@ -234,7 +234,7 @@ sent to one is not in the other's balance.
 
 ```tsx
 // src/Balance.tsx
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { useAuth } from "@ic-reactor/react"
 import { skipToken, useQuery } from "@tanstack/react-query"
 import { showAmount, useLedger, useToken } from "./ledger"
@@ -280,7 +280,7 @@ answer with.
 
 ```ts
 // src/transfer.ts
-import { isPrincipal, principal } from "@candid-core/schema"
+import { isPrincipal, principal } from "@meantjs/schema"
 import { parseUnits, type Canister, type Client } from "@ic-reactor/core"
 import type {
   Account,
@@ -509,7 +509,7 @@ is replaced by handlers you write, and a test can lose a reply on purpose:
 
 ```ts
 // src/transfer.test.ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { afterEach, beforeEach, expect, it } from "vitest"
 import { actor, type Actor } from "./generated/icrc1"

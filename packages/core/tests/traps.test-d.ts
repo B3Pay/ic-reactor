@@ -57,7 +57,7 @@
  * Checked by `pnpm typecheck` (this file is in the typecheck project), not run
  * by vitest.
  */
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {
   MutationObserver,
@@ -201,7 +201,7 @@ client.queryOptions(ledger, "icrc1_balance", account)
 client.queryOptions(ledger, "icrc1_balance_of", owner)
 
 // trap: principal-is-not-plain-text
-// @ts-expect-error a principal is checked text: principal("aaaaa-aa") from @candid-core/schema, not a string literal
+// @ts-expect-error a principal is checked text: principal("aaaaa-aa") from @meantjs/schema, not a string literal
 void ledger.icrc1_balance_of({ owner: "aaaaa-aa", subaccount: null })
 
 // trap: vars-of-two-arguments-are-the-tuple
@@ -321,7 +321,7 @@ useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee", skipToken))
 // Variables of a type `skipToken` is assignable to may always be skipped, and
 // the options keep SkipToken: a Candid `reserved` argument, which the
 // generator writes `unknown`, and an empty record written `{}` by hand
-// (`candid-core-cli gen` writes `record {}` as `Record<string, never>`, which
+// (`meant gen` writes `record {}` as `Record<string, never>`, which
 // a symbol is not). tests/skip.test-d.ts pins what the generator writes.
 const skippableIds = { id: "rrkah-fqaaa-aaaaa-aaaaq-cai" }
 const gen = client.canister<skippable.Actor>(skippable.actor, skippableIds)

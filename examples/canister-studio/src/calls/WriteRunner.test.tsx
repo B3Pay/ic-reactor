@@ -2,8 +2,8 @@
 // over the in-memory replica: what the page lets them send next, and what
 // it says the canister did. The form and the viewers are stand-ins
 // (testing/doubles.tsx) that keep to their contracts.
-import { c, principal } from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
+import { c, principal } from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { ReactorProvider } from "@ic-reactor/react"
 import {
   act,

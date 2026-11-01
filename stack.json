@@ -1,8 +1,8 @@
 {
-  "$comment": "The candid-core release this branch is tested against. `pnpm check:stack` holds the tree to this file. To repin, change a version here, add examples/ to frozen until the release, and run `pnpm sync:stack` and `pnpm install`; CONTRIBUTING.md has the whole repin.",
-  "candid-core": {
-    "@candid-core/schema": "0.4.0",
-    "@candid-core/cli": "0.3.0"
+  "$comment": "The Meant release this branch is tested against. `pnpm check:stack` holds the tree to this file. To repin, change a version here and run `pnpm sync:stack` and `pnpm install`; CONTRIBUTING.md has the whole repin.",
+  "meant": {
+    "@meantjs/schema": "0.6.0",
+    "@meantjs/cli": "0.5.0"
   },
   "frozen": ["evals/"]
 }

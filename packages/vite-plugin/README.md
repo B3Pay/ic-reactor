@@ -5,13 +5,13 @@
 > documented at https://ic-reactor.b3pay.net/v3/packages/vite-plugin, and takes
 > security fixes until 90 days after the 4.0 release.
 
-A Vite plugin for an app built on a module that `candid-core-cli gen` generates
+A Vite plugin for an app built on a module that `meant gen` generates
 from a `.did` file. It does two things, and exports only `icReactor` and the
 type `IcReactorPluginOptions`:
 
-- **Generation.** It runs `candid-core-cli gen` on each configured `.did` file
+- **Generation.** It runs `meant gen` on each configured `.did` file
   when a build or the dev server starts, and again when that file changes. The
-  generated module is candid-core's, as the generator wrote it: the plugin
+  generated module is Meant's, as the generator wrote it: the plugin
   adds no wrapper files, hooks or reactors. A `.did` that is not on disk yet
   can be fetched from the live canister first (see "Fetch a .did from a live
   canister").
@@ -26,14 +26,14 @@ uses the plugin in a new app.
 
 ## Install
 
-The plugin runs the `@candid-core/cli` your app installs, and that CLI has to
-pair with the `@candid-core/schema` runtime the generated modules import. Both
-are pinned to one exact release, as candid-core asks of every release before
-1.0, and so is the plugin's peer on the CLI:
+The plugin runs the `@meantjs/cli` your app installs, and that CLI has to
+pair with the `@meantjs/schema` runtime the generated modules import. Both
+are pinned to one exact release, as Meant asks of every release before 1.0,
+and so is the plugin's peer on the CLI:
 
 ```sh
-npm install --save-exact @candid-core/schema@0.4.0
-npm install --save-dev --save-exact @candid-core/cli@0.3.0
+npm install --save-exact @meantjs/schema@0.6.0
+npm install --save-dev --save-exact @meantjs/cli@0.5.0
 npm install --save-dev @ic-reactor/vite-plugin
 ```
 
@@ -221,7 +221,7 @@ export default defineConfig({
   its own `didFile`, or write the file yourself. A `didFile` on disk is shared
   whatever their `canisterId`s. A `didFile` that is a symlink is written
   through, to the file it links to. Only the fetch is shared: the generator
-  (`@candid-core/cli` 0.3.0) reads a `didFile` only by its exact name on disk,
+  (`@meantjs/cli` 0.5.0) reads a `didFile` only by its exact name on disk,
   and not through a symlink to a file, so an entry that names it either way
   fails with `did_source_not_found`. Name the file as it is on disk in each
   entry.
@@ -231,7 +231,7 @@ export default defineConfig({
 
 With `methods`, the fetched `didFile` holds only those methods and every type
 they reach: the projection of the live interface, written by
-`candid-core-cli project`, so the generated module has only them.
+`meant project`, so the generated module has only them.
 
 ```ts
 // vite.config.ts
@@ -261,7 +261,7 @@ export default defineConfig({
   does not name is a warning. Both say to fetch the file again with
   `IC_REACTOR_FETCH=<name>`, which writes the projection to the new list. A
   file whose methods cannot be listed (it does not compile, or
-  `candid-core-cli` fails) fails the canister. A file saved after its methods
+  `meant` fails) fails the canister. A file saved after its methods
   were listed, before its module is generated, is not taken by that run (see
   [Generation](#generation)).
 - Canisters that name one `didFile` to be fetched must name one list to share
@@ -286,12 +286,12 @@ export default defineConfig({
 
 `verify: "live"` on an entry, or `IC_REACTOR_VERIFY=1 vite build` (or `true`,
 `all`, or canister names separated by commas) for every entry with a
-`canisterId`, checks the `didFile` on disk against the live canister's
-certified interface with `candid-core-cli check`, at the start of each build
-and dev server. Each check is a network request, so `verify: "live"` makes
-every build need the network; `IC_REACTOR_VERIFY=1` in CI keeps other builds
-offline. `IC_REACTOR_VERIFY=0` (or `false`) turns the check off for a run,
-over `verify: "live"`.
+`canisterId`, checks the `didFile` on disk against the live canister's certified
+interface with `meant check`, at the start of each build and dev server. Each
+check is a network request, so `verify: "live"` makes every build need the
+network; `IC_REACTOR_VERIFY=1` in CI keeps other builds offline.
+`IC_REACTOR_VERIFY=0` (or `false`) turns the check off for a run, over
+`verify: "live"`.
 
 - A method of the file that the canister no longer has (`method_missing`),
   whose mode changed (`mode_changed`), or whose types are no longer compatible
@@ -331,7 +331,7 @@ over `verify: "live"`.
 ## Generation
 
 The generator is WebAssembly, so the plugin does not load it: it runs the bin
-script of the `@candid-core/cli` installed for your app (resolved from the Vite
+script of the `@meantjs/cli` installed for your app (resolved from the Vite
 root, so a monorepo's hoisted copy is found) with the running Node binary, in a
 child process and not through a shell. A trap, a crash or a runaway loop on a
 bad `.did` ends that process and the plugin reports it. The dev server is not
@@ -367,12 +367,12 @@ affected.
   regenerates a canister only when its `.did` text changed, or its module or
   envelope is missing.
 - A run (the start of a build or dev server, or a save's regeneration) reads
-  each `didFile` once, and again after each step that runs `candid-core-cli`
-  on it (listing its methods, the live check, generation), since each of those
-  reads the file itself. A file written before the run is done with it (even
-  saved back) is not taken: the run does not generate it, reports nothing its
-  steps found of it, and puts back a module the generator wrote while the file
-  was written. Under `vite build` the canister fails for that reason alone
+  each `didFile` once, and again after each step that runs `meant` on it
+  (listing its methods, the live check, generation), since each of those reads
+  the file itself. A file written before the run is done with it (even saved
+  back) is not taken: the run does not generate it, reports nothing its steps
+  found of it, and puts back a module the generator wrote while the file was
+  written. Under `vite build` the canister fails for that reason alone
   (`did/ledger.did changed during the build, after the build read it: … Build again.`);
   under `vite dev` the file is queued again, as a save is, and until that run
   reports it the overlay is left as it was. Only the `didFile` is read again,
@@ -447,14 +447,14 @@ icReactor({
 
 ### In CI
 
-`candid-core-cli gen --check` compares the generated files with the ones on
-disk, writes nothing, and exits 1 on any difference. Run it with the same
-arguments the plugin uses to fail a pipeline when committed output is stale:
+`meant gen --check` compares the generated files with the ones on disk, writes
+nothing, and exits 1 on any difference. Run it with the same arguments the
+plugin uses to fail a pipeline when committed output is stale:
 
 ```json
 {
   "scripts": {
-    "gen:check": "candid-core-cli gen ../backend/ledger.did -o src/canisters --check"
+    "gen:check": "meant gen ../backend/ledger.did -o src/canisters --check"
   }
 }
 ```

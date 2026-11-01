@@ -458,7 +458,7 @@ describe("checkManifest", () => {
 describe("awaitsRelease", () => {
   const example = (deps, devDeps = {}) => ({
     name: "example",
-    dependencies: { "@candid-core/schema": "0.3.0", ...deps },
+    dependencies: { "@meantjs/schema": "0.3.0", ...deps },
     devDependencies: devDeps,
   })
   const synced = [
@@ -1276,11 +1276,11 @@ describe("checkLockfile", () => {
 })
 
 describe("the registry", () => {
-  it("pins the @ic-reactor and @candid-core scopes, not only the default registry", () => {
+  it("pins the @ic-reactor and @meantjs scopes, not only the default registry", () => {
     assert.deepEqual(REGISTRY_ARGS, [
       `--registry=${REGISTRY}`,
       `--@ic-reactor:registry=${REGISTRY}`,
-      `--@candid-core:registry=${REGISTRY}`,
+      `--@meantjs:registry=${REGISTRY}`,
     ])
   })
 

@@ -1,4 +1,4 @@
-import { serviceMethods } from "@candid-core/schema"
+import { serviceMethods } from "@meantjs/schema"
 import { describe, expect, it } from "vitest"
 import { checkCanisterId } from "./ids.ts"
 import { CURATED, REGISTRY, registryEntry } from "./registry.ts"

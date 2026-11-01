@@ -18,25 +18,25 @@ against `v3`.
 
 ## What ic-reactor 4 is
 
-A thin layer over a module that `candid-core-cli gen` generates from a `.did`
+A thin layer over a module that `meant gen` generates from a `.did`
 file, plus one consumer guide. There are no typed handles. No package code on
-this branch is written against unpublished candid-core shapes: core's peer
-`@candid-core/schema` and the Vite plugin's peer `@candid-core/cli` are pinned
+this branch is written against unpublished Meant shapes: core's peer
+`@meantjs/schema` and the Vite plugin's peer `@meantjs/cli` are pinned
 exactly to published stable releases.
 
 ## Packages on this branch
 
-| Package                   | Directory              | State on `main`                                                                                                                     |
-| ------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `@ic-reactor/core`        | `packages/core`        | `4.0.0`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient`      |
-| `@ic-reactor/react`       | `packages/react`       | `4.0.0`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                                   |
-| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0`; generates the candid-core module with `@candid-core/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy |
+| Package                   | Directory              | State on `main`                                                                                                                |
+| ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `@ic-reactor/core`        | `packages/core`        | `4.0.0`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient` |
+| `@ic-reactor/react`       | `packages/react`       | `4.0.0`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                              |
+| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0`; generates the module with `@meantjs/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy            |
 
 Not in this tree: `@ic-reactor/parser`, `@ic-reactor/codegen` and
-`@ic-reactor/cli` (replaced by `candid-core-cli gen`), and
-`@ic-reactor/candid` (frozen at 3.x, published from `v3`). The 3.x example
-apps are on `v3`; the five ic-reactor 4 examples are in `examples/` (`icrc-ledger`,
-`vite-wallet`, `next-ssr`, `node-agent-tool`, `canister-studio`).
+`@ic-reactor/cli` (replaced by `meant gen`), and `@ic-reactor/candid` (frozen at
+3.x, published from `v3`). The 3.x example apps are on `v3`; the five ic-reactor
+4 examples are in `examples/` (`icrc-ledger`, `vite-wallet`, `next-ssr`,
+`node-agent-tool`, `canister-studio`).
 
 ## AI context
 
@@ -80,7 +80,7 @@ pnpm typecheck        # Type-check every package and e2e/ (CI gate)
 pnpm lint             # ESLint over packages/*/src and tests (CI gate; build first)
 pnpm format:check     # Prettier over the repo (CI gate)
 pnpm check:ai-context # AI context versions and docs links (CI gate)
-pnpm check:stack      # candid-core pins and mentions against stack.json (CI gate)
+pnpm check:stack      # Meant pins and mentions against stack.json (CI gate)
 pnpm check:snippets   # Compile the ts/tsx snippets of the READMEs and AI-context files (CI gate; build first)
 pnpm check:exports    # Built entries against scripts/export-budget.mjs (CI gate; build first)
 pnpm verify:traps     # Each @ts-expect-error of traps.test-d.ts bites (CI gate)

@@ -7,7 +7,7 @@
  * and an app never names them: it reads them off a call, such as
  * `client.queryOptions(...)`.
  *
- * A generated `Actor` type (from `candid-core-cli gen` 0.3.0) carries each
+ * A generated `Actor` type (from `meant gen` 0.5.0) carries each
  * method's mode as `$.WithMode<mode>`. {@link ReadMethod} and
  * {@link OptInMethod} read it, so that `client.queryOptions()` refuses an
  * update or a oneway method at compile time. A method whose mode the type does
@@ -18,7 +18,7 @@
  *
  * @module
  */
-import type { ModeOf } from "@candid-core/schema"
+import type { ModeOf } from "@meantjs/schema"
 import type {
   DataTag,
   MutationKey,
@@ -55,7 +55,7 @@ type ResultArmsAs<R, OkTag extends string, ErrTag extends string> = [
 
 /**
  * The arms of a result reply, or `never`. Mirrors `isResultSchema` from
- * `@candid-core/schema/validate`, which decides at run time: exactly an ok arm
+ * `@meantjs/schema/validate`, which decides at run time: exactly an ok arm
  * and an err arm, spelled `Ok`/`Err` or `ok`/`err`, never the two mixed. A
  * type test (`tests/canister.test-d.ts`) pins the two to the same answer for
  * the generated fixtures.

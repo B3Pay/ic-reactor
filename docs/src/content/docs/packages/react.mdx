@@ -21,7 +21,7 @@ Like core, it ships as ES modules only (see
 ```sh
 npm install @ic-reactor/core @ic-reactor/react @tanstack/react-query
 npm install @icp-sdk/core @tanstack/query-core
-npm install --save-exact @candid-core/schema@0.4.0
+npm install --save-exact @meantjs/schema@0.6.0
 npm install @icp-sdk/auth   # for Internet Identity
 ```
 
@@ -65,7 +65,7 @@ The entry has four names. The export budget allows five.
 Nothing else is importable: the only subpaths are `.` and `./package.json`.
 `useQuery`, `useMutation`, `useSuspenseQuery`, `skipToken`, `dehydrate` and
 `HydrationBoundary` come from `@tanstack/react-query`, and `principal` from
-`@candid-core/schema`.
+`@meantjs/schema`.
 
 ### ReactorProvider
 

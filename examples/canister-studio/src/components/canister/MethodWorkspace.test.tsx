@@ -1,6 +1,6 @@
 // The method workspace for a link that asks to run a method: a shared URL,
 // a quick read or a history replay all arrive as the same search params.
-import { encodeArgs } from "@candid-core/schema/codec"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { cleanup, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { MethodRunnerProps } from "../../calls/MethodRunner.tsx"

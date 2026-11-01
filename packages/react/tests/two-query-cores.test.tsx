@@ -76,11 +76,7 @@ beforeAll(async () => {
     { recursive: true, dereference: true }
   )
   // Core's other peers, shared with the workspace.
-  for (const name of [
-    "@candid-core/schema",
-    "@icp-sdk/core",
-    "@noble/curves",
-  ]) {
+  for (const name of ["@meantjs/schema", "@icp-sdk/core", "@noble/curves"]) {
     mkdirSync(dirname(join(modules, name)), { recursive: true })
     symlinkSync(besideCore(core, name), join(modules, name), "dir")
   }

@@ -1,7 +1,7 @@
 // Reads the real ICP ledger on mainnet through the same src/ledger.ts the page
 // uses. Node strips the types itself (22.18 or newer): no bundler, no loader.
 import assert from "node:assert/strict"
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createClient, formatUnits, isReactorError } from "@ic-reactor/core"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {

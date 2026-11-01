@@ -1,4 +1,4 @@
-import type { Schema } from "@candid-core/schema"
+import type { Schema } from "@meantjs/schema"
 import { useMemo, type JSX, type Ref } from "react"
 import type { MethodInfo } from "../interface/types.ts"
 import type { CallCheck, FieldIssue } from "./engine.ts"

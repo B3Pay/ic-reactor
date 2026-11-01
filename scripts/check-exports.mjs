@@ -18,10 +18,10 @@
  * - an entry exports a name its budget does not plan;
  * - an entry exports more names than its cap;
  * - a name is exported by two entries (D35);
- * - a name is also exported by `@candid-core/schema` (any of its four entries)
+ * - a name is also exported by `@meantjs/schema` (any of its four entries)
  *   or by TanStack Query (D35: `principal`, `skipToken` and `queryOptions` have
  *   one import path each, and it is never ours);
- * - the installed `@candid-core/schema` is not the pinned version, or any
+ * - the installed `@meantjs/schema` is not the pinned version, or any
  *   manifest of the repository declares it at another version, since its
  *   export list is the reference;
  * - a planned name is not exported, once the version is a beta (while it is an
@@ -223,7 +223,7 @@ export const isAlpha = (version) => /-alpha(?:\.|$)/.test(version)
  * @param {{ id: string, version: string, names: Map<string, string> }[]} input.exported
  *   What each entry exports, by `id`.
  * @param {Map<string, string[]>} input.foreign Name -> where else it is
- *   exported (`@candid-core/schema/validate`, `@tanstack/query-core`, ...).
+ *   exported (`@meantjs/schema/validate`, `@tanstack/query-core`, ...).
  * @returns {{ failures: string[], pending: Map<string, string[]>, transitional: Map<string, string[]> }}
  */
 export function evaluate({ entries, exported, foreign }) {

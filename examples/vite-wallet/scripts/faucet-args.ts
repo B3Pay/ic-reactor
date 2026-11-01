@@ -1,7 +1,7 @@
 // What `pnpm faucet <principal> [amount]` was asked for, checked before any
 // ICP moves: a principal made with `principal()` (never cast), and an amount
 // read with `parseUnits` (no exponent, no grouping, at most 8 decimals).
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import { parseUnits } from "@ic-reactor/core"
 
 /** ICP's decimals, which `icp token transfer` amounts are written in. */

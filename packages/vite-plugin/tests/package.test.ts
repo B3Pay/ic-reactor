@@ -1,5 +1,5 @@
 /**
- * What the package promises about its own shape: one exact `@candid-core/cli`
+ * What the package promises about its own shape: one exact `@meantjs/cli`
  * that pairs with the schema runtime, and two public exports.
  */
 import fs from "node:fs"
@@ -7,7 +7,7 @@ import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { CANDID_CORE_CLI_VERSION, resolveCliBin } from "../src/generate.js"
+import { MEANT_CLI_VERSION, resolveCliBin } from "../src/generate.js"
 import * as entry from "../src/index.js"
 
 const PACKAGE = path.join(path.dirname(fileURLToPath(import.meta.url)), "..")
@@ -18,25 +18,21 @@ const manifest = JSON.parse(
   devDependencies: Record<string, string>
 }
 
-describe("the @candid-core/cli pin", () => {
+describe("the @meantjs/cli pin", () => {
   // The app installs the generator that pairs with its schema runtime, so the
   // peer is one exact version and not a range (DECISIONS Q16).
   it("is one exact version, as a peer and as the dev dependency the tests run", () => {
-    expect(CANDID_CORE_CLI_VERSION).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/)
-    expect(manifest.peerDependencies["@candid-core/cli"]).toBe(
-      CANDID_CORE_CLI_VERSION
-    )
-    expect(manifest.devDependencies["@candid-core/cli"]).toBe(
-      CANDID_CORE_CLI_VERSION
-    )
+    expect(MEANT_CLI_VERSION).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/)
+    expect(manifest.peerDependencies["@meantjs/cli"]).toBe(MEANT_CLI_VERSION)
+    expect(manifest.devDependencies["@meantjs/cli"]).toBe(MEANT_CLI_VERSION)
   })
 
   it("is the version the tests install", () => {
     const installed = createRequire(import.meta.url).resolve(
-      "@candid-core/cli/package.json"
+      "@meantjs/cli/package.json"
     )
     expect(JSON.parse(fs.readFileSync(installed, "utf-8")).version).toBe(
-      CANDID_CORE_CLI_VERSION
+      MEANT_CLI_VERSION
     )
   })
 

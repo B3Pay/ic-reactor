@@ -24,7 +24,7 @@
 // canister's keys are its own, so this section reads `icrc1_decimals` and
 // `icrc1_symbol` again, certified, rather than take the page's uncertified
 // answers for them.
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import { BalanceTable } from "@/components/BalanceTable"
 import { LEDGERS } from "@/ledgers"
 import { readBalances } from "@/server/read-balances"

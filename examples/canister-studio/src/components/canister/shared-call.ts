@@ -1,4 +1,4 @@
-import { decodeArgs } from "@candid-core/schema/codec"
+import { decodeArgs } from "@meantjs/schema/codec"
 import type { QueryClient, QueryKey } from "@tanstack/react-query"
 import { z } from "zod"
 import type { CallKind } from "../../calls/kinds.ts"

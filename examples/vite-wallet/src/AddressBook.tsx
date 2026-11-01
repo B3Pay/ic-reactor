@@ -7,7 +7,7 @@
 // (optimistic-contacts.ts); a refusal from the backend (a duplicate or an
 // invalid name) or a failure puts it back as it was, and says why. Each row
 // can be paid (scenario 8, SendToContact.tsx).
-import { isPrincipal, principal } from "@candid-core/schema"
+import { isPrincipal, principal } from "@meantjs/schema"
 import { useAuth, useClient } from "@ic-reactor/react"
 import { skipToken, useQuery } from "@tanstack/react-query"
 import { useState, type FormEvent } from "react"

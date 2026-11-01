@@ -2,7 +2,7 @@
 // Every read is keyed by its caller, so after a switch the balance, the
 // profile and the contacts start from nothing for the new account, and an
 // answer read for the previous account never shows up under the new one.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { act, cleanup, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 import { AddressBook } from "./AddressBook.tsx"

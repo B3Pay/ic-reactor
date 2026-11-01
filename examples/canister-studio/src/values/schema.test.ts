@@ -1,4 +1,4 @@
-import { c, serviceMethods } from "@candid-core/schema"
+import { c, serviceMethods } from "@meantjs/schema"
 import { describe, expect, it } from "vitest"
 import { actor as minterActor } from "../canisters/ckbtc_minter.ts"
 import { actor as icrc1Actor } from "../canisters/icrc1.ts"

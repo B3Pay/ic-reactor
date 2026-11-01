@@ -6,7 +6,7 @@
 // search parameter is user input: anyone can type any URL. Refusing it here
 // shows a message in the page; nothing is sent to a canister, and nothing
 // throws during the render.
-import { isPrincipal, principal, type Principal } from "@candid-core/schema"
+import { isPrincipal, principal, type Principal } from "@meantjs/schema"
 
 /** What the `owner` search parameter holds. */
 export type OwnerInput =

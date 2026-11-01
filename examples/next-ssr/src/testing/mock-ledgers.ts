@@ -8,7 +8,7 @@
 // negative `int`, a 32-byte subaccount and a `Blob` metadata entry, so that a
 // test sees them come back exactly after dehydration. `icrc1_name` answers
 // with the caller it saw, so a test can tell whose read a card shows.
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import { createTestClient, type TestHandlers } from "@ic-reactor/core/testing"
 import { actor, type Account, type Actor } from "@/canisters/icrc1"
 import { LEDGERS, NOT_A_LEDGER, SAMPLE_OWNER, type LedgerRef } from "@/ledgers"
