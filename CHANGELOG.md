@@ -86,9 +86,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   too and shows a first read, and its npm description says what the package
   is ("IC Reactor Core Library" before).
 - Getting started, the root README and the core and Vite plugin READMEs say
-  to install `@candid-core/cli` at the version they name: without one, npm
-  installs the newest CLI, which pairs with another schema, and stops with
-  `ERESOLVE` in an app on `@ic-reactor/core`.
+  to install the CLI at the version they name: without a version, npm installs
+  the newest CLI, and when that one pairs with another schema, the install
+  stops with `ERESOLVE` in an app on `@ic-reactor/core`.
 - The docs' overview page lists the three build guides and the "Deploy to a
   frontend canister" guide, and says that the CHANGELOG's "Unreleased"
   section lists what `main` has and npm does not. Getting started's "Next"

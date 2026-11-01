@@ -32,8 +32,8 @@ npm install --save-dev --save-exact @candid-core/cli@0.3.0
 `@candid-core/schema` is a peer at exactly that version: the module
 `candid-core-cli gen` writes imports it, so the generator
 (`@candid-core/cli@0.3.0`) has to pair with it too. Install the CLI at that
-version: `npm install --save-dev @candid-core/cli` without one installs the
-newest CLI, which pairs with another schema, and npm stops with `ERESOLVE`.
+version: without a version, npm installs the newest CLI, and when that one
+pairs with another schema, npm stops with `ERESOLVE`.
 
 With React, install `@tanstack/query-core` at the exact version your
 `@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>

@@ -67,9 +67,9 @@ npm install --save-dev --save-exact @candid-core/cli@0.3.0
 npm install --save-dev @ic-reactor/vite-plugin # optional, for Vite
 ```
 
-Install the CLI at the version above: `npm install --save-dev @candid-core/cli`
-without one installs the newest CLI, which pairs with another schema, and npm
-stops with `ERESOLVE`.
+Install the CLI at the version above: without a version, npm installs the
+newest CLI, and when that one pairs with another schema, npm stops with
+`ERESOLVE`.
 
 Then follow
 [Getting started](https://ic-reactor.b3pay.net/v4/guides/getting-started/),

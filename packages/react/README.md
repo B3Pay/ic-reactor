@@ -35,8 +35,8 @@ npm install @ic-reactor/core @ic-reactor/react @tanstack/react-query
 Peers: `react` 18 or newer, `@tanstack/react-query` 5, and `@ic-reactor/core` at
 exactly this package's version (the two are released together). Install core's
 own peers and the generator as [core's README](../core/README.md#install) says:
-`@icp-sdk/core`, and `@candid-core/schema` and `@candid-core/cli` at the exact
-versions it names.
+`@icp-sdk/core`, and the schema runtime and its CLI at the exact versions it
+names.
 
 Install `@tanstack/query-core` (a peer of core) at the exact version your
 `@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>

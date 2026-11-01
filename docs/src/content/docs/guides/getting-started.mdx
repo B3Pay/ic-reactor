@@ -76,9 +76,9 @@ npm install --save-dev --save-exact @candid-core/cli@0.3.0
 (`--save-exact`) because the generated module imports the schema runtime, and
 the CLI has to pair with that runtime. `@ic-reactor/core` lists the schema
 version it needs in its `peerDependencies`; `@ic-reactor/vite-plugin` lists the
-CLI version. Install the CLI at the version above:
-`npm install --save-dev @candid-core/cli` without one installs the newest CLI,
-which pairs with another schema, and npm stops with `ERESOLVE`.
+CLI version. Install the CLI at the version above: without a version, npm
+installs the newest CLI, and when that one pairs with another schema, npm stops
+with `ERESOLVE`.
 
 ## 2. Generate the module
 
