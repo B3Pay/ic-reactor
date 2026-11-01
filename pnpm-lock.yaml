@@ -33,12 +33,12 @@ importers:
 
   .:
     devDependencies:
-      '@candid-core/schema':
-        specifier: 0.4.0
-        version: 0.4.0
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.10.0(jiti@2.7.0))
+      '@meantjs/schema':
+        specifier: 0.6.0
+        version: 0.6.0
       '@types/node':
         specifier: ^26.5.1
         version: 26.5.1
@@ -115,9 +115,6 @@ importers:
 
   e2e:
     dependencies:
-      '@candid-core/schema':
-        specifier: 0.4.0
-        version: 0.4.0
       '@ic-reactor/core':
         specifier: workspace:*
         version: link:../packages/core
@@ -127,10 +124,10 @@ importers:
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@meantjs/schema':
+        specifier: 0.6.0
+        version: 0.6.0
     devDependencies:
-      '@candid-core/cli':
-        specifier: 0.3.0
-        version: 0.3.0(@candid-core/schema@0.4.0)
       '@ic-reactor/vite-plugin':
         specifier: workspace:*
         version: link:../packages/vite-plugin
@@ -140,6 +137,9 @@ importers:
       '@icp-sdk/icp-cli':
         specifier: 1.2.0
         version: 1.2.0
+      '@meantjs/cli':
+        specifier: 0.5.0
+        version: 0.5.0(@meantjs/schema@0.6.0)
       '@tanstack/react-query':
         specifier: ^5.102.8
         version: 5.102.8(react@19.3.0)
@@ -173,12 +173,6 @@ importers:
 
   examples/canister-studio:
     dependencies:
-      '@candid-core/cli':
-        specifier: 0.3.0
-        version: 0.3.0(@candid-core/schema@0.4.0)
-      '@candid-core/schema':
-        specifier: 0.4.0
-        version: 0.4.0
       '@ic-reactor/core':
         specifier: ^4.0.0
         version: link:../../packages/core
@@ -191,6 +185,12 @@ importers:
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@meantjs/cli':
+        specifier: 0.5.0
+        version: 0.5.0(@meantjs/schema@0.6.0)
+      '@meantjs/schema':
+        specifier: 0.6.0
+        version: 0.6.0
       '@noble/curves':
         specifier: ^2.2.0
         version: 2.3.0
@@ -252,9 +252,6 @@ importers:
 
   examples/icrc-ledger:
     dependencies:
-      '@candid-core/schema':
-        specifier: 0.4.0
-        version: 0.4.0
       '@ic-reactor/core':
         specifier: ^4.0.0
         version: link:../../packages/core
@@ -264,6 +261,9 @@ importers:
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@meantjs/schema':
+        specifier: 0.6.0
+        version: 0.6.0
       '@noble/curves':
         specifier: ^2.2.0
         version: 2.3.0
@@ -277,12 +277,12 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
-      '@candid-core/cli':
-        specifier: 0.3.0
-        version: 0.3.0(@candid-core/schema@0.4.0)
       '@ic-reactor/vite-plugin':
         specifier: ^4.0.0
         version: link:../../packages/vite-plugin
+      '@meantjs/cli':
+        specifier: 0.5.0
+        version: 0.5.0(@meantjs/schema@0.6.0)
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.1
@@ -316,9 +316,6 @@ importers:
 
   examples/next-ssr:
     dependencies:
-      '@candid-core/schema':
-        specifier: 0.4.0
-        version: 0.4.0
       '@ic-reactor/core':
         specifier: ^4.0.0
         version: link:../../packages/core
@@ -331,6 +328,9 @@ importers:
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@meantjs/schema':
+        specifier: 0.6.0
+        version: 0.6.0
       '@tanstack/react-query':
         specifier: ^5.102.8
         version: 5.102.8(react@19.3.0)
@@ -344,9 +344,9 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
-      '@candid-core/cli':
-        specifier: 0.3.0
-        version: 0.3.0(@candid-core/schema@0.4.0)
+      '@meantjs/cli':
+        specifier: 0.5.0
+        version: 0.5.0(@meantjs/schema@0.6.0)
       '@noble/curves':
         specifier: ^2.2.0
         version: 2.3.0
@@ -383,15 +383,15 @@ importers:
 
   examples/node-agent-tool:
     dependencies:
-      '@candid-core/schema':
-        specifier: 0.4.0
-        version: 0.4.0
       '@ic-reactor/core':
         specifier: ^4.0.0
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@meantjs/schema':
+        specifier: 0.6.0
+        version: 0.6.0
       '@noble/curves':
         specifier: ^2.2.0
         version: 2.3.0
@@ -399,12 +399,12 @@ importers:
         specifier: ^5.102.8
         version: 5.102.8
     devDependencies:
-      '@candid-core/cli':
-        specifier: 0.3.0
-        version: 0.3.0(@candid-core/schema@0.4.0)
       '@icp-sdk/icp-cli':
         specifier: 1.2.0
         version: 1.2.0
+      '@meantjs/cli':
+        specifier: 0.5.0
+        version: 0.5.0(@meantjs/schema@0.6.0)
       '@types/node':
         specifier: ^26.5.1
         version: 26.5.1
@@ -417,9 +417,6 @@ importers:
 
   examples/vite-wallet:
     dependencies:
-      '@candid-core/schema':
-        specifier: 0.4.0
-        version: 0.4.0
       '@ic-reactor/core':
         specifier: ^4.0.0
         version: link:../../packages/core
@@ -432,6 +429,9 @@ importers:
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@meantjs/schema':
+        specifier: 0.6.0
+        version: 0.6.0
       '@tanstack/react-query':
         specifier: ^5.102.8
         version: 5.102.8(react@19.3.0)
@@ -442,15 +442,15 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
-      '@candid-core/cli':
-        specifier: 0.3.0
-        version: 0.3.0(@candid-core/schema@0.4.0)
       '@ic-reactor/vite-plugin':
         specifier: ^4.0.0
         version: link:../../packages/vite-plugin
       '@icp-sdk/icp-cli':
         specifier: 1.2.0
         version: 1.2.0
+      '@meantjs/cli':
+        specifier: 0.5.0
+        version: 0.5.0(@meantjs/schema@0.6.0)
       '@noble/curves':
         specifier: ^2.2.0
         version: 2.3.0
@@ -487,15 +487,15 @@ importers:
 
   packages/core:
     devDependencies:
-      '@candid-core/schema':
-        specifier: 0.4.0
-        version: 0.4.0
       '@icp-sdk/auth':
         specifier: ^10.0.1
         version: 10.0.1(@icp-sdk/core@6.1.0)
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@meantjs/schema':
+        specifier: 0.6.0
+        version: 0.6.0
       '@noble/curves':
         specifier: ^2.2.0
         version: 2.3.0
@@ -517,12 +517,12 @@ importers:
 
   packages/react:
     devDependencies:
-      '@candid-core/schema':
-        specifier: 0.4.0
-        version: 0.4.0
       '@ic-reactor/core':
         specifier: workspace:*
         version: link:../core
+      '@meantjs/schema':
+        specifier: 0.6.0
+        version: 0.6.0
       '@size-limit/preset-small-lib':
         specifier: ^13.0.3
         version: 13.0.3(size-limit@13.0.3)
@@ -563,12 +563,12 @@ importers:
         specifier: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
         version: 8.3.4(@types/node@26.5.1)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.9.0)
     devDependencies:
-      '@candid-core/cli':
-        specifier: 0.3.0
-        version: 0.3.0(@candid-core/schema@0.4.0)
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@meantjs/cli':
+        specifier: 0.5.0
+        version: 0.5.0(@meantjs/schema@0.6.0)
       '@noble/curves':
         specifier: ^2.2.0
         version: 2.3.0
@@ -587,9 +587,6 @@ importers:
 
   scripts/size-app:
     dependencies:
-      '@candid-core/schema':
-        specifier: 0.4.0
-        version: 0.4.0
       '@ic-reactor/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -599,6 +596,9 @@ importers:
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@meantjs/schema':
+        specifier: 0.6.0
+        version: 0.6.0
       '@noble/curves':
         specifier: ^2.2.0
         version: 2.3.0
@@ -868,18 +868,6 @@ packages:
 
   '@cacheable/utils@2.5.0':
     resolution: {integrity: sha512-buipgOVDkkPXNR5+xBpDw7Zk2n1EvU7qBJCNUcL7rhQ//kfpOXPAvQ511Os0vpLYJ1pZnvudNytkQt2hst3wqA==}
-
-  '@candid-core/cli@0.3.0':
-    resolution: {integrity: sha512-WlhRoFylI0CbtBLlWwYVfHdewiTnKNJCXYSDDz/EvRANV+HpGVo/DDdQ4RtW6H06nQH5Ytl89GEtjJ28z5tV+g==}
-    hasBin: true
-    peerDependencies:
-      '@candid-core/schema': 0.4.0
-    peerDependenciesMeta:
-      '@candid-core/schema':
-        optional: true
-
-  '@candid-core/schema@0.4.0':
-    resolution: {integrity: sha512-0g/z/gW5MbXxd+0jMfOgF1EPBocnGUIXAQ2b91Xg3BzaKkhNqshQtCet1R6H4ifyzG5kAxzah/cSchleCb5mVQ==}
 
   '@capsizecss/unpack@4.0.1':
     resolution: {integrity: sha512-CuNiSqg7+e1cO/GjffyMOm5Tt2jUF9CWHHnvQ/UkqvtkGfHdgwEC0wpmq7fkN3gxwpRnrAN0WzO3vREKmNolMQ==}
@@ -1615,6 +1603,18 @@ packages:
 
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
+
+  '@meantjs/cli@0.5.0':
+    resolution: {integrity: sha512-Q3iqiiYuF2XKU4aMBiFvkn/QGoH178EsxKNCAOyyz20TbC7n8vChEGzXF6yf6LTG5nniKAJ2i8eoBBOOZUktow==}
+    hasBin: true
+    peerDependencies:
+      '@meantjs/schema': 0.6.0
+    peerDependenciesMeta:
+      '@meantjs/schema':
+        optional: true
+
+  '@meantjs/schema@0.6.0':
+    resolution: {integrity: sha512-JhcugRXL+ClzYdRSFgBZxdkqwYzkr6h9joPC/auF2OfuxN+y0VXSa4jRCWW/diSg4ZMguLwRtVO6598bhdNgww==}
 
   '@modelcontextprotocol/client@2.3.1':
     resolution: {integrity: sha512-mIGZXpHsjnZ6lD+gD/WCMpR5k8yVQQ8nNFH1N0Srf7AvnwTUMYD6pvTY8ng2+He5FfV7YMZLmrjL7cLa/cc3dQ==}
@@ -5409,12 +5409,6 @@ snapshots:
       hashery: 1.5.1
       keyv: 5.6.0
 
-  '@candid-core/cli@0.3.0(@candid-core/schema@0.4.0)':
-    optionalDependencies:
-      '@candid-core/schema': 0.4.0
-
-  '@candid-core/schema@0.4.0': {}
-
   '@capsizecss/unpack@4.0.1':
     dependencies:
       fontkitten: 1.0.3
@@ -5946,6 +5940,12 @@ snapshots:
       keyv: 5.6.0
 
   '@keyv/serialize@1.1.1': {}
+
+  '@meantjs/cli@0.5.0(@meantjs/schema@0.6.0)':
+    optionalDependencies:
+      '@meantjs/schema': 0.6.0
+
+  '@meantjs/schema@0.6.0': {}
 
   '@modelcontextprotocol/client@2.3.1':
     dependencies:
