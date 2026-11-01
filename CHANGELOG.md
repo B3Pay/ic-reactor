@@ -80,6 +80,27 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   be an Internet Identity alternative origin, and how to let a copy button
   write to the clipboard. The consumer guide (`packages/core/llms.txt`) gives
   the same `.ic-assets.json5`.
+- The three package READMEs, which npm shows, link the 4.x docs: Getting
+  started and the package's own page (the Vite plugin guide for the plugin).
+  They linked only the 3.x docs before. Core's README installs the generator
+  too and shows a first read, and its npm description says what the package
+  is ("IC Reactor Core Library" before).
+- Getting started, the root README and the core and Vite plugin READMEs say
+  to install the CLI at the version they name: without a version, npm installs
+  the newest CLI, and when that one pairs with another schema, the install
+  stops with `ERESOLVE` in an app on `@ic-reactor/core`.
+- The docs' overview page lists the three build guides and the "Deploy to a
+  frontend canister" guide, and says that the CHANGELOG's "Unreleased"
+  section lists what `main` has and npm does not. Getting started's "Next"
+  list and the root README link the deploy guide, and the examples index and
+  the root README say the Vite wallet deploys itself with security headers.
+  The root README names b3pay.net/docs/ic-reactor as the docs site.
+- The agent tools guide no longer calls Candid Profile "coming next": it
+  names Meant's `@meantjs/tools`, which generates tools of the same shape
+  from a profile, and links its guide.
+- The repository's issue forms offer `@ic-reactor/vite-plugin` in place of the
+  3.x parser for a feature request, suggest Node 22.12.0, the floor, in a bug
+  report, and link the private security report and the docs (not published).
 
 ### Examples (not published)
 

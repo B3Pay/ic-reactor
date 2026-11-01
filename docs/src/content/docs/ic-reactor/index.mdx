@@ -31,7 +31,10 @@ on the [`main` branch](https://github.com/B3Pay/ic-reactor/tree/main).
 
 These pages describe what is built on `main` and nothing else. The one guide
 that ships in the package, `node_modules/@ic-reactor/core/llms.txt`, is for
-people and coding agents alike, and these pages agree with it.
+people and coding agents alike, and these pages agree with it. When `main` is
+ahead of the latest release, the "Unreleased" section of the
+[CHANGELOG](https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md) says
+what npm does not have yet.
 
 Coming from 3.x? Start with [Migrating from 3.x](/v4/migrating-from-3/): the
 3.x names are gone, and that page maps each one to its 4 replacement.
@@ -53,6 +56,28 @@ Coming from 3.x? Start with [Migrating from 3.x](/v4/migrating-from-3/): the
     title="Migrating from 3.x"
     description="The 34 removed names and what replaces them"
     href="/v4/migrating-from-3/"
+  />
+</CardGrid>
+
+## Build something
+
+Each build guide puts the pieces together into one small app, with a test.
+
+<CardGrid>
+  <LinkCard
+    title="An ICRC-1 wallet"
+    description="A React page that signs in with Internet Identity, shows a balance and sends a transfer that is never paid twice"
+    href="/v4/build/icrc1-wallet/"
+  />
+  <LinkCard
+    title="A server page for one user"
+    description="A Next.js page for the account a URL names, read on the server and handed to the browser exact"
+    href="/v4/build/ssr-per-user/"
+  />
+  <LinkCard
+    title="An agent's ledger tools"
+    description="An MCP server whose ledger tools put a transfer in words before sending it, and never pay twice"
+    href="/v4/build/agent-tools/"
   />
 </CardGrid>
 
@@ -105,6 +130,11 @@ In reading order.
     title="The Vite plugin"
     description="Generation, the ic_env cookie and the /api proxy"
     href="/v4/guides/vite-plugin/"
+  />
+  <LinkCard
+    title="Deploy to a frontend canister"
+    description="Security headers from the asset canister, raw domains turned off, and what the HTTP gateway checks"
+    href="/v4/guides/deploy/"
   />
 </CardGrid>
 

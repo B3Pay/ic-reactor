@@ -93,7 +93,7 @@ body:
         Please provide your environment details:
       value: |
         - OS: [e.g., macOS 14.0, Ubuntu 22.04]
-        - Node.js: [e.g., 20.10.0]
+        - Node.js: [e.g., 22.12.0]
         - Package Manager: [e.g., pnpm 9.0.0]
         - Browser (if applicable): [e.g., Chrome 120]
         - Framework (if applicable): [e.g., React 18, Next.js 14]
