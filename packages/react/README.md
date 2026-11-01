@@ -20,7 +20,11 @@ There is no hook that wraps `useQuery` or `useMutation`: read and write
 canisters with TanStack Query's own hooks and the options the client builds.
 The package never re-exports `@ic-reactor/core`, so every name has one import
 path. The guide for both packages ships in core:
-`node_modules/@ic-reactor/core/llms.txt`.
+`node_modules/@ic-reactor/core/llms.txt`. The docs site covers the same ground
+in pages, starting with
+[Getting started](https://ic-reactor.b3pay.net/v4/guides/getting-started/),
+and [this package's page](https://ic-reactor.b3pay.net/v4/packages/react/)
+lists its exports and peers.
 
 ## Install
 
@@ -29,7 +33,10 @@ npm install @ic-reactor/core @ic-reactor/react @tanstack/react-query
 ```
 
 Peers: `react` 18 or newer, `@tanstack/react-query` 5, and `@ic-reactor/core` at
-exactly this package's version (the two are released together).
+exactly this package's version (the two are released together). Install core's
+own peers and the generator as [core's README](../core/README.md#install) says:
+`@icp-sdk/core`, and the schema runtime and its CLI at the exact versions it
+names.
 
 Install `@tanstack/query-core` (a peer of core) at the exact version your
 `@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>

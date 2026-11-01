@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/B3Pay/ic-reactor/security/advisories/new
+    about: Report it privately, as SECURITY.md asks, and not in a public issue.
+  - name: 📖 Documentation
+    url: https://b3pay.net/docs/ic-reactor/
+    about: Guides, examples and the API reference of ic-reactor 4.
