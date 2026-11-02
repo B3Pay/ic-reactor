@@ -72,7 +72,7 @@ reported there.
   anywhere, and asset sync warns that it should be tightened.
 - `default-src 'none'` refuses everything the other directives do not allow:
   frames, plugins, workers, media.
-- `script-src 'self'`: ic-reactor, `@candid-core/schema`, `@icp-sdk/core` and
+- `script-src 'self'`: ic-reactor, `@meantjs/schema`, `@icp-sdk/core` and
   `@icp-sdk/auth` run no `eval`, `new Function` or WebAssembly in a browser,
   and Vite's production build has no inline script, so the app's own files
   are all the page runs.

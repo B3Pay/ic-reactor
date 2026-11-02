@@ -1,4 +1,4 @@
-import type { CompatibilityReport } from "@candid-core/cli"
+import type { CompatibilityReport } from "@meantjs/cli"
 import type { ReactElement } from "react"
 import { groupDigits } from "../../lib/format.ts"
 import { Badge } from "../Badge.tsx"

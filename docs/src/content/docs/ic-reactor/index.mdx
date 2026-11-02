@@ -1,15 +1,15 @@
 ---
 title: IC Reactor
-description: A thin layer over a module that candid-core-cli generates from a .did file, with a client, one error type, units helpers, a test client and a React provider
+description: A thin layer over a module that Meant generates from a .did file, with a client, one error type, units helpers, a test client and a React provider
 ---
 
 import { CardGrid, LinkCard } from "@astrojs/starlight/components"
 
-ic-reactor 4 is a thin layer over a module that `candid-core-cli gen`
-generates from a `.did` file. The layer is a client with caller-scoped query
-keys, one error type that says whether a call may have executed, helpers for
-token units, a test client over an in-memory replica, and a React provider
-with `useAuth`. Reading and writing use TanStack Query's own hooks.
+ic-reactor 4 is a thin layer over a module that `meant gen` generates from a
+`.did` file. The layer is a client with caller-scoped query keys, one error type
+that says whether a call may have executed, helpers for token units, a test
+client over an in-memory replica, and a React provider with `useAuth`. Reading
+and writing use TanStack Query's own hooks.
 
 ```ts
 import { createClient } from "@ic-reactor/core"

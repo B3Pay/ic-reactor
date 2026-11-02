@@ -1,8 +1,8 @@
 /**
- * Projection and the live check: `candid-core-cli project` and
- * `candid-core-cli check`, run in a child process as `gen` is (generate.ts).
+ * Projection and the live check: `meant project` and
+ * `meant check`, run in a child process as `gen` is (generate.ts).
  *
- * `@candid-core/cli` 0.3.0 also exports both as library functions
+ * `@meantjs/cli` also exports both as library functions
  * (`projectDid`, `checkCompatible`), WebAssembly loaded into the calling
  * process. The plugin runs the commands instead, for the reasons it runs `gen`
  * in a child process: the input is a live canister's interface, which the
@@ -43,7 +43,7 @@ const MAX_REPORT_BYTES = 16 * 1024 * 1024
 /**
  * The names asked for to list a service's methods: the failure of a
  * projection to a method the service lacks lists them. The empty name is one
- * no service can have, since candid-core refuses a service that declares it
+ * no service can have, since Meant refuses a service that declares it
  * (`empty_method_name`), so the projection always fails and always lists them.
  * `project` reads `--methods ""` as the empty list, and splits any other value
  * on commas as it is, so two empty names are sent: `--methods ,`.
@@ -206,12 +206,12 @@ function failureOf(document: Record<string, unknown>): Unfinished {
     diagnostics,
     message:
       diagnostics.map(formatDiagnostic).join("\n") ||
-      "candid-core-cli reported a failure with no diagnostic",
+      "`meant` reported a failure with no diagnostic",
   }
 }
 
 /**
- * Project `source` onto `methods` with `candid-core-cli project`: the `.did`
+ * Project `source` onto `methods` with `meant project`: the `.did`
  * holding those methods and every declaration they reach. Never rejects.
  *
  * `project` takes the names separated by commas, so a name with a comma in it
@@ -261,7 +261,7 @@ export async function listMethods(
   if (result.ok) {
     return {
       ok: false,
-      message: `candid-core-cli project accepted the empty method name, which no service can have, so its methods cannot be listed`,
+      message: `\`meant project\` accepted the empty method name, which no service can have, so its methods cannot be listed`,
     }
   }
   const [first] = result.diagnostics ?? []
@@ -274,7 +274,7 @@ export async function listMethods(
 }
 
 /**
- * Check with `candid-core-cli check` that the live interface `live` is still
+ * Check with `meant check` that the live interface `live` is still
  * compatible with the `.did` at `written`. Never rejects.
  */
 export function check(

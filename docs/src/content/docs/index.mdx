@@ -5,7 +5,7 @@ editUrl: false
 template: splash
 hero:
   title: Typed canister calls, from the .did file to the screen
-  tagline: Candid Core turns a canister's interface into data. IC Reactor turns that data into cached reads and writes on TanStack Query. Candid Profile, coming next, adds what the interface can't say.
+  tagline: Meant turns a canister's interface into data. IC Reactor turns that data into cached reads and writes on TanStack Query. Candid Profile, coming next, adds what the interface can't say.
   image:
     dark: ../../assets/ic-reactor-hero-dark.svg
     light: ../../assets/ic-reactor-hero-light.svg
@@ -23,8 +23,8 @@ import LibraryCards from "../../components/LibraryCards.astro"
 
 ## Three libraries, one set of docs
 
-Pick the library you work in. Each keeps its own packages and versions. Candid
-Core's pages are at [/candid-core/](/candid-core/), built from its own
+Pick the library you work in. Each keeps its own packages and versions.
+Meant's pages are at [/candid-core/](/candid-core/), built from its own
 repository.
 
 <LibraryCards />
@@ -33,8 +33,8 @@ repository.
 
 1. **Your canister's interface:** a `.did` file, such as the ICRC-1 ledger's
    `icrc1.did`.
-2. **Candid Core** turns it into a TypeScript module with
-   `candid-core-cli gen`: the types, the schemas and the interface's identity.
+2. **Meant** turns it into a TypeScript module with `meant gen`: the types,
+   the schemas and the interface's identity.
 3. **IC Reactor** gives that module a client: `client.queryOptions` and
    `client.mutationOptions` build the keys, calls and retries for whoever is
    signed in.

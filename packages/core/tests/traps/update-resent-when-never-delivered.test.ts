@@ -19,7 +19,7 @@
  * an update is never sent again. Failures that do not prove non-delivery are
  * in `update-not-resent.test.ts`.
  */
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { MutationObserver } from "@tanstack/query-core"
 import { afterAll, describe, expect, it, vi } from "vitest"
 import * as management from "../fixtures/management.js"

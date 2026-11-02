@@ -15,7 +15,7 @@
 // - A failure is a `ReactorError`: its `kind` decides the HTTP status, with
 //   `httpStatus` telling a refusal that passes from one that stands
 //   (`statusOf`).
-import { isPrincipal, principal } from "@candid-core/schema"
+import { isPrincipal, principal } from "@meantjs/schema"
 import {
   formatUnits,
   isReactorError,

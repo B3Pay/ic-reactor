@@ -6,8 +6,8 @@
 // loader.
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
-import { principal, serviceMethods } from "@candid-core/schema"
-import { schemaFromContract } from "@candid-core/schema/contract"
+import { principal, serviceMethods } from "@meantjs/schema"
+import { schemaFromContract } from "@meantjs/schema/contract"
 import { createClient, formatUnits, isReactorError } from "@ic-reactor/core"
 import {
   actor as minterActor,

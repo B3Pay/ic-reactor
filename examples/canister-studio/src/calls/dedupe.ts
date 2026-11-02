@@ -1,4 +1,4 @@
-import { resolveSchema, type AnyFieldSchema } from "@candid-core/schema"
+import { resolveSchema, type AnyFieldSchema } from "@meantjs/schema"
 import { isReactorError } from "@ic-reactor/core"
 import type { HintResolver } from "../forms/hints.ts"
 import type { CanisterInterface, MethodInfo } from "../interface/types.ts"

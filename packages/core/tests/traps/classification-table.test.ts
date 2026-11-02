@@ -23,7 +23,7 @@
  * request that cannot be built or signed) are covered as pure functions of
  * agent errors in `errors.test.ts`.
  */
-import { c } from "@candid-core/schema"
+import { c } from "@meantjs/schema"
 import { afterAll, describe, expect, it, vi } from "vitest"
 import { isReactorError, type ReactorErrorKind } from "../../src/index.js"
 import * as icrc1 from "../fixtures/icrc1.js"

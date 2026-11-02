@@ -14,7 +14,7 @@
 //   certified one was asked for.
 // - Each ledger fails alone: its row carries the `ReactorError` kind, and the
 //   other rows still render.
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import type { Client } from "@ic-reactor/core"
 import { actor, type Actor } from "@/canisters/icrc1"
 import type { LedgerRef } from "@/ledgers"

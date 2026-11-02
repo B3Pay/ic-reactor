@@ -1,4 +1,4 @@
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { isReactorError } from "@ic-reactor/core"
 import { describe, expect, it } from "vitest"
 import {

@@ -4,7 +4,7 @@
 // account, takes the fee, deduplicates by `created_at_time`, and answers
 // `icrc1_transfer` with the standard's `Err` arms. Nothing here is ic-reactor
 // API; the client that calls it is the real one.
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import type { createTestClient, TestHandlers } from "@ic-reactor/core/testing"
 import {
   actor,

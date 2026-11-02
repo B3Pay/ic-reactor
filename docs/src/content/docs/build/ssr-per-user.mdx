@@ -37,7 +37,7 @@ When it is done, the project holds these files beside the ones
 - vitest.config.ts
 - src/
   - generated/
-    - icrc1.ts written by `candid-core-cli gen`
+    - icrc1.ts written by `meant gen`
   - account.ts the page's reads, for the server and the browser
   - account.test.ts
   - server/
@@ -87,7 +87,7 @@ cd my-app
    directory to the project's root, and generate its module:
 
    ```sh
-   npx candid-core-cli gen icrc1.did -o src/generated
+   npx @meantjs/cli gen icrc1.did -o src/generated
    ```
 
 ## 1. One client per request
@@ -168,7 +168,7 @@ browser.
 
 ```ts
 // src/account.ts
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import type { Client } from "@ic-reactor/core"
 import { actor, type Actor } from "@/generated/icrc1"
 
@@ -220,7 +220,7 @@ export async function prefetchAccount(client: Client, owner: Principal) {
 
 ```tsx
 // src/app/accounts/[owner]/page.tsx
-import { isPrincipal, principal } from "@candid-core/schema"
+import { isPrincipal, principal } from "@meantjs/schema"
 import { isReactorError } from "@ic-reactor/core"
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query"
 import { notFound } from "next/navigation"
@@ -313,7 +313,7 @@ async function Account({ params }: { params: Params }) {
 // src/components/Balance.tsx
 "use client"
 
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import { formatUnits } from "@ic-reactor/core"
 import { useClient } from "@ic-reactor/react"
 import { useQuery } from "@tanstack/react-query"
@@ -361,7 +361,7 @@ export function Balance({ owner }: { owner: Principal }) {
 // src/components/YourAccount.tsx
 "use client"
 
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import { useAuth } from "@ic-reactor/react"
 
 export function YourAccount({ owner }: { owner: Principal }) {
@@ -393,7 +393,7 @@ whether the account is the visitor's. See
 
 ```tsx
 // src/components/CertifiedBalance.tsx
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import { formatUnits, isReactorError } from "@ic-reactor/core"
 import { LEDGER_ID } from "@/account"
 import { actor, type Actor } from "@/generated/icrc1"
@@ -461,7 +461,7 @@ export default defineConfig({
 
 ```ts
 // src/account.test.ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { dehydrate, hydrate } from "@tanstack/react-query"
 import { afterEach, expect, it } from "vitest"

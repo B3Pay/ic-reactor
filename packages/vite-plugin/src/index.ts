@@ -1,11 +1,11 @@
 /**
  * @ic-reactor/vite-plugin
  *
- * Vite plugin for an app built on a candid-core generated module.
+ * Vite plugin for an app built on a module Meant generates.
  *
  * - Generation: at the start of a build or dev server, and when a `.did` file
- *   changes, it runs `candid-core-cli gen` in a child process (see
- *   generate.ts) and leaves candid-core's module as the generator wrote it. No
+ *   changes, it runs `meant gen` in a child process (see
+ *   generate.ts) and leaves the module as the generator wrote it. No
  *   wrapper files, hooks or reactors are generated.
  * - Fetching: a `didFile` that is not on disk is written from the live
  *   canister's certified `candid:service` before it is generated, when the
@@ -86,7 +86,7 @@ export interface IcReactorPluginOptions {
    * asked for its ID; the canister is generated as any other.
    *
    * - `didFile`: the canister's Candid interface, relative to the Vite root.
-   *   The plugin runs `candid-core-cli gen` on it at the start of a build or
+   *   The plugin runs `meant gen` on it at the start of a build or
    *   dev server and again each time the file changes, regenerating only the
    *   canisters that name the file that changed. The generator names its
    *   output after the file's name without its `.did`, so
@@ -140,7 +140,7 @@ export interface IcReactorPluginOptions {
    * - `methods`: the methods of the canister the app calls. A `didFile`
    *   fetched from `canisterId` is written as the projection of the live
    *   interface to these methods and every type they reach
-   *   (`candid-core-cli project`), so its module has only them. A name the
+   *   (`meant project`), so its module has only them. A name the
    *   live interface lacks fails the canister and writes nothing. A
    *   `didFile` on disk is not fetched again for a change of `methods`: one
    *   that lacks a name of `methods` fails the canister, and one that holds a
@@ -153,7 +153,7 @@ export interface IcReactorPluginOptions {
    *   names (`null`, `false`, `""`) fails the canister.
    * - `verify`: `"live"` checks the `didFile` on disk against the live
    *   canister's certified interface at the start of each build and dev
-   *   server (`candid-core-cli check`). `IC_REACTOR_VERIFY=1` (or `true`,
+   *   server (`meant check`). `IC_REACTOR_VERIFY=1` (or `true`,
    *   `all`, or canister names separated by commas) does the same for the
    *   canisters with a `canisterId`, and `IC_REACTOR_VERIFY=0` (or `false`)
    *   turns the check off for the run, `verify: "live"` included. A method
@@ -204,7 +204,7 @@ export interface IcReactorPluginOptions {
    * was given, whatever its kind (a bigint, a symbol, an object that holds
    * itself).
    *
-   * The generator is the `@candid-core/cli` the app has installed, run as a
+   * The generator is the `@meantjs/cli` the app has installed, run as a
    * child process so that a failure on one `.did` stops that process and not
    * the dev server.
    */
@@ -478,7 +478,7 @@ interface Snapshot {
  * file once, when its steps start, and takes the file's text from that
  * reading wherever it compares or records one: the methods it listed, the text
  * the live check passed, the text it generated. The steps that run
- * candid-core-cli (the methods listing, the live check, generation) read the
+ * `meant` (the methods listing, the live check, generation) read the
  * file themselves, later, so what one of them found is of the run's text only
  * while the file is still as the run read it.
  */
@@ -502,7 +502,7 @@ const consoleLog: PluginLog = {
 }
 
 /**
- * The Vite plugin for an app built on a candid-core generated module.
+ * The Vite plugin for an app built on a module Meant generates.
  *
  * It does three things:
  *
@@ -511,7 +511,7 @@ const consoleLog: PluginLog = {
  *   certified `candid:service` first. A `didFile` on disk costs no network
  *   request. See {@link IcReactorPluginOptions.canisters}.
  * - **Generates the module.** When a build or the dev server starts, and
- *   when a configured `.did` changes, it runs the app's `candid-core-cli gen`
+ *   when a configured `.did` changes, it runs the app's `meant gen`
  *   on each `didFile` and leaves the module as the generator wrote it: no
  *   wrapper files, hooks or reactors. The generator is WebAssembly, so it runs
  *   in a child process (the running Node binary on the CLI's bin script, never
@@ -530,8 +530,8 @@ const consoleLog: PluginLog = {
  * The first thing it logs names where an agent reads how to use the library:
  * `ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt`.
  *
- * The plugin needs `@candid-core/cli`, at the exact release that pairs with
- * the `@candid-core/schema` the generated modules import, installed in the
+ * The plugin needs `@meantjs/cli`, at the exact release that pairs with
+ * the `@meantjs/schema` the generated modules import, installed in the
  * app. It imports neither, and no `@ic-reactor` runtime package. To fetch a
  * missing `didFile` from a live canister it imports `@icp-sdk/core`, an
  * optional peer that every app on `@ic-reactor/core` has installed; an app
@@ -887,7 +887,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         onStderr: (line, didFiles) => {
           if (signal.aborted) return
           log.warn(
-            `ic-reactor: candid-core-cli (${didFiles.map((file) => relativeToRoot(file)).join(", ")}): ${line}`
+            `ic-reactor: \`meant\` (${didFiles.map((file) => relativeToRoot(file)).join(", ")}): ${line}`
           )
         },
         canisters: stale.map(generationOf),
@@ -1434,7 +1434,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       const fix =
         canister.canisterId !== undefined
           ? `Fetch it again with ${FETCH_VARIABLE}=${canister.name} to write the projection to methods`
-          : `Write the projection to methods with candid-core-cli project, or give the canister a canisterId to fetch it from`
+          : `Write the projection to methods with \`meant project\`, or give the canister a canisterId to fetch it from`
       let failure: string | undefined
       if (lacking.length > 0) {
         failure =
@@ -1457,7 +1457,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * The live check: fetch the certified interface of each canister of
    * `wanted` that asks for it (`checks`: `verify: "live"`, or
    * `IC_REACTOR_VERIFY`) and check its `didFile` against it with
-   * `candid-core-cli check`. Canisters that name one file and one canister on
+   * `meant check`. Canisters that name one file and one canister on
    * one network share one fetch and one check. A `verify` that is not
    * `"live"`, `"live"` with no `canisterId`, and a canister
    * `IC_REACTOR_VERIFY` names with no `canisterId` were refused before the
@@ -1600,7 +1600,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             ? `the live interface of ${where} does not compile`
             : report.input === "written"
               ? `${didFile} does not compile`
-              : `candid-core-cli check failed`
+              : `\`meant check\` failed`
         return {
           ok: false,
           message: `the live check of ${didFile} against ${where} could not run: ${side}:\n${report.message}`,

@@ -31,7 +31,7 @@ const hungPids = (root: string): number[] => {
   try {
     return fs
       .readFileSync(
-        path.join(root, "node_modules/@candid-core/cli/hang.pids"),
+        path.join(root, "node_modules/@meantjs/cli/hang.pids"),
         "utf-8"
       )
       .trim()

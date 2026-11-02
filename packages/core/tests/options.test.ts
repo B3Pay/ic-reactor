@@ -3,7 +3,7 @@
  * Query observers on the client's own `QueryClient`, against a fake replica.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import { HttpErrorCode, ProtocolError } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {

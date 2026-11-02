@@ -10,7 +10,7 @@
  * signature, so it passes either way. Core's tests run in Node:
  * `core/tests/time-realm.test.ts` covers the same case there.
  */
-import { c } from "@candid-core/schema"
+import { c } from "@meantjs/schema"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { afterEach, expect, it } from "vitest"
 

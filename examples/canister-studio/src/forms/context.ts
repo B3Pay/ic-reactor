@@ -1,4 +1,4 @@
-import type { AnyFieldSchema } from "@candid-core/schema"
+import type { AnyFieldSchema } from "@meantjs/schema"
 import { createContext, useContext } from "react"
 import type { Draft, FieldIssue } from "./engine.ts"
 import type { FieldHint } from "./hints.ts"

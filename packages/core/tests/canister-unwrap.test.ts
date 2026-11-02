@@ -7,12 +7,8 @@
  * `isResultSchema` makes of the method's result schema.
  */
 import { describe, expect, it } from "vitest"
-import {
-  serviceMethods,
-  type Principal,
-  type Schema,
-} from "@candid-core/schema"
-import { isResultSchema } from "@candid-core/schema/validate"
+import { serviceMethods, type Principal, type Schema } from "@meantjs/schema"
+import { isResultSchema } from "@meantjs/schema/validate"
 import type { ReplyOf, Unwrap } from "../src/types.js"
 import * as archive from "./fixtures/archive.js"
 import * as icrc1 from "./fixtures/icrc1.js"

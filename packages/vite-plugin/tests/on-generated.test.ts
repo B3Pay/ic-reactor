@@ -1,7 +1,7 @@
 /**
  * `onGenerated`: called once for each module a run generated, inside the
  * run, under a real `vite build` and a real `vite dev` server, with the real
- * `@candid-core/cli`. A throw fails the module's canisters as a failed
+ * `@meantjs/cli`. A throw fails the module's canisters as a failed
  * generation does, and they are generated, and the hook called, again on the
  * next run.
  */

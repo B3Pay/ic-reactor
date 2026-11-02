@@ -5,13 +5,8 @@
  * failure.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import {
-  c,
-  principal,
-  serviceMethods,
-  type Principal,
-} from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
+import { c, principal, serviceMethods, type Principal } from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { AnonymousIdentity, Cbor, type Identity } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import type { QueryFunctionContext } from "@tanstack/query-core"
@@ -311,7 +306,7 @@ describe("a direct call", () => {
   })
 
   it("decodes a blob reply over a million bytes with the default options", async () => {
-    // An SNS wasm or an asset chunk: candid-core charges a blob one element
+    // An SNS wasm or an asset chunk: `@meantjs/schema` charges a blob one element
     // per byte, so its default budget alone would refuse this reply.
     const wasm = new Uint8Array(2_000_000).fill(7)
     const { canister } = shapesSetup({ bytes: () => wasm })

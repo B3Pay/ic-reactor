@@ -1,5 +1,5 @@
-import type { AnyFieldSchema } from "@candid-core/schema"
-import { isResultSchema } from "@candid-core/schema/validate"
+import type { AnyFieldSchema } from "@meantjs/schema"
+import { isResultSchema } from "@meantjs/schema/validate"
 import type { MethodInfo } from "../interface/types.ts"
 import {
   armOf,

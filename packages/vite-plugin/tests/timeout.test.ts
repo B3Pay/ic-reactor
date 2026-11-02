@@ -29,7 +29,7 @@ afterEach(async () => {
 function hungProcessIsAlive(root: string): boolean {
   const pids = fs
     .readFileSync(
-      path.join(root, "node_modules/@candid-core/cli/hang.pids"),
+      path.join(root, "node_modules/@meantjs/cli/hang.pids"),
       "utf-8"
     )
     .trim()
@@ -54,7 +54,7 @@ describe("a generator that never exits", () => {
     })
 
     await expect(result).rejects.toThrow(
-      /hang \(did\/hang\.did\): candid-core-cli did not finish within 1s and was killed/
+      /hang \(did\/hang\.did\): `meant` did not finish within 1s and was killed/
     )
     expect(hungProcessIsAlive(app.root)).toBe(false)
   })
@@ -71,7 +71,7 @@ describe("a generator that never exits", () => {
     })
 
     await expect(result).rejects.toThrow(
-      /could not generate 1 of 2 canisters:\n {2}- hang \(did\/hang\.did\): candid-core-cli did not finish within 1s and was killed/
+      /could not generate 1 of 2 canisters:\n {2}- hang \(did\/hang\.did\): `meant` did not finish within 1s and was killed/
     )
     expect(lines).toContain(
       "info: ic-reactor: generated ok into src/canisters/ok.ts"

@@ -1,4 +1,4 @@
-import { isBoxedOpt, type AnyFieldSchema } from "@candid-core/schema"
+import { isBoxedOpt, type AnyFieldSchema } from "@meantjs/schema"
 import { Fragment, useState, type ReactElement } from "react"
 import { groupDigits, type TokenUnits } from "../lib/format.ts"
 import { isAmountName } from "./hints.ts"

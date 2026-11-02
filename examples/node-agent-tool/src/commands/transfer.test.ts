@@ -1,6 +1,6 @@
 // Scenario 5: writes. A transfer, every way it can fail with its exit code,
 // and the re-send of the same argument after an unknown outcome.
-import { c, principal } from "@candid-core/schema"
+import { c, principal } from "@meantjs/schema"
 import type { TestHandlers } from "@ic-reactor/core/testing"
 import { describe, expect, it } from "vitest"
 import { Account, TransferArg, type TransferError } from "../canisters/icrc1.ts"

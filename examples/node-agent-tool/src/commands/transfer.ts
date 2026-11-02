@@ -24,8 +24,8 @@
 //    the first attempt's unknown outcome, with its exit code.
 // 5. An `Err` from the ledger is a typed `canister_err`, printed plainly.
 //    `Duplicate` means the transfer had already gone through: it is done.
-import { principal } from "@candid-core/schema"
-import { validate } from "@candid-core/schema/validate"
+import { principal } from "@meantjs/schema"
+import { validate } from "@meantjs/schema/validate"
 import { formatUnits, isReactorError, type Canister } from "@ic-reactor/core"
 import {
   TransferError,

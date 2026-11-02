@@ -3,7 +3,7 @@
  * nothing here runs. The traps (the mistakes these types exist to refuse) are
  * in `traps.test-d.ts`, where `pnpm verify:traps` proves each one bites.
  */
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import {
   MutationObserver,
   QueryObserver,

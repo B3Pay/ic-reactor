@@ -18,11 +18,8 @@
  *
  * @module
  */
-import type { FuncValue, Principal, Schema } from "@candid-core/schema"
-import {
-  DEFAULT_MAX_DEPTH,
-  DEFAULT_MAX_ELEMENTS,
-} from "@candid-core/schema/codec"
+import type { FuncValue, Principal, Schema } from "@meantjs/schema"
+import { DEFAULT_MAX_DEPTH, DEFAULT_MAX_ELEMENTS } from "@meantjs/schema/codec"
 import {
   AnonymousIdentity,
   HttpAgent,
@@ -382,7 +379,7 @@ export interface Client {
    * const balance = await ledger.icrc1_balance_of({ owner, subaccount: null })
    * ```
    *
-   * `service` is the `actor` export of a module `candid-core-cli gen` wrote,
+   * `service` is the `actor` export of a module `meant gen` wrote,
    * or the `actor` of `schemaFromContract()`: both make the same calls and the
    * same keys. `<A>` is not checked against `service`; pass the `Actor` of
    * the same module.
@@ -987,8 +984,8 @@ const OPTION_NAMES = [
  * Checks what a JavaScript caller (or a cast) can get past the types: no
  * option it does not have, exactly one of `identity` and `auth`, an identity
  * that is one, an `auth` that is a factory, a `fetch` that is a function, and
- * a `maxDepth` and `maxElements` candid-core would accept. {@link resolveNetwork}
- * checks the network and `allowEnvConfig`.
+ * a `maxDepth` and `maxElements` `@meantjs/schema` would accept.
+ * {@link resolveNetwork} checks the network and `allowEnvConfig`.
  */
 function checkOptions(options: ClientOptions): void {
   if (typeof options !== "object" || options === null) {

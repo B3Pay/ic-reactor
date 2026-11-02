@@ -17,8 +17,8 @@
 
 ---
 
-> **ic-reactor 4 is the current release.** It is a thin layer over a
-> candid-core generated module, with a guide shipped in `@ic-reactor/core`
+> **ic-reactor 4 is the current release.** It is a thin layer over a module
+> that Meant generates, with a guide shipped in `@ic-reactor/core`
 > (`packages/core/llms.txt`), and it replaced the 3.x runtime of
 > `@ic-reactor/core` and `@ic-reactor/react` with the 4 API. The 3.x line lives
 > on the [`v3` branch](https://github.com/B3Pay/ic-reactor/tree/v3), takes
@@ -26,8 +26,8 @@
 > at [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
 
 IC Reactor is a monorepo of libraries for building Internet Computer (ICP) apps
-in TypeScript. ic-reactor 4 adds, over the module `candid-core-cli gen` writes
-for a canister:
+in TypeScript. ic-reactor 4 adds, over the module `meant gen` writes for a
+canister:
 
 - a client with caller-scoped query keys, for TanStack Query
 - one error union that says whether a failed call may have executed
@@ -38,14 +38,14 @@ for a canister:
 
 ## Package Overview
 
-| Package                                             | Purpose                                                                                                                                            |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@ic-reactor/core`](./packages/core)               | The client, errors, network and units                                                                                                              |
-| [`@ic-reactor/react`](./packages/react)             | `'use client'` bindings over core                                                                                                                  |
-| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Generates the candid-core module with `candid-core-cli gen` in a child process, and sets the local `ic_env` cookie and `/api` proxy for `vite dev` |
+| Package                                             | Purpose                                                                                                                      |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| [`@ic-reactor/core`](./packages/core)               | The client, errors, network and units                                                                                        |
+| [`@ic-reactor/react`](./packages/react)             | `'use client'` bindings over core                                                                                            |
+| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Generates the module with `meant gen` in a child process, and sets the local `ic_env` cookie and `/api` proxy for `vite dev` |
 
 `@ic-reactor/parser`, `@ic-reactor/codegen` and `@ic-reactor/cli` are not part
-of ic-reactor 4: `candid-core-cli gen` generates the canister module instead.
+of ic-reactor 4: `meant gen` generates the canister module instead.
 `@ic-reactor/candid` stays at 3.x, published from the `v3` branch. None of the
 four is in this branch's tree.
 
@@ -56,14 +56,14 @@ Vite and `@icp-sdk/core` supported, is in
 
 ## Install
 
-Install the packages, and the candid-core packages at the exact versions their
+Install the packages, and the Meant packages at the exact versions their
 peers name:
 
 ```bash
 npm install @ic-reactor/core @ic-reactor/react \
   @icp-sdk/core @tanstack/react-query
-npm install --save-exact @candid-core/schema@0.4.0
-npm install --save-dev --save-exact @candid-core/cli@0.3.0
+npm install --save-exact @meantjs/schema@0.6.0
+npm install --save-dev --save-exact @meantjs/cli@0.5.0
 npm install --save-dev @ic-reactor/vite-plugin # optional, for Vite
 ```
 

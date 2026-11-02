@@ -2,7 +2,7 @@
 // they refuse to send, and what they say when the server gives no result
 // (StackBlitz, where TanStack Start's client resolves such a call with
 // undefined). The server functions are mocked.
-import type { AnySchema } from "@candid-core/schema"
+import type { AnySchema } from "@meantjs/schema"
 import {
   cleanup,
   fireEvent,

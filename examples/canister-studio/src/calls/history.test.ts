@@ -1,5 +1,5 @@
-import { principal } from "@candid-core/schema"
-import { decodeArgs } from "@candid-core/schema/codec"
+import { principal } from "@meantjs/schema"
+import { decodeArgs } from "@meantjs/schema/codec"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { act, renderHook } from "@testing-library/react"
 import { defaultParseSearch } from "@tanstack/react-router"

@@ -6,9 +6,9 @@
  */
 import { readFileSync } from "node:fs"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { principal, serviceMethods } from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
-import { schemaFromContract } from "@candid-core/schema/contract"
+import { principal, serviceMethods } from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
+import { schemaFromContract } from "@meantjs/schema/contract"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {
   QueryClient,

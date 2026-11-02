@@ -15,7 +15,7 @@ and [The client](/v4/guides/client/).
 ## A first read
 
 ```tsx
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import { formatUnits } from "@ic-reactor/core"
 import { useClient } from "@ic-reactor/react"
 import { skipToken, useQuery } from "@tanstack/react-query"
@@ -94,7 +94,7 @@ it leaves the caller out and matches nothing the client caches or invalidates.
 Ask the client:
 
 ```ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { client, ledger } from "./ledger"
 
 const account = { owner: principal("aaaaa-aa"), subaccount: null }
@@ -149,7 +149,7 @@ number where a `nat` is asked) do not throw while rendering. The key is tagged
 `issues`. Nothing is sent.
 
 ```tsx
-import { isPrincipal, principal } from "@candid-core/schema"
+import { isPrincipal, principal } from "@meantjs/schema"
 import { useClient } from "@ic-reactor/react"
 import { skipToken, useQuery } from "@tanstack/react-query"
 import { actor, type Actor } from "./generated/icrc1"

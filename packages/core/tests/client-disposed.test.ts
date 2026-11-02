@@ -13,7 +13,7 @@
  * answers; one still waiting to be sent is cancelled like a new one.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { c, principal } from "@candid-core/schema"
+import { c, principal } from "@meantjs/schema"
 import type { Identity } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {

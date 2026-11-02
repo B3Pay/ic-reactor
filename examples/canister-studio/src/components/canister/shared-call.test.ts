@@ -1,5 +1,5 @@
-import { serviceMethods } from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
+import { serviceMethods } from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { QueryClient } from "@tanstack/react-query"
 import { describe, expect, it } from "vitest"
 import { actor, Account } from "../../canisters/icrc1.ts"

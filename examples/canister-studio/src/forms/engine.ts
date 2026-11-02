@@ -1,4 +1,4 @@
-// The form engine: a draft tree over @candid-core/schema's public API, with
+// The form engine: a draft tree over @meantjs/schema's public API, with
 // no React in it. Ported from the candid-forms lab (engine.ts), with its
 // fixes: own-property reads and writes for keys like "__proto__",
 // inhabitation-aware defaults, a tolerant draftFromValue, and issues on the
@@ -17,9 +17,9 @@ import {
   type AnyFieldSchema,
   type AnySchema,
   type ResolvedNode,
-} from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
-import { validate } from "@candid-core/schema/validate"
+} from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
+import { validate } from "@meantjs/schema/validate"
 import { toHex } from "../lib/hex.ts"
 import { toVars } from "../lib/reactor.ts"
 import {

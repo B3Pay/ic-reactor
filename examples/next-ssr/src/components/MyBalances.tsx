@@ -15,7 +15,7 @@
 //   keys (no `keepPreviousData`, no cross-key `initialData`).
 // - A sign-in with Internet Identity happens in the browser only; on a server
 //   the client never builds its auth.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { isReactorError } from "@ic-reactor/core"
 import { useAuth, useClient } from "@ic-reactor/react"
 import { useQuery } from "@tanstack/react-query"

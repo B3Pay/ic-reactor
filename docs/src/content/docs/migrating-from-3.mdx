@@ -4,7 +4,7 @@ description: "What changed in ic-reactor 4, the 34 names it removes with what to
 ---
 
 ic-reactor 4 is a smaller package than 3.x. It does not wrap each canister in a
-typed handle or generate hooks for it. A tool, `candid-core-cli gen`, writes a
+typed handle or generate hooks for it. A tool, `meant gen`, writes a
 TypeScript module from your `.did` file, and `@ic-reactor/core` calls
 canisters through that module. The React hooks are TanStack Query's own: the
 client builds their options.
@@ -15,7 +15,7 @@ security fixes only, from the `v3` branch, until 90 days after the 4.0 release.
 
 ## What changed in 4
 
-- **One generated module.** `npx candid-core-cli gen icrc1.did -o src/generated`
+- **One generated module.** `npx @meantjs/cli gen icrc1.did -o src/generated`
   writes `src/generated/icrc1.ts`, with a type and a schema for each Candid
   type, plus the service's `actor` schema and its `Actor` type. It replaces the
   `idlFactory` and `_SERVICE` declarations. Never edit it. See
@@ -38,9 +38,9 @@ security fixes only, from the `v3` branch, until 90 days after the 4.0 release.
 - **Auth is an interface.** The client accepts any `AuthLike`, and
   `@icp-sdk/auth` 10's `AuthClient` is one as it is. See [Auth](/v4/guides/auth/).
 - **Fewer packages.** `@ic-reactor/parser`, `@ic-reactor/codegen` and
-  `@ic-reactor/cli` are replaced by `candid-core-cli gen`. `@ic-reactor/candid`
+  `@ic-reactor/cli` are replaced by `meant gen`. `@ic-reactor/candid`
   stays at 3.x. The Vite plugin, `icReactor` in `@ic-reactor/vite-plugin`, is
-  kept and now runs `candid-core-cli` for you. See
+  kept and now runs `meant` for you. See
   [The Vite plugin](/v4/guides/vite-plugin/).
 
 ic-reactor 4 is on npm's `latest` dist-tag, so `npm install @ic-reactor/core`
@@ -87,7 +87,7 @@ the common ones as before and after.
 | `createReactorProvider`              | `<ReactorProvider client={() => createClient(...)}>` and `useClient()`                                                                                                                                                                                              |
 | `parseTokenAmount`                   | `parseUnits(text, decimals)`                                                                                                                                                                                                                                        |
 | `defineReactor`                      | `createClient`, then `client.canister<Actor>(actor, { id })`                                                                                                                                                                                                        |
-| `isPrincipalText`                    | `isPrincipal(text)` from `@candid-core/schema`                                                                                                                                                                                                                      |
+| `isPrincipalText`                    | `isPrincipal(text)` from `@meantjs/schema`                                                                                                                                                                                                                          |
 | `generateKey`                        | `client.queryKey(canister, method?, vars?)`                                                                                                                                                                                                                         |
 | `createQueryFactory`                 | `client.queryOptions(canister, method, vars)`, called where you need the options                                                                                                                                                                                    |
 | `CanisterError`                      | `ReactorError` with `kind: "canister_err"` and the typed `err`. `ReactorError` is a type, not a class: there is no `instanceof`                                                                                                                                     |
@@ -149,7 +149,7 @@ Direct calls change in the same way. 3.x went through the reactor's
 Candid method, and a cached read goes through the client's `QueryClient`:
 
 ```ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createClient } from "@ic-reactor/core"
 import { actor, type Actor } from "./generated/icrc1"
 
@@ -188,7 +188,7 @@ send.mutate([arg])
 
 ```tsx
 // 4
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import { formatUnits } from "@ic-reactor/core"
 import { useClient } from "@ic-reactor/react"
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
@@ -473,7 +473,7 @@ client builds the keys, and they include the caller, so one principal's data is
 never shown under another's. Never write one by hand.
 
 ```ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createClient } from "@ic-reactor/core"
 import { actor, type Actor } from "./generated/icrc1"
 
@@ -494,10 +494,10 @@ A prefix key refetches or invalidates a group. `getQueryData` and
 ### Recipe: types and small helpers
 
 The generated `Actor` replaces the argument and error type helpers, and the
-helpers that stay in TanStack or candid-core are imported from there:
+helpers that stay in TanStack or `@meantjs/schema` are imported from there:
 
 ```ts
-import { isPrincipal } from "@candid-core/schema"
+import { isPrincipal } from "@meantjs/schema"
 import type { ReactorError } from "@ic-reactor/core"
 import { skipToken } from "@tanstack/react-query"
 import type { Actor, TransferError } from "./generated/icrc1"

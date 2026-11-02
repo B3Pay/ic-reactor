@@ -5,8 +5,8 @@ import {
   serviceMethods,
   type AnyFieldSchema,
   type AnySchema,
-} from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
+} from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { describe, expect, it } from "vitest"
 import { actor as minterActor } from "../canisters/ckbtc_minter.ts"
 import { actor as icpActor } from "../canisters/icp_ledger.ts"

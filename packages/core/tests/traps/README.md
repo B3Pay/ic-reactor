@@ -31,7 +31,7 @@ guards a regression from one that never did.
 what a client asks a replica for. Neither is a test.
 
 Adding a trap: write the file with its header, import only what a consumer can
-(the entries of `src/`, the testing entry, TanStack, `@candid-core/schema`, the
+(the entries of `src/`, the testing entry, TanStack, `@meantjs/schema`, the
 fixtures), run the tests that wait out the client's re-send delays side by side
 (`describe.concurrent`) so the suite stays a few seconds, and add the fault.
 The fault is the natural way somebody would reintroduce the mistake; if no

@@ -1,4 +1,4 @@
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import { isReactorError } from "@ic-reactor/core"
 import { MutationObserver, type QueryKey } from "@tanstack/react-query"
 import {

@@ -1,5 +1,5 @@
-import { c, type AnySchema } from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
+import { c, type AnySchema } from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { describe, expect, it } from "vitest"
 import { toHex } from "../lib/hex.ts"
 import { subaccountFromNumber, tokenAmountText } from "./convert.ts"

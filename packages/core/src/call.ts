@@ -59,13 +59,13 @@ import {
   type AnyFieldSchema,
   type MethodMode,
   type ServiceMethod,
-} from "@candid-core/schema"
+} from "@meantjs/schema"
 import {
   decodeArgs,
   encodeArgs,
   type EncodeResult,
-} from "@candid-core/schema/codec"
-import { isResultSchema } from "@candid-core/schema/validate"
+} from "@meantjs/schema/codec"
+import { isResultSchema } from "@meantjs/schema/validate"
 import {
   Certificate,
   CertifiedRejectErrorCode,
@@ -917,7 +917,7 @@ function decodeReply(
   limits: { readonly maxDepth: number; readonly maxElements: number },
   context: { method: string; canisterId: string; mode: CallMode }
 ): unknown {
-  // candid-core charges a blob one element per byte, so a reply over its
+  // `@meantjs/schema` charges a blob one element per byte, so a reply over its
   // default budget of 1,000,000 (a wasm module, an asset chunk) would never
   // decode. A reply may hold one value per byte plus the budget: that work is
   // bounded by the IC's reply size, and the budget still bounds values that

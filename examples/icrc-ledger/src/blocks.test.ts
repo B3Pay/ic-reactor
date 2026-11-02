@@ -1,7 +1,7 @@
 // The Blocks section's reads, over the in-memory replica: a mocked ICP ledger
 // whose oldest blocks live in a mocked archive canister, reached through the
 // func reference the ledger's reply carries, as on mainnet.
-import { c, principal } from "@candid-core/schema"
+import { c, principal } from "@meantjs/schema"
 import { isReactorError, type ReactorError } from "@ic-reactor/core"
 import { createTestClient, type TestHandlers } from "@ic-reactor/core/testing"
 import { afterEach, describe, expect, it } from "vitest"

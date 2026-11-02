@@ -2,7 +2,7 @@
 // queries; certified ones are replicated calls with keys of their own; a
 // failing ledger costs one row; and one request reads a ledger's decimals and
 // symbol once, whichever section asks.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { formatUnits } from "@ic-reactor/core"
 import { afterEach, describe, expect, it } from "vitest"
 import { actor, type Actor } from "@/canisters/icrc1"

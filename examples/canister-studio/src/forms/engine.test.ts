@@ -5,9 +5,9 @@ import {
   type AnyFieldSchema,
   type AnySchema,
   type ServiceMethod,
-} from "@candid-core/schema"
-import { decodeArgs } from "@candid-core/schema/codec"
-import { schemaFromContract } from "@candid-core/schema/contract"
+} from "@meantjs/schema"
+import { decodeArgs } from "@meantjs/schema/codec"
+import { schemaFromContract } from "@meantjs/schema/contract"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { describe, expect, it } from "vitest"
 import minterEnvelope from "../canisters/ckbtc_minter.envelope.json"

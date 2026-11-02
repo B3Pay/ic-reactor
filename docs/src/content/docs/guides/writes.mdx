@@ -480,7 +480,7 @@ The client's `onSettled` then re-reads the profile, so the page ends with what
 the canister holds.
 
 ```tsx
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import type { ReactorError } from "@ic-reactor/core"
 import { useAuth, useClient } from "@ic-reactor/react"
 import { useMutation } from "@tanstack/react-query"
@@ -534,7 +534,7 @@ A direct call on a canister is a write when the method is an update. It touches
 no cache, so nothing is invalidated: refresh what you need yourself.
 
 ```ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { isReactorError, parseUnits } from "@ic-reactor/core"
 import { client, ledger } from "./ledger"
 

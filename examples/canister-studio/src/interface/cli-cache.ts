@@ -3,7 +3,7 @@
 // functions that compile on request (the TypeScript module, a projection,
 // the committed .did check), which would otherwise compile again on every
 // request, and the method docs the loader's compile reads from the module.
-import type { Sources } from "@candid-core/cli"
+import type { Sources } from "@meantjs/cli"
 import { sha256Hex } from "../lib/hex.ts"
 import { Lru } from "./cache.ts"
 import { CompileDeadlineError, type CandidCli } from "./compile.ts"

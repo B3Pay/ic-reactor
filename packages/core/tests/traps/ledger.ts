@@ -1,7 +1,7 @@
 /**
  * The ledger every trap file calls, through the public surface a test of an
  * app has: `createTestClient` from `@ic-reactor/core/testing`, and the
- * `icrc1` module `candid-core-cli gen` wrote for `icrc1.did`.
+ * `icrc1` module `meant gen` wrote for `icrc1.did`.
  *
  * It is an ICRC-1 ledger that keeps balances, so a trap can say what a
  * hand-written integration gets wrong in the terms of money: a transfer that
@@ -11,7 +11,7 @@
  * Not a test file, and not part of the package: the traps import it, and
  * nothing else does.
  */
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import { vi } from "vitest"
 import type { Canister, Client } from "../../src/index.js"
 import { createTestClient } from "../../src/testing/index.js"

@@ -49,7 +49,7 @@ export const REMOVED_V3_NAMES = [
   },
   {
     name: "DisplayReactor",
-    use: "candid-core values, and formatUnits/parseUnits",
+    use: "@meantjs/schema values, and formatUnits/parseUnits",
   },
   { name: "Reactor", use: "client.canister<Actor>(actor, { id })" },
   {
@@ -58,7 +58,7 @@ export const REMOVED_V3_NAMES = [
   },
   { name: "parseTokenAmount", use: "parseUnits(text, decimals)" },
   { name: "defineReactor", use: "createClient and client.canister" },
-  { name: "isPrincipalText", use: "isPrincipal from @candid-core/schema" },
+  { name: "isPrincipalText", use: "isPrincipal from @meantjs/schema" },
   {
     name: "generateKey",
     use: "client.queryKey(canister, method?, arg?)",

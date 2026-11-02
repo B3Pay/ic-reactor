@@ -4,7 +4,7 @@
 // ({ some } when boxed), and the floats JSON has no number for (NaN,
 // ±Infinity, -0) as strings. It is lossless for the form, not a Candid
 // encoding.
-import type { AnyFieldSchema } from "@candid-core/schema"
+import type { AnyFieldSchema } from "@meantjs/schema"
 import { toHex } from "../lib/hex.ts"
 import { draftFromValue, isBytes, type DraftNote } from "./engine.ts"
 

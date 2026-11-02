@@ -4,7 +4,7 @@
 // code only: size-limit adds every `peerDependencies` entry of the package it
 // runs in to each check's `ignore`, and an `ignore: []` does not stop it. So a
 // change in what core pulls from its peers (`@icp-sdk/core`,
-// `@candid-core/schema`, `@noble/curves`, `@tanstack/query-core`) is invisible
+// `@meantjs/schema`, `@noble/curves`, `@tanstack/query-core`) is invisible
 // there. This private workspace package declares no peers, so nothing is left
 // out here but what a check names in `ignore`. Core resolves its peers from its
 // own devDependencies, the versions the lockfile pins.

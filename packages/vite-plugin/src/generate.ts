@@ -1,7 +1,7 @@
 /**
- * Generation: `candid-core-cli gen` in a child process.
+ * Generation: `meant gen` in a child process.
  *
- * candid-core's generator is WebAssembly. Running it in the dev server's own
+ * Meant's generator is WebAssembly. Running it in the dev server's own
  * process would let one trap, one runaway loop or one memory blow-up on a bad
  * `.did` take the dev server down with it. A child process takes only itself
  * down: the plugin reads what it printed (or why it did not print) and reports
@@ -19,12 +19,12 @@ import path from "node:path"
 import { describeError, describePath } from "./describe-value.js"
 
 /**
- * The `@candid-core/cli` release this plugin is built against. The package
+ * The `@meantjs/cli` release this plugin is built against. The package
  * declares it as an exact peer, and a test keeps the two equal: the app has to
- * install the generator that pairs with the `@candid-core/schema` runtime its
+ * install the generator that pairs with the `@meantjs/schema` runtime its
  * generated modules import.
  */
-export const CANDID_CORE_CLI_VERSION = "0.3.0"
+export const MEANT_CLI_VERSION = "0.5.0"
 
 /** The `schemaVersion` of the `--json` document this module understands. */
 const REPORT_SCHEMA_VERSION = 1
@@ -94,35 +94,33 @@ export interface GenerateResult {
 }
 
 /**
- * The absolute path of the `candid-core-cli` bin script installed for the app
+ * The absolute path of the `meant` bin script installed for the app
  * rooted at `root`.
  *
  * Resolved from the app and not from the plugin: the CLI that pairs with the
- * app's `@candid-core/schema` is the one the app installed, wherever the
+ * app's `@meantjs/schema` is the one the app installed, wherever the
  * package manager put the plugin. Throws an `Error` that says what to install.
  */
 export function resolveCliBin(root: string): string {
   const requireFromApp = createRequire(path.join(root, "package.json"))
   let manifestPath: string
   try {
-    manifestPath = requireFromApp.resolve("@candid-core/cli/package.json")
+    manifestPath = requireFromApp.resolve("@meantjs/cli/package.json")
   } catch {
     throw new Error(
-      `cannot find @candid-core/cli from ${root}. Install the generator that pairs with ` +
-        `this plugin next to @candid-core/schema: npm install --save-dev --save-exact ` +
-        `@candid-core/cli@${CANDID_CORE_CLI_VERSION}`
+      `cannot find @meantjs/cli from ${root}. Install the generator that pairs with ` +
+        `this plugin next to @meantjs/schema: npm install --save-dev --save-exact ` +
+        `@meantjs/cli@${MEANT_CLI_VERSION}`
     )
   }
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as {
     bin?: string | Record<string, string>
   }
   const bin =
-    typeof manifest.bin === "string"
-      ? manifest.bin
-      : manifest.bin?.["candid-core-cli"]
+    typeof manifest.bin === "string" ? manifest.bin : manifest.bin?.meant
   if (!bin) {
     throw new Error(
-      `${manifestPath} declares no candid-core-cli bin, so it is not the generator this plugin runs`
+      `${manifestPath} declares no \`meant\` bin, so it is not the generator this plugin runs`
     )
   }
   return path.resolve(path.dirname(manifestPath), bin)
@@ -278,7 +276,7 @@ export function describeProcess(run: ProcessResult, reason?: string): string {
     (run.signal
       ? `was killed by ${run.signal}`
       : `exited with code ${run.code}`)
-  const lines = [`candid-core-cli ${ending}`]
+  const lines = [`\`meant\` ${ending}`]
   if (reason) lines.push(reason)
   const stderr = run.stderr.trim()
   if (stderr) lines.push(stderr)
@@ -308,7 +306,7 @@ function parseReport(stdout: string, count: number): ReportEntry[] | undefined {
   if (schemaVersion !== REPORT_SCHEMA_VERSION) {
     throw new Error(
       `its report has schemaVersion ${String(schemaVersion)}, and this plugin reads ${REPORT_SCHEMA_VERSION}; ` +
-        `install @candid-core/cli@${CANDID_CORE_CLI_VERSION}`
+        `install @meantjs/cli@${MEANT_CLI_VERSION}`
     )
   }
   if (!Array.isArray(entries) || entries.length !== count) {
@@ -429,7 +427,7 @@ async function runGroup(
           omitted: [],
           failure:
             entry.diagnostics.map(formatDiagnostic).join("\n") ||
-            "candid-core-cli reported the entry as failed",
+            "`meant` reported the entry as failed",
         }
       }
       return {
@@ -646,7 +644,7 @@ export async function generate(
   }
 }
 
-/** The files `candid-core-cli gen` writes for one `.did`, as it names them. */
+/** The files `meant gen` writes for one `.did`, as it names them. */
 export interface Outputs {
   /** The `.did`'s file name without a final `.did`: `ledger` for `a/ledger.did`. */
   stem: string
@@ -657,7 +655,7 @@ export interface Outputs {
 }
 
 /**
- * The files `candid-core-cli gen` writes for the `.did` at `didFile` into
+ * The files `meant gen` writes for the `.did` at `didFile` into
  * `outDir`, named as the CLI names them: after the file's name with a final
  * `.did` cut off, exactly, and nothing else cut. `a/ledger.did` writes
  * `ledger.ts` and `ledger.envelope.json`, `ledger.v2.did` writes

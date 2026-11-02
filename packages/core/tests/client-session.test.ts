@@ -6,7 +6,7 @@
  * returns a Promise instead of an auth.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { createClient, type AuthLike, type Client } from "../src/client.js"
 import { isReactorError } from "../src/errors.js"

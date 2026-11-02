@@ -1,6 +1,6 @@
 // The Sandbox tab's ledger, run in Node: the same createSandbox() the page
 // uses, so what these tests pin is what the page shows.
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import { isReactorError, type ReactorError } from "@ic-reactor/core"
 import { MutationObserver, QueryObserver } from "@tanstack/react-query"
 import { afterEach, describe, expect, it, vi } from "vitest"

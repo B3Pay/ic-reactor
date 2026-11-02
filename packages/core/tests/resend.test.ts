@@ -12,7 +12,7 @@
  * canister a `{ name }` moves to after a redeploy, where the same argument
  * would be a new transfer.
  */
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import type { Identity } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { MutationObserver } from "@tanstack/query-core"

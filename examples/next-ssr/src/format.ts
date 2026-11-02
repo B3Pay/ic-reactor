@@ -1,6 +1,6 @@
 // Display helpers shared by server and client components. Nothing here turns a
 // bigint into a number: amounts go through `formatUnits`.
-import { isPrincipal } from "@candid-core/schema"
+import { isPrincipal } from "@meantjs/schema"
 import { formatUnits } from "@ic-reactor/core"
 import type { Value } from "@/canisters/icrc1"
 
@@ -23,7 +23,7 @@ export function runtimeType(value: unknown): string {
 }
 
 /**
- * A Candid `principal` is principal text at run time (candid-core's
+ * A Candid `principal` is principal text at run time (`@meantjs/schema`'s
  * `Principal` is a branded string). After hydration it must still be
  * canonical principal text, which `isPrincipal` checks.
  */

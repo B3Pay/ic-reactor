@@ -1,12 +1,11 @@
 # End-to-End Test Workspace
 
 The real-replica suite of ic-reactor 4: a small Rust canister, `hello_actor`,
-deployed to a local icp-cli 1.2.0 network, and twelve vitest cases that call
-it through the published API of `@ic-reactor/core`, `@ic-reactor/react` and
-`@ic-reactor/vite-plugin`, with the module `candid-core-cli gen` writes from
-its `.did`. Seven more deploy the response headers of the docs guide "Deploy
-to a frontend canister" to DFINITY's two asset canisters, and check what they
-serve.
+deployed to a local icp-cli 1.2.0 network, and twelve vitest cases that call it
+through the published API of `@ic-reactor/core`, `@ic-reactor/react` and
+`@ic-reactor/vite-plugin`, with the module `meant gen` writes from its `.did`.
+Seven more deploy the response headers of the docs guide "Deploy to a frontend
+canister" to DFINITY's two asset canisters, and check what they serve.
 
 ## Running it
 
@@ -64,8 +63,8 @@ wire.
 `src/actor/hello_actor.did` is written by hand, so change it together with
 `lib.rs`; the build embeds it as the canister's `candid:service` metadata.
 `src/declarations/hello_actor.ts` (and its Contract envelope) is what
-`candid-core-cli gen` writes from it: run `pnpm gen` after a change to the
-`.did`, and commit both. Prettier leaves them alone.
+`meant gen` writes from it: run `pnpm gen` after a change to the `.did`, and
+commit both. Prettier leaves them alone.
 
 ## The frontend canisters
 

@@ -5,7 +5,7 @@
  * `check-exports.mjs` compares the built declarations of every entry below
  * with this file, so the surface of a release is a reviewed diff of this file
  * and never a side effect of a refactor. The plan is deliberately small
- * (milestone 1, #790): a thin layer over a `candid-core-cli gen` module, not a
+ * (milestone 1, #790): a thin layer over a `meant gen` module, not a
  * second API.
  *
  * To add a public name: add it to the `planned` list of its entry here, in the
@@ -21,7 +21,7 @@
  * names no gate ever read.
  *
  * Alongside the count, no name may be exported twice. D35: one import path
- * per name across every ic-reactor package, `@candid-core/schema` and
+ * per name across every ic-reactor package, `@meantjs/schema` and
  * TanStack Query. A reader who has seen `principal` or `skipToken` from one
  * package must never find it again from another with a subtly different
  * meaning.
@@ -101,9 +101,9 @@ export const ENTRIES = [
  */
 export const FOREIGN = [
   {
-    package: "@candid-core/schema",
+    package: "@meantjs/schema",
     from: "packages/core",
-    pin: "0.4.0",
+    pin: "0.6.0",
     subpaths: [".", "./validate", "./contract", "./codec"],
   },
   {

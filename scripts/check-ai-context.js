@@ -810,9 +810,9 @@ for (const relPath of aiContextFiles) {
 // Versions get a rule of their own. A page names no @ic-reactor version (the
 // site follows the branch, so a release would leave one stale), and every
 // prerelease version it names, such as the `--save-exact` install of
-// `@candid-core/schema`, is the exact pin some packages/*/package.json has,
+// `@meantjs/schema`, is the exact pin some packages/*/package.json has,
 // so an install line moves with the pin. A stable version is held to the pin
-// when the page names it with its package, as `@candid-core/schema@0.3.0`: a
+// when the page names it with its package, as `@meantjs/schema@0.6.0`: a
 // package that packages/*/package.json pins exactly is installed at that pin.
 //
 // The pages also keep out of the 3.x docs: one page, the migration guide,

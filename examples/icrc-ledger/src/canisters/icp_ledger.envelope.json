@@ -76,8 +76,8 @@
     "producer": {
       "candid_parser_version": "0.4.0",
       "candid_version": "0.10.30",
-      "name": "candid-core",
-      "version": "0.1.0-beta.3"
+      "name": "meant",
+      "version": "0.1.0"
     },
     "semantics_profile": "candid-1",
     "types": [

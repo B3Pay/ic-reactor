@@ -13,7 +13,7 @@ import {
   HttpFetchErrorCode,
   type RequestId,
 } from "@icp-sdk/core/agent"
-import { schemaFromContract } from "@candid-core/schema/contract"
+import { schemaFromContract } from "@meantjs/schema/contract"
 import { describe, expect, it, vi } from "vitest"
 import icrc1Did from "../../did/icrc1.did?raw"
 import { compileInterface, MAX_DID_BYTES } from "./compile.ts"

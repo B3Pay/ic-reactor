@@ -2,7 +2,7 @@
 // the viewers are stand-ins (testing/doubles.tsx) that keep to their
 // contracts, so these tests watch the calls: what is sent, as whom, how
 // often, and what the page says about it.
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { ReactorProvider } from "@ic-reactor/react"
 import {
   cleanup,

@@ -31,7 +31,7 @@ The more of this you can provide, the faster a fix lands:
 | `@ic-reactor/{codegen,cli,vite-plugin}` | `0.15.x` | Security fixes until 90 days after the 4.0 release | `v3`   |
 | `@ic-reactor/parser`                    | `0.6.x`  | Security fixes until 90 days after the 4.0 release | `v3`   |
 
-Fixes land on the latest minor of each supported line. Older minors are not backported. `@ic-reactor/candid`, `@ic-reactor/parser`, `@ic-reactor/codegen` and `@ic-reactor/cli` have no 4.x: ic-reactor 4 generates canister modules with `candid-core-cli gen` instead, and their lines end with 3.x's. The 0.15 line of `@ic-reactor/vite-plugin` is the plugin of 3.x apps, which generates with `@ic-reactor/codegen`.
+Fixes land on the latest minor of each supported line. Older minors are not backported. `@ic-reactor/candid`, `@ic-reactor/parser`, `@ic-reactor/codegen` and `@ic-reactor/cli` have no 4.x: ic-reactor 4 generates canister modules with `meant gen` instead, and their lines end with 3.x's. The 0.15 line of `@ic-reactor/vite-plugin` is the plugin of 3.x apps, which generates with `@ic-reactor/codegen`.
 
 ## Threat model
 
@@ -54,16 +54,16 @@ Out of scope:
 - A canister returning wrong data, unless the library presents it as verified
 - `@ic-reactor/core/testing`: its fake replica and test client are for tests, not for production
 
-Candid encoding and decoding are `@candid-core/schema`'s. Report a decoding bug, such as a hostile reply that decodes to the wrong value or crashes the decoder, to candid-core through <https://github.com/B3Pay/Meant/security/advisories/new>.
+Candid encoding and decoding are `@meantjs/schema`'s. Report a decoding bug, such as a hostile reply that decodes to the wrong value or crashes the decoder, to Meant through <https://github.com/B3Pay/Meant/security/advisories/new>.
 
 ### Development and build (`vite-plugin`)
 
 The plugin runs in `vite dev`, `vite preview` and `vite build`. Its options come from the Vite config, which is code the developer runs, so they are trusted. A `.did` file, its name, and an interface fetched from a network are not. In scope:
 
-- **The generator.** The plugin runs `candid-core-cli gen` from the app's `node_modules`, with the running Node binary, in a child process and not through a shell. Anything that makes it run another program, or turns a `.did` path into anything but an argument, is in scope.
+- **The generator.** The plugin runs `meant gen` from the app's `node_modules`, with the running Node binary, in a child process and not through a shell. Anything that makes it run another program, or turns a `.did` path into anything but an argument, is in scope.
 - **Live interfaces.** A missing `didFile` is written from the canister's `candid:service` metadata, read from certified state, and `verify: "live"` compares a `didFile` with it. Anything that writes or accepts an interface that does not verify against the network's root key, or writes outside the configured `didFile`, is in scope.
 - **The `ic_env` cookie and the `/api` proxy** under `vite dev` and `vite preview`. A cookie that names a canister the local network did not report for that name, for example after the network restarted, or a proxy that sends requests to a host other than the local network, is in scope.
-- **Generated files.** A `.did` file or a fetched interface that writes outside the configured `outDir`, or puts code into a generated module beyond the declarations it describes. `candid-core-cli` writes the module, so the fix can be candid-core's.
+- **Generated files.** A `.did` file or a fetched interface that writes outside the configured `outDir`, or puts code into a generated module beyond the declarations it describes. `meant gen` writes the module, so the fix can be Meant's.
 
 Out of scope: a developer's own Vite config pointing `outDir` or `didFile` somewhere destructive.
 

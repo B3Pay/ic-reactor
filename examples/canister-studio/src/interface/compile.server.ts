@@ -1,4 +1,4 @@
-// The server's copy of the candid-core compiler, in a worker thread. Server
+// The server's copy of the Meant compiler, in a worker thread. Server
 // only. Each compiler call is one synchronous WASM call: on the server's own
 // thread a hostile .did within the size cap held the event loop for 2.5 to
 // 5 s, and no timer can interrupt that. In a worker the event loop stays
@@ -245,11 +245,11 @@ export function createWorkerCli(
 function locateCompiler(): { cliUrl: string; wasmPath: string } {
   const require = createRequire(import.meta.url)
   return {
-    cliUrl: pathToFileURL(require.resolve("@candid-core/cli")).href,
+    cliUrl: pathToFileURL(require.resolve("@meantjs/cli")).href,
     wasmPath:
       process.env.CANDID_CORE_WASM ??
       join(
-        dirname(require.resolve("@candid-core/cli/package.json")),
+        dirname(require.resolve("@meantjs/cli/package.json")),
         "wasm/candid_core_wasm_bg.wasm"
       ),
   }

@@ -3422,7 +3422,7 @@
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
     "testName": "refuses an empty list and a name with a comma, with no request",
-    "why": "an empty methods list goes to the network and to candid-core-cli instead of being refused first",
+    "why": "an empty methods list goes to the network and to meant instead of being refused first",
     "file": "src/options.ts",
     "search": "  if (methods.length === 0) {",
     "replace": "  if (methods.length < 0) {"
@@ -3791,7 +3791,7 @@
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
     "testName": "records no pass for a didFile saved while its check ran, so restoring the text read first is checked",
-    "why": "the pass is recorded for the text the run read, though candid-core-cli checked the file as it was saved while the fetch ran, so restoring that unchecked text skips the check",
+    "why": "the pass is recorded for the text the run read, though meant checked the file as it was saved while the fetch ran, so restoring that unchecked text skips the check",
     "file": "src/index.ts",
     "search": "        if (ofText && text !== undefined) passed.set(canister.name, text)\n",
     "replace": "        if (text !== undefined) passed.set(canister.name, text)\n"
@@ -4081,7 +4081,7 @@
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
     "testName": "IC_REACTOR_VERIFY or IC_REACTOR_FETCH naming a canister with no canisterId fails it before the run does anything for it",
-    "why": "a canister IC_REACTOR_VERIFY or IC_REACTOR_FETCH names with no canisterId failed only after the methods comparison, so its file is listed by a candid-core-cli process first",
+    "why": "a canister IC_REACTOR_VERIFY or IC_REACTOR_FETCH names with no canisterId failed only after the methods comparison, so its file is listed by a meant process first",
     "edits": [
       {
         "file": "src/index.ts",
@@ -4130,7 +4130,7 @@
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
     "testName": "lists and generates nothing again that it did, shows what still fails, and regenerates on a save",
-    "why": "the methods comparisons of the files are dropped with each new lifetime, so a restart lists every methods canister's .did again in a candid-core-cli process, though nothing changed",
+    "why": "the methods comparisons of the files are dropped with each new lifetime, so a restart lists every methods canister's .did again in a meant process, though nothing changed",
     "file": "src/index.ts",
     "search": "      byConfig.set(config, current)\n",
     "replace": "      byConfig.set(config, current)\n      comparedMethods.clear()\n"
@@ -4249,7 +4249,7 @@
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
     "testName": "canisterId text that is no principal fails the canister when the plugin is made, before any process or request",
-    "why": "any text taken for a canister ID when the plugin is made, so text that is no principal is told only by the fetch or check that reads it, after a candid-core-cli process listed the canister's methods",
+    "why": "any text taken for a canister ID when the plugin is made, so text that is no principal is told only by the fetch or check that reads it, after a meant process listed the canister's methods",
     "file": "src/options.ts",
     "search": "  if (isPrincipalText(canisterId)) return undefined\n",
     "replace": "  if (canisterId.length > 0) return undefined\n"
@@ -4455,7 +4455,7 @@
     "id": "outputs-stem-extname",
     "package": "vite-plugin",
     "test": "tests/output-collision.test.ts",
-    "testName": "are named as candid-core-cli gen names them, whatever the file's name",
+    "testName": "are named as meant gen names them, whatever the file's name",
     "why": "the generator's output named after the .did's name with any extension cut, where the CLI cuts only a final .did: api.candid named api.ts, and .did named .did.ts",
     "file": "src/generate.ts",
     "search": "  const stem = path.basename(didFile).replace(/\\.did$/, \"\")\n",
@@ -4465,7 +4465,7 @@
     "id": "outputs-stem-whole-name-kept",
     "package": "vite-plugin",
     "test": "tests/output-collision.test.ts",
-    "testName": "are named as candid-core-cli gen names them, whatever the file's name",
+    "testName": "are named as meant gen names them, whatever the file's name",
     "why": "the generator's output named with path.basename's suffix, which does not cut a .did that is the whole file name: .did named .did.ts, where the CLI writes .ts",
     "file": "src/generate.ts",
     "search": "  const stem = path.basename(didFile).replace(/\\.did$/, \"\")\n",
@@ -4646,7 +4646,7 @@
     "package": "core",
     "test": "tests/canister.test.ts",
     "testName": "decodes a blob reply over a million bytes with the default options",
-    "why": "decodeReply keeps candid-core's 1,000,000-element budget, so a blob reply over a million bytes (an SNS wasm) rejects invalid_reply",
+    "why": "decodeReply keeps @meantjs/schema's 1,000,000-element budget, so a blob reply over a million bytes (an SNS wasm) rejects invalid_reply",
     "file": "src/call.ts",
     "search": "      limits.maxElements + reply.length,",
     "replace": "      limits.maxElements,"
@@ -4665,7 +4665,7 @@
     "id": "899-max-elements-ignored",
     "package": "core",
     "test": "tests/client.test.ts",
-    "testName": "passes maxElements on, 1,000,000 unless given, and refuses one candid-core would refuse",
+    "testName": "passes maxElements on, 1,000,000 unless given, and refuses one @meantjs/schema would refuse",
     "why": "createClient ignores the maxElements it was given",
     "file": "src/client.ts",
     "search": "const maxElements = options.maxElements ?? DEFAULT_MAX_ELEMENTS",
@@ -4696,7 +4696,7 @@
     "package": "core",
     "test": "tests/testing-test-client.test.ts",
     "testName": "return as many values as the maxElements the test client was given",
-    "why": "a mock encodes its reply with candid-core's default element budget, so a test client given a larger maxElements still cannot return a reply past 1,000,000 values",
+    "why": "a mock encodes its reply with @meantjs/schema's default element budget, so a test client given a larger maxElements still cannot return a reply past 1,000,000 values",
     "file": "src/testing/test-client.ts",
     "search": "        maxDepth,\n        maxElements: Number.MAX_SAFE_INTEGER,\n      })",
     "replace": "        maxDepth,\n      })"

@@ -7,7 +7,7 @@ ledger (`src/canisters/icp_ledger.ts`), the ckBTC and ckETH ledgers
 (`src/canisters/icrc1.ts`, which serves any ICRC-1 ledger) and the ckBTC
 minter (`src/canisters/ckbtc_minter.ts`). Any other canister's interface is
 read live from its certified `candid:service` metadata, compiled on the
-server by `@candid-core/cli` and rebuilt in the browser with
+server by `@meantjs/cli` and rebuilt in the browser with
 `schemaFromContract`. The forms, the calls and the replies are the same for
 both.
 
@@ -25,7 +25,7 @@ both.
 | 8   | Idempotent update reads: the ckBTC minter's `get_btc_address`, an update, read once per caller through `{ update: "idempotent" }`                                                                                            | `src/lib/registry.ts`, `src/calls/query-options.ts`, `src/components/wallet/MinterPanel.tsx`                              | `/wallet`, ckBTC, signed in: the deposit address, asked once and kept                                                                                           |
 | 9   | Caller-scoped cache keys: the live query key shown with its caller segment; a sign-in or a sign-out moves every read to new keys, so nothing read as one caller is shown to another                                          | `src/calls/CacheKeyPanel.tsx`, `src/components/wallet/BalancePanel.tsx`                                                   | `/wallet`: the balance's key; sign in, then out                                                                                                                 |
 | 10  | The Safety lab: ten scenarios that `createTestClient()` runs in the browser against a mocked ICRC-1 ledger, each with its code, its request log, the `ReactorError` fields and the verdict                                   | `src/safety/scenarios.ts`, `src/safety/mock-ledger.ts`, `src/safety/SafetyLab.tsx`                                        | `/safety`: run each card; nothing reaches the network                                                                                                           |
-| 11  | The playground: a pasted `.did` compiled in the browser by the lazily loaded WASM of `@candid-core/cli`, forms for its methods and calls to a target canister, its TypeScript module, a projection and a compatibility check | `src/interface/browser.ts`, `src/routes/playground.tsx`, `src/components/playground/`                                     | `/playground`: the sample compiles; give it a target canister id                                                                                                |
+| 11  | The playground: a pasted `.did` compiled in the browser by the lazily loaded WASM of `@meantjs/cli`, forms for its methods and calls to a target canister, its TypeScript module, a projection and a compatibility check     | `src/interface/browser.ts`, `src/routes/playground.tsx`, `src/components/playground/`                                     | `/playground`: the sample compiles; give it a target canister id                                                                                                |
 | 12  | Interface tools: the Candid text (copy, download), the TypeScript module (`didToModule`), a projection to chosen methods (`projectDid`), and a written `.did` checked against the live one (`checkCompatible`)               | `src/routes/canister.$canisterId.interface.tsx`, `src/interface/functions.ts`, `src/interface/browser.ts`                 | `/canister/mqygn-kiaaa-aaaar-qaadq-cai/interface`                                                                                                               |
 
 `/history` lists the calls you ran or sent in this browser, each with its arguments as
@@ -53,7 +53,7 @@ id and nothing else: no server route accepts `.did` text. It:
   fails to verify, or when it leaves the path unproven (a pruned branch);
 - refuses a `.did` over 256 KiB, and an interface of more than 1,000
   methods (Internet Identity, the largest on mainnet, has 113);
-- compiles with `@candid-core/cli` in a worker thread
+- compiles with `@meantjs/cli` in a worker thread
   (`src/interface/compile.server.ts`; `CANDID_CORE_WASM` points it at
   another copy of its WASM), one call at a time, each stopped after 2 s by
   terminating the worker. Real interfaces compile in 1 to 30 ms, but the
@@ -95,7 +95,7 @@ corepack pnpm preview  # Start's server over dist/: http://localhost:4173
 
 The app uses no Nitro: `vite preview` runs Start's server bundle, which
 imports its dependencies from `node_modules`, and the compiler's worker
-loads `@candid-core/cli` from there too.
+loads `@meantjs/cli` from there too.
 
 StackBlitz runs `npm run dev`. `/` renders there on the server with its
 mainnet reads, because its loader calls no server function. Server functions
@@ -147,15 +147,14 @@ interface loader takes an injected fetcher, so nothing reaches the network:
 
 `src/canisters/` is generated from `did/icrc1.did`, `did/icp_ledger.did` and
 `did/ckbtc_minter.did` by `@ic-reactor/vite-plugin` on every `vite dev` and
-`vite build` (the `gen` script runs `candid-core-cli gen` by hand), committed,
-and never edited. `did/icrc1.did` is the ICRC-1 interface that
-`examples/icrc-ledger` uses. `did/icp_ledger.did` and `did/ckbtc_minter.did`
-are the full interfaces the two canisters publish in their certified
-`candid:service` metadata, so the typed pages show every method. The `smoke`
-script checks each committed `.did` against its live canister, reads the
-ledgers and the minter, and checks that an anonymous transfer is refused.
-`src/routeTree.gen.ts` is generated by the router plugin and committed too,
-because `tsc` runs before any build.
+`vite build` (the `gen` script runs `meant gen` by hand), committed, and never
+edited. `did/icrc1.did` is the ICRC-1 interface that `examples/icrc-ledger`
+uses. `did/icp_ledger.did` and `did/ckbtc_minter.did` are the full interfaces
+the two canisters publish in their certified `candid:service` metadata, so the
+typed pages show every method. The `smoke` script checks each committed `.did`
+against its live canister, reads the ledgers and the minter, and checks that an
+anonymous transfer is refused. `src/routeTree.gen.ts` is generated by the router
+plugin and committed too, because `tsc` runs before any build.
 
 ## The rules it keeps
 

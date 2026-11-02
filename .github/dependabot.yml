@@ -31,11 +31,12 @@ updates:
       # `tsup --dts`, or tsup gains TS7 support. See #225.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
-      # stack.json chooses the candid-core release, and `pnpm sync:stack`
-      # moves every pin together (CONTRIBUTING.md, "The candid-core pins").
-      # A bump of one package.json would fail `pnpm check:stack`, and in the
-      # grouped pull request it would hold back every other bump with it.
-      - dependency-name: "@candid-core/*"
+      # stack.json chooses the Meant release, and `pnpm sync:stack` moves
+      # every pin together (CONTRIBUTING.md, "The Meant pins"). A bump of one
+      # package.json would fail `pnpm check:stack`, and in the grouped pull
+      # request it would hold back every other bump with it.
+      - dependency-name: "@meantjs/schema"
+      - dependency-name: "@meantjs/cli"
     commit-message:
       prefix: "deps"
     labels:

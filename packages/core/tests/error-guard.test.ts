@@ -5,7 +5,7 @@
  * call's error typed as this one's.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { c, principal } from "@candid-core/schema"
+import { c, principal } from "@meantjs/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import type { QueryFunctionContext } from "@tanstack/query-core"
 import { isReactorError } from "../src/index.js"

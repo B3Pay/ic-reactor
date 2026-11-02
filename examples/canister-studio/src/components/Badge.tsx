@@ -1,4 +1,4 @@
-import type { MethodMode } from "@candid-core/schema"
+import type { MethodMode } from "@meantjs/schema"
 import type { ReactElement, ReactNode } from "react"
 import { MODE_LABEL } from "./modes.ts"
 

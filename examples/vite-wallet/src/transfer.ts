@@ -1,7 +1,7 @@
 // Scenario 5, the part without React: typed text to an `icrc1_transfer`
 // argument or the reason it is refused before anything is sent, and what each
 // `Err` of the ledger means.
-import { isPrincipal, principal } from "@candid-core/schema"
+import { isPrincipal, principal } from "@meantjs/schema"
 import { parseUnits } from "@ic-reactor/core"
 import type { TransferArg, Icrc1TransferError } from "./canisters/ledger.ts"
 import { showAmount, type Token } from "./token.ts"

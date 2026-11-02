@@ -8,12 +8,8 @@
  * and verifies like a replica; nothing global is stubbed but the page a
  * browser test runs in.
  */
-import {
-  serviceMethods,
-  type Principal,
-  type Schema,
-} from "@candid-core/schema"
-import { decodeArgs, encodeArgs } from "@candid-core/schema/codec"
+import { serviceMethods, type Principal, type Schema } from "@meantjs/schema"
+import { decodeArgs, encodeArgs } from "@meantjs/schema/codec"
 import type { Identity } from "@icp-sdk/core/agent"
 import { vi } from "vitest"
 import { createClient, type AuthLike, type Client } from "../src/client.js"
@@ -43,7 +39,7 @@ export interface CallContext {
 
 /**
  * `A` as an `Actor` written by hand: the same call signatures, without the
- * mode `candid-core-cli gen` marks each method with (`$.WithMode<mode>`).
+ * mode `meant gen` marks each method with (`$.WithMode<mode>`).
  * Its methods' modes are unknown to the types, so `queryOptions` compiles for
  * an update or a oneway method of it, and the run-time check is what refuses
  * them: a test of that check reads through this.

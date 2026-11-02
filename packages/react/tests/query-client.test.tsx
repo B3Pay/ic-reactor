@@ -7,7 +7,7 @@
  * `QueryClientProvider` inside keeps its reads and runs its writes there, and
  * a write invalidates the reads on the `QueryClient` it ran on.
  */
-import { c } from "@candid-core/schema"
+import { c } from "@meantjs/schema"
 import { createTestClient } from "@ic-reactor/core/testing"
 import {
   QueryClient,

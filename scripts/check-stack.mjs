@@ -1,26 +1,26 @@
 #!/usr/bin/env node
 /**
- * Holds the tree to `stack.json`: the candid-core release this branch is
- * tested against, chosen in one place.
+ * Holds the tree to `stack.json`: the Meant release this branch is tested
+ * against, chosen in one place.
  *
  * `stack.json` at the repository root gives the exact stable version of each
- * candid-core package the branch installs (`@candid-core/schema` and
- * `@candid-core/cli`). This script reads every file git tracks and checks
- * every place that names one of those packages with a version:
+ * Meant package the branch installs (`@meantjs/schema` and `@meantjs/cli`).
+ * This script reads every file git tracks and checks every place that names
+ * one of those packages with a version:
  *
  * 1. In a `package.json`, a string keyed by the package (a dependency of any
  *    kind, an override, `parent>package` or `package@range` override keys
  *    included) is exactly the manifest's version. A range is another version:
  *    `^0.4.0` fails as `0.3.0` does.
  * 2. In a `package.json` value or a `.md`, `.mdx` or `.txt` file, every
- *    `@candid-core/<name>@<version>`: an install line, a script's `npx`, an
+ *    `@meantjs/<name>@<version>`: an install line, a script's `npx`, an
  *    `npm:` alias (whose range runs to the end of its value), a CDN URL. `@^0.3.0`, `@>=0.3.0` and `@latest` fail as
  *    `@0.3.0` does.
  * 3. In a `.md`, `.mdx` or `.txt` file, a line that names the package in
  *    backticks and then says exactly `<version>`, as the docs' peer tables do.
  * 4. The two pins in code, CODE_PINS below.
  *
- * Prose such as "`@candid-core/cli` 0.3.0 reads ..." describes what one
+ * Prose such as "`@meantjs/cli` 0.5.0 reads ..." describes what one
  * release does, so it is left to the person who repins (CONTRIBUTING.md).
  *
  * Other files are not read: a version in a `.ts` or `.yml` file is invisible
@@ -29,12 +29,11 @@
  * Some files keep the versions they have: a changelog (`CHANGELOG.md` or
  * `changelog.mdx`, in any case), which records what each release shipped with;
  * anything under a path of the manifest's `frozen` list (`evals/`, whose
- * conditions pin what they were measured with, and `examples/` between a
- * repin and the release that publishes it); and a symlink, whose target is
- * checked under its own path. Each package of the manifest must also be pinned
- * by at least one `package.json` outside the frozen paths, so an entry nothing
- * installs fails rather than going stale, and each frozen path must hold a
- * tracked file, so a misspelt one fails rather than freezing nothing.
+ * conditions pin what they were measured with); and a symlink, whose target
+ * is checked under its own path. Each package of the manifest must also be
+ * pinned by at least one `package.json` outside the frozen paths, so an entry
+ * nothing installs fails rather than going stale, and each frozen path must
+ * hold a tracked file, so a misspelt one fails rather than freezing nothing.
  *
  * A repin edits `stack.json` and runs `pnpm sync:stack` (this script with
  * `--write`), which rewrites in place every pin and mention that disagrees
@@ -56,10 +55,10 @@ import { fileURLToPath } from "node:url"
 export const MANIFEST = "stack.json"
 
 /** The manifest's key for the packages it pins. */
-const PINS_KEY = "candid-core"
+const PINS_KEY = "meant"
 
 // What `npm install --save-exact` writes for a stable release. A prerelease is
-// refused: this branch installs published stable candid-core releases only.
+// refused: this branch installs published stable Meant releases only.
 const STABLE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
 
 // npm names are lower case.
@@ -75,14 +74,14 @@ const SCOPED_NAME = new RegExp(`^${NAME}$`)
 export const CODE_PINS = [
   {
     file: "packages/vite-plugin/src/generate.ts",
-    name: "@candid-core/cli",
-    pattern: /(export const CANDID_CORE_CLI_VERSION = ")([^"]*)(")/g,
+    name: "@meantjs/cli",
+    pattern: /(export const MEANT_CLI_VERSION = ")([^"]*)(")/g,
   },
   {
     file: "scripts/export-budget.mjs",
-    name: "@candid-core/schema",
+    name: "@meantjs/schema",
     pattern:
-      /(package: "@candid-core\/schema",\s*from: "[^"]*",\s*pin: ")([^"]*)(")/g,
+      /(package: "@meantjs\/schema",\s*from: "[^"]*",\s*pin: ")([^"]*)(")/g,
   },
 ]
 

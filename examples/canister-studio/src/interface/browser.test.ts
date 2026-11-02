@@ -6,7 +6,7 @@ const didToModule = vi.fn(async () => ({
   module: "// module",
   omitted: [],
 }))
-vi.mock("@candid-core/cli", () => ({ init, didToModule }))
+vi.mock("@meantjs/cli", () => ({ init, didToModule }))
 
 describe("the browser compiler", () => {
   it("tries again after an init that failed, instead of failing until a reload", async () => {

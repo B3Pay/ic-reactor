@@ -108,7 +108,7 @@ describe("the pins", () => {
     // `@icp-sdk/core` peer of the fetch to its floor, and vite is not
     // overridden: an override would move every copy to one version.
     assert.deepEqual(overrides, {
-      "@candid-core/cli": PLUGIN_MANIFEST.peerDependencies["@candid-core/cli"],
+      "@meantjs/cli": PLUGIN_MANIFEST.peerDependencies["@meantjs/cli"],
       "@icp-sdk/core": "6.1.0",
     })
   })

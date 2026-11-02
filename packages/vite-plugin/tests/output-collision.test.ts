@@ -254,7 +254,7 @@ describe("the probe of the filesystem", () => {
 // the modules canisters would write, and the files a run puts back. It is the
 // CLI's own, and the CLI reports what it names, even for a file it fails.
 describe("the files the generator writes for a .did", () => {
-  it("are named as candid-core-cli gen names them, whatever the file's name", () => {
+  it("are named as meant gen names them, whatever the file's name", () => {
     const names = [
       "api.did",
       "api.v2.did",

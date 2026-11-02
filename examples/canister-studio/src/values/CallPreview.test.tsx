@@ -1,5 +1,5 @@
-import { principal, serviceMethods } from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
+import { principal, serviceMethods } from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import { renderToString } from "react-dom/server"
 import { afterEach, describe, expect, it } from "vitest"

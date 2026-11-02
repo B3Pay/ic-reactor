@@ -1,7 +1,7 @@
 // The call layer against ic-reactor's own client on the in-memory replica:
 // the ledger and the minter are mocked at their real mainnet ids, with
 // `network: "ic"`, so every key here is the key production builds.
-import { c, principal } from "@candid-core/schema"
+import { c, principal } from "@meantjs/schema"
 import { isReactorError } from "@ic-reactor/core"
 import { MutationObserver } from "@tanstack/react-query"
 import { afterEach, describe, expect, it } from "vitest"

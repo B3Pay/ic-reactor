@@ -2,7 +2,7 @@
 // serve every request. Server only (the compiler runs in a worker thread
 // that reads its WASM from disk); functions.ts imports it inside its
 // handlers, and scripts/smoke.ts directly.
-import type { CompatibilityReport } from "@candid-core/cli"
+import type { CompatibilityReport } from "@meantjs/cli"
 import { cachingCli } from "./cli-cache.ts"
 import {
   compatibilityOf,

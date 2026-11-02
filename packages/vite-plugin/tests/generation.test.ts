@@ -1,9 +1,9 @@
 /**
- * Generation: the plugin runs `candid-core-cli gen` in a child process under
+ * Generation: the plugin runs `meant gen` in a child process under
  * a real `vite dev` server and a real `vite build`, and a failure of the
  * generator stops that process and not the run.
  *
- * Most tests install the real `@candid-core/cli` into a temporary app. The
+ * Most tests install the real `@meantjs/cli` into a temporary app. The
  * ones about a generator that crashes install a stand-in
  * (tests/fixtures/fake-cli), since the real one has no input that crashes it.
  */
@@ -12,7 +12,7 @@ import path from "node:path"
 import { spawn } from "node:child_process"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Plugin } from "vite"
-import { CANDID_CORE_CLI_VERSION } from "../src/generate.js"
+import { MEANT_CLI_VERSION } from "../src/generate.js"
 import { icReactor, type IcReactorPluginOptions } from "../src/index.js"
 import {
   BROKEN_DID,
@@ -39,8 +39,8 @@ vi.mock("node:child_process", async (importOriginal) => {
 const GUIDE =
   "ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt"
 // The CLI the plugin's messages tell an app to install, as a pattern. The
-// package test holds CANDID_CORE_CLI_VERSION to the plugin's peer pin.
-const CLI_PIN = `@candid-core\\/cli@${CANDID_CORE_CLI_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![-.\\w])`
+// package test holds MEANT_CLI_VERSION to the plugin's peer pin.
+const CLI_PIN = `@meantjs\\/cli@${MEANT_CLI_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![-.\\w])`
 const LEDGER = fs.readFileSync(LEDGER_DID, "utf-8")
 
 /** The `.did` files of each generator process the plugin has started. */
@@ -148,10 +148,10 @@ describe("generation under vite dev", () => {
     // What the crashed process wrote is also logged as it wrote it: by the
     // process for both, and by the one for the canister that crashed it.
     expect(lines).toContain(
-      "warn: ic-reactor: candid-core-cli (did/good.did, did/trap.did): RuntimeError: unreachable executed (fake trap)"
+      "warn: ic-reactor: `meant` (did/good.did, did/trap.did): RuntimeError: unreachable executed (fake trap)"
     )
     expect(lines).toContain(
-      "warn: ic-reactor: candid-core-cli (did/trap.did): RuntimeError: unreachable executed (fake trap)"
+      "warn: ic-reactor: `meant` (did/trap.did): RuntimeError: unreachable executed (fake trap)"
     )
     // One process for both, which crashed, then one for each.
     expect(generatorRuns().map((dids) => dids.length)).toEqual([2, 1, 1])
@@ -682,7 +682,7 @@ describe("generation under Vitest", () => {
 
 describe("generation under vite build", () => {
   // AC6: the real generator, on a real interface.
-  it("generates the ICRC-1 ledger module with the real candid-core-cli", async () => {
+  it("generates the ICRC-1 ledger module with the real meant", async () => {
     const app = newApp({ "did/icrc1.did": LEDGER }, "real")
     const { result, lines } = buildApp(app.root, {
       canisters: { ledger: { didFile: "did/icrc1.did" } },
@@ -753,7 +753,7 @@ describe("generation under vite build", () => {
     })
 
     await expect(result).rejects.toThrow(
-      /candid-core-cli exited with code 101\n {4}RuntimeError: unreachable executed \(fake trap\)/
+      /`meant` exited with code 101\n {4}RuntimeError: unreachable executed \(fake trap\)/
     )
   })
 
@@ -779,10 +779,10 @@ describe("generation under vite build", () => {
     await result
     // The second line has no newline: it is passed on when the process ends.
     expect(lines).toContain(
-      "warn: ic-reactor: candid-core-cli (did/a.did): warning: first (fake)"
+      "warn: ic-reactor: `meant` (did/a.did): warning: first (fake)"
     )
     expect(lines).toContain(
-      "warn: ic-reactor: candid-core-cli (did/a.did): warning: second (fake)"
+      "warn: ic-reactor: `meant` (did/a.did): warning: second (fake)"
     )
   })
 
@@ -798,7 +798,7 @@ describe("generation under vite build", () => {
 
     await vi.waitFor(() =>
       expect(lines).toContain(
-        "warn: ic-reactor: candid-core-cli (did/a.did): progress: step 1 (fake)"
+        "warn: ic-reactor: `meant` (did/a.did): progress: step 1 (fake)"
       )
     )
     expect(finished).toBe(false)
@@ -817,7 +817,7 @@ describe("generation under vite build", () => {
 
     await result
     const logged = lines.filter((line) =>
-      line.startsWith("warn: ic-reactor: candid-core-cli (did/a.did): ")
+      line.startsWith("warn: ic-reactor: `meant` (did/a.did): ")
     )
     expect(logged).toHaveLength(201)
     expect(logged[199]).toContain("line 200 (fake)")
@@ -835,7 +835,7 @@ describe("generation under vite build", () => {
     })
 
     await result
-    const prefix = "warn: ic-reactor: candid-core-cli (did/a.did): "
+    const prefix = "warn: ic-reactor: `meant` (did/a.did): "
     const logged = lines.filter((line) => line.startsWith(prefix))
     // 6 MiB went to stderr in one line, and one line of 4096 characters is
     // all that is kept of it. Compared by size, so that a failure does not
@@ -863,7 +863,7 @@ describe("generation under vite build", () => {
     ])
   })
 
-  it("says what to install when the app has no @candid-core/cli", async () => {
+  it("says what to install when the app has no @meantjs/cli", async () => {
     const app = newApp({ "did/a.did": PING_DID, "did/b.did": PING_DID }, "none")
 
     await withoutNodePath(async () => {
@@ -877,7 +877,7 @@ describe("generation under vite build", () => {
       // Both canisters fail for one reason, which is said once.
       await expect(result).rejects.toThrow(
         new RegExp(
-          `could not generate 2 of 2 canisters:\\n {2}- a \\(did\\/a\\.did\\), b \\(did\\/b\\.did\\): cannot find @candid-core\\/cli from .*npm install --save-dev --save-exact ${CLI_PIN}`,
+          `could not generate 2 of 2 canisters:\\n {2}- a \\(did\\/a\\.did\\), b \\(did\\/b\\.did\\): cannot find @meantjs\\/cli from .*npm install --save-dev --save-exact ${CLI_PIN}`,
           "s"
         )
       )

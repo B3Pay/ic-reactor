@@ -5,7 +5,7 @@
  * not have) are in `traps.test-d.ts`, where `pnpm verify:traps` proves each
  * one bites.
  */
-import { principal, type Principal } from "@candid-core/schema"
+import { principal, type Principal } from "@meantjs/schema"
 import type { Identity } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { expectTypeOf } from "vitest"

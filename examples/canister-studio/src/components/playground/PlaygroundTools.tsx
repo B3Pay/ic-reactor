@@ -1,4 +1,4 @@
-import type { CompatibilityReport } from "@candid-core/cli"
+import type { CompatibilityReport } from "@meantjs/cli"
 import { useEffect, useState, type ReactElement } from "react"
 import {
   checkCompatibleInBrowser,

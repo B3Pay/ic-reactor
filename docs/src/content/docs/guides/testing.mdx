@@ -28,7 +28,7 @@ manager does not let core resolve it, add it to `devDependencies`.
 ## A first test
 
 ```ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { afterEach, beforeEach, expect, it } from "vitest"
 import { actor, type Actor } from "./generated/icrc1"
@@ -122,7 +122,7 @@ call, as checked principal text, after the replica verified the signature.
 - **The management canister.** `mock` takes `"aaaaa-aa"` as an id.
 
 ```ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createTestClient, type TestHandlers } from "@ic-reactor/core/testing"
 import { expect, it } from "vitest"
 import { actor, type Actor } from "./generated/icrc1"
@@ -189,7 +189,7 @@ so a test cannot run the update twice by accident. The client does not re-send
 after it: it cannot know that is safe.
 
 ```ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { actor, type Actor, type TransferArg } from "./generated/icrc1"
@@ -330,7 +330,7 @@ and dispose it yourself after the test. See
 
 ```tsx
 // @vitest-environment jsdom
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
 import { useQuery } from "@tanstack/react-query"

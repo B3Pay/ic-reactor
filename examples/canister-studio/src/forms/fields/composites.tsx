@@ -2,7 +2,7 @@
 // only while it is switched on, a variant's payload only for arms visited),
 // so a recursive type grows one level per user action and never needs lazy
 // nodes.
-import type { AnyFieldSchema } from "@candid-core/schema"
+import type { AnyFieldSchema } from "@meantjs/schema"
 import { useState, type ReactNode } from "react"
 import { useFormContext, type EditorProps } from "../context.ts"
 import { nowNanos } from "../convert.ts"

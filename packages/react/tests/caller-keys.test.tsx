@@ -22,7 +22,7 @@
  * one canister answers with the caller it saw, so a test reads from its log
  * who sent what, and from the page whose answer it shows.
  */
-import { c } from "@candid-core/schema"
+import { c } from "@meantjs/schema"
 import {
   createClient,
   isReactorError,

@@ -1,4 +1,4 @@
-import type { MethodMode } from "@candid-core/schema"
+import type { MethodMode } from "@meantjs/schema"
 import { Link } from "@tanstack/react-router"
 import { useId, useState, type ReactElement } from "react"
 import { argsFitInUrl, sharedCallUrl } from "../../calls/share.ts"

@@ -1,10 +1,10 @@
 // Schema reading helpers shared by the forms and the value viewers, over
-// @candid-core/schema's public API only.
+// @meantjs/schema's public API only.
 import {
   resolveSchema,
   type AnyFieldSchema,
   type ResolvedNode,
-} from "@candid-core/schema"
+} from "@meantjs/schema"
 
 export type RecordNode = Extract<ResolvedNode, { kind: "record" }>
 export type TupleNode = Extract<ResolvedNode, { kind: "tuple" }>
@@ -110,7 +110,8 @@ export function withOwn<T>(
 
 /**
  * Whether a value is a `Uint8Array`, from this realm or another (a jsdom
- * test's TextEncoder, an iframe): how candid-core's codec recognizes a blob.
+ * test's TextEncoder, an iframe): how `@meantjs/schema`'s codec recognizes a
+ * blob.
  */
 export function isBytes(value: unknown): value is Uint8Array {
   return (
@@ -129,7 +130,7 @@ export function childPath(path: string, seg: string | number): string {
 
 /**
  * The numeric id of a key `_N_`, the schema's spelling of an unnamed Candid
- * label (a copy of candid-core's internal `numericKeyId`).
+ * label (a copy of `@meantjs/schema`'s internal `numericKeyId`).
  */
 export function numericLabelId(key: string): number | undefined {
   const match = /^_([0-9]+)_$/.exec(key)

@@ -1,4 +1,4 @@
-import type { AnyFieldSchema } from "@candid-core/schema"
+import type { AnyFieldSchema } from "@meantjs/schema"
 import { useEffect, useState } from "react"
 import type { MethodInfo } from "../interface/types.ts"
 import { nowNanos } from "./convert.ts"

@@ -1,4 +1,4 @@
-import { c, serviceMethods, type AnyFieldSchema } from "@candid-core/schema"
+import { c, serviceMethods, type AnyFieldSchema } from "@meantjs/schema"
 import { describe, expect, it } from "vitest"
 import { actor as icpActor } from "../canisters/icp_ledger.ts"
 import { TransferArg } from "../canisters/icrc1.ts"

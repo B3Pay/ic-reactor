@@ -1,4 +1,4 @@
-import type { MethodMode } from "@candid-core/schema"
+import type { MethodMode } from "@meantjs/schema"
 import { Link, useNavigate } from "@tanstack/react-router"
 import {
   useId,

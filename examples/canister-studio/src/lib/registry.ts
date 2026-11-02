@@ -1,4 +1,4 @@
-import type { AnySchema } from "@candid-core/schema"
+import type { AnySchema } from "@meantjs/schema"
 import ckbtcMinterDid from "../../did/ckbtc_minter.did?raw"
 import icpLedgerDid from "../../did/icp_ledger.did?raw"
 import icrc1Did from "../../did/icrc1.did?raw"

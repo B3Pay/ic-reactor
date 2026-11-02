@@ -1,6 +1,6 @@
 // Editors of single values: text, bool, integers, floats, principals and
 // constants. Every value is held as raw text in the draft; the engine parses.
-import { isPrincipal } from "@candid-core/schema"
+import { isPrincipal } from "@meantjs/schema"
 import { useState, type ReactNode } from "react"
 import { groupDigits } from "../../lib/format.ts"
 import { useFormContext, type EditorProps } from "../context.ts"

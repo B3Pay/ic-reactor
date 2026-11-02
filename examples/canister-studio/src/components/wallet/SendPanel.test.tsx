@@ -2,8 +2,8 @@
 // replica, with the form and the viewers stood in for (calls/testing):
 // what reaches the history, and what the panels say after an unknown
 // outcome.
-import { principal } from "@candid-core/schema"
-import { encodeArgs } from "@candid-core/schema/codec"
+import { principal } from "@meantjs/schema"
+import { encodeArgs } from "@meantjs/schema/codec"
 import { ReactorProvider } from "@ic-reactor/react"
 import {
   act,

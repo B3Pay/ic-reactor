@@ -9,13 +9,13 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "gen": "candid-core-cli gen did/icrc1.did did/icp_ledger.did did/ckbtc_minter.did -o src/canisters",
-    "gen:check": "candid-core-cli gen did/icrc1.did did/icp_ledger.did did/ckbtc_minter.did -o src/canisters --check",
+    "gen": "meant gen did/icrc1.did did/icp_ledger.did did/ckbtc_minter.did -o src/canisters",
+    "gen:check": "meant gen did/icrc1.did did/icp_ledger.did did/ckbtc_minter.did -o src/canisters --check",
     "smoke": "node scripts/smoke.ts"
   },
   "dependencies": {
-    "@candid-core/cli": "0.3.0",
-    "@candid-core/schema": "0.4.0",
+    "@meantjs/cli": "0.5.0",
+    "@meantjs/schema": "0.6.0",
     "@ic-reactor/core": "^4.0.0",
     "@ic-reactor/react": "^4.0.0",
     "@icp-sdk/auth": "^10.0.1",

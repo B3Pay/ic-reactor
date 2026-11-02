@@ -3,7 +3,7 @@
  * projection of the live interface to the methods the app calls, and the
  * live check (`verify: "live"`, `IC_REACTOR_VERIFY`), which checks a
  * `didFile` on disk against the live canister. Both run the real
- * `@candid-core/cli` (`project`, `check`) under a real `vite build`.
+ * `@meantjs/cli` (`project`, `check`) under a real `vite build`.
  *
  * The canisters live on the fake replica of tests/fake-ic.ts, on a local
  * port, which signs its certificates with a root key of its own.
@@ -564,7 +564,7 @@ const liveWith = (...edits: Array<[string, string]>) =>
 const WITHOUT_PUT = liveWith(["  put : (nat) -> ();\n", ""])
 
 /**
- * The bin of a candid-core-cli that runs the real one, whose bin script is
+ * The bin of a meant that runs the real one, whose bin script is
  * `real`, and writes a file around one process (see `hookCli`). Every
  * process appends its arguments to runs.log beside it, as the fake CLI does.
  */
@@ -607,7 +607,7 @@ process.exit(run.status === null ? 1 : run.status)
 }
 
 /**
- * Install in `app` a candid-core-cli that runs the real one, in place of the
+ * Install in `app` a meant that runs the real one, in place of the
  * link to it, so that a test can write a `.did` at a moment it cannot time
  * otherwise: `save` writes `text` to `file` once, around the first process
  * that runs `step` (`"list"`, the projection that lists a file's methods,
@@ -620,9 +620,9 @@ process.exit(run.status === null ? 1 : run.status)
  * waiting before the real CLI starts, until `release`.
  */
 function hookCli(app: App) {
-  const installed = path.join(app.root, "node_modules", "@candid-core", "cli")
+  const installed = path.join(app.root, "node_modules", "@meantjs", "cli")
   const manifest = createRequire(import.meta.url).resolve(
-    "@candid-core/cli/package.json"
+    "@meantjs/cli/package.json"
   )
   const { version, bin } = JSON.parse(fs.readFileSync(manifest, "utf-8")) as {
     version: string
@@ -633,14 +633,14 @@ function hookCli(app: App) {
   fs.writeFileSync(
     path.join(installed, "package.json"),
     JSON.stringify({
-      name: "@candid-core/cli",
+      name: "@meantjs/cli",
       version,
-      bin: { "candid-core-cli": "./bin.js" },
+      bin: { meant: "./bin.js" },
     })
   )
   fs.writeFileSync(
     path.join(installed, "bin.js"),
-    hookedBin(path.join(path.dirname(manifest), bin["candid-core-cli"]))
+    hookedBin(path.join(path.dirname(manifest), bin["meant"]))
   )
   return {
     save: (
@@ -1003,7 +1003,7 @@ describe("the live check", () => {
     )
   })
 
-  // candid-core-cli reads the file itself, after the fetch: a save while the
+  // meant reads the file itself, after the fetch: a save while the
   // fetch is under way is what it checks, not the text the run read. The text
   // read first, which no check saw, must not pass when it is restored.
   it("records no pass for a didFile saved while its check ran, so restoring the text read first is checked", async () => {
@@ -1397,7 +1397,7 @@ describe("the live check", () => {
   })
 })
 
-// A run reads each didFile once, when its steps start, and candid-core-cli
+// A run reads each didFile once, when its steps start, and meant
 // reads it again for each step (the methods listing, the live check,
 // generation). A file written in between must not pass one step for a text
 // another step read: the run takes nothing of it. A build fails it, and a dev
@@ -1635,7 +1635,7 @@ describe("a didFile written while a run reads it", () => {
   // The generator reads no file whose name does not end in `.did`
   // (`api.candid`, `api.DID`), and writes nothing for it: what was there,
   // under its name or under a name with the whole extension cut, stays.
-  // candid-core-cli 0.3.0 writes nothing for those two, so no fault of the
+  // `meant` 0.5.0 writes nothing for those two, so no fault of the
   // put-back fails them: they guard against a CLI that reads such a file and
   // writes under another name than the one the plugin puts back. The test
   // bites through `.did`.
@@ -2647,7 +2647,7 @@ describe("options given a value of the wrong kind", () => {
 
   // Whether text is a principal was told only by the fetch or the check that
   // read it, so a canister with methods and verify: "live" had its methods
-  // listed by a candid-core-cli process before its check failed.
+  // listed by a `meant` process before its check failed.
   it("canisterId text that is no principal fails the canister when the plugin is made, before any process or request", async () => {
     const asked = refuseNetwork()
     const app = newApp({ "did/item.did": WRITTEN, "did/ping.did": PING_DID })
