@@ -14,6 +14,13 @@
 //
 // Without --json the same results are lines for a person, and failures go to
 // stderr.
+//
+// Text a ledger sends (its name and symbol, an error message) ends up in that
+// output, and a terminal acts on some characters instead of showing them: an
+// escape sequence can move the cursor, rewrite lines already printed or set
+// the clipboard, a line break can add a line that looks like the CLI's own,
+// and a bidirectional override can reverse an amount. So no such character is
+// printed raw, in either mode.
 import { formatUnits } from "@ic-reactor/core"
 import type { FailureKind } from "./failure.ts"
 import { toHex } from "./input.ts"
@@ -53,18 +60,64 @@ export interface FailureDoc {
   readonly [field: string]: Json | undefined
 }
 
-/** One line of JSON: bigints as decimal strings, bytes as hex. */
+/**
+ * Whether a terminal may act on a character rather than show it: a C0 or C1
+ * control (line breaks and escape included), DEL, or a bidirectional
+ * formatting character.
+ */
+function unsafe(code: number): boolean {
+  return (
+    code < 0x20 ||
+    (code >= 0x7f && code <= 0x9f) ||
+    code === 0x61c ||
+    code === 0x200e ||
+    code === 0x200f ||
+    (code >= 0x202a && code <= 0x202e) ||
+    (code >= 0x2066 && code <= 0x2069)
+  )
+}
+
+/** `text` with each unsafe character written by `escape`. */
+function escapeUnsafe(text: string, escape: (code: number) => string): string {
+  let escaped = ""
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0
+    escaped += unsafe(code) ? escape(code) : char
+  }
+  return escaped
+}
+
+/**
+ * A line a terminal shows as written: each unsafe character spelled out, an
+ * escape as `\u{1b}`.
+ */
+export const printable = (line: string): string =>
+  escapeUnsafe(line, (code) => `\\u{${code.toString(16)}}`)
+
+/**
+ * One line of JSON: bigints as decimal strings, bytes as hex. JSON escapes
+ * the C0 controls itself; the other unsafe characters are escaped here
+ * (`\u009b`), so the line holds none raw and parses back to the same text.
+ */
 export function stringify(doc: Json): string {
-  return JSON.stringify(doc, (_key, value: unknown) =>
+  const text = JSON.stringify(doc, (_key, value: unknown) =>
     typeof value === "bigint"
       ? value.toString()
       : value instanceof Uint8Array
         ? toHex(value)
         : value
   )
+  return escapeUnsafe(
+    text,
+    (code) => `\\u${code.toString(16).padStart(4, "0")}`
+  )
 }
 
-/** Prints results and failures in the mode the command line chose. */
+/**
+ * Prints results and failures in the mode the command line chose. Without
+ * --json each line goes through `printable`, so an entry of `lines` is one
+ * line: a line break inside it is shown as `\u{a}`, not taken.
+ */
 export interface Output {
   readonly json: boolean
   /** A result: its document in --json mode, else `lines` on stdout. */
@@ -80,14 +133,14 @@ export function createOutput(io: Io, json: boolean): Output {
     json,
     result(doc, lines) {
       if (json) io.stdout(stringify(doc))
-      else for (const line of lines) io.stdout(line)
+      else for (const line of lines) io.stdout(printable(line))
     },
     failure(doc, lines) {
       if (json) io.stdout(stringify(doc))
-      else for (const line of lines) io.stderr(line)
+      else for (const line of lines) io.stderr(printable(line))
     },
     note(line) {
-      if (!json) io.stdout(line)
+      if (!json) io.stdout(printable(line))
     },
   }
 }

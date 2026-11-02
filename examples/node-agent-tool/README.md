@@ -119,6 +119,17 @@ it, since an agent feeds stdout back into its context.
 {"ok":false,"command":"balance","kind":"usage","mayHaveExecuted":false,"message":"owner \"x\" is not a principal (principal(): \"x\" is not canonical principal text)"}
 ```
 
+## Text from the ledger
+
+A token's name and symbol and a ledger's error messages are the ledger's own
+text, and a terminal acts on some characters instead of showing them. Without
+`--json`, each control character and bidirectional formatting character is
+printed spelled out: an escape as `\u{1b}`, a line break as `\u{a}`, a
+right-to-left override as `\u{202e}`. A ledger can't move the cursor, rewrite
+earlier lines, add a line that looks like the tool's own or reverse an
+amount. With `--json` they are `\u` escapes, and the text parses back
+unchanged (`printable` and `stringify` in `src/output.ts`).
+
 ## An unknown outcome, and the re-send
 
 ICRC-1 ledgers deduplicate: the same sender sending the same argument

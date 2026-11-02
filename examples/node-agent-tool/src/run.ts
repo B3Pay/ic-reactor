@@ -44,7 +44,7 @@ export async function run(rt: Runtime): Promise<number> {
   if (line.help) {
     // With --json, the usage too is one JSON document, so an agent that reads
     // every stdout line as JSON can ask for it.
-    out.result({ ok: true, command: "help", usage: USAGE }, [USAGE])
+    out.result({ ok: true, command: "help", usage: USAGE }, USAGE.split("\n"))
     return 0
   }
 
