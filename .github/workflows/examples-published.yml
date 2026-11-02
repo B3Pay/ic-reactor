@@ -53,7 +53,7 @@ on:
   workflow_call:
     inputs:
       wait-for:
-        description: The version (or its tag) whose release the run tests. The dist-tag that release publishes under (beta for a prerelease, latest for a stable version) of core and of every @ic-reactor package the examples declare must name it, with its integrity served, before the run starts (a leading v is dropped)
+        description: The version (or its tag) whose release the run tests. The dist-tag that release publishes under (beta for a prerelease, latest for a stable version) of core and of every @ic-reactor package the examples declare must name it, with its integrity and its tarball served, before the run starts (a leading v is dropped)
         type: string
         required: false
         default: ""
