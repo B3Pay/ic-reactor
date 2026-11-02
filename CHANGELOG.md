@@ -17,7 +17,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### CI (not published)
+
+- A release's run of the published-examples check waits until npm serves
+  each package's tarball, not only until the dist-tag and the integrity name
+  the release (`waitForPublished` in `scripts/test-examples-published.mjs`).
+  On 4.1.0's release run, npm answered 404 for core's tarball for about five
+  minutes after its dist-tag named 4.1.0, and every example's install failed
+  on it.
 
 ## core, react, vite-plugin 4.1.0
 

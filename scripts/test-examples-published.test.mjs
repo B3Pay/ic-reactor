@@ -96,7 +96,8 @@ const SCOPE_PACKAGES = [
  * `npm view <spec> <field>` against a registry where every @ic-reactor
  * package's dist-tags are `tags`, its published versions are `versions`
  * (default: the ones `tags` name), and every version the tags name is served
- * with an integrity. Records each spec asked for in `asked`.
+ * with an integrity and a tarball URL. Records each spec asked for in
+ * `asked`.
  */
 function fakeView(tags, versions = Object.values(tags)) {
   const asked = []
@@ -113,24 +114,42 @@ function fakeView(tags, versions = Object.values(tags)) {
     if (field === "dist.integrity") {
       return Object.values(tags).includes(selector) ? "sha512-x" : undefined
     }
+    if (field === "dist.tarball") {
+      return Object.values(tags).includes(selector)
+        ? tarballUrl(name, selector)
+        : undefined
+    }
     throw new Error(`unexpected field ${field}`)
   }
   return { view, asked }
 }
 
+/** The URL the registry gives for `name`@`version`'s tarball. */
+const tarballUrl = (name, version) =>
+  `${REGISTRY}${name}/-/${name.slice(name.indexOf("/") + 1)}-${version}.tgz`
+
 /**
  * What main() resolves for `argv` on a branch at `branchVersion`: with
  * `manifests` (the examples' package.json files), as main() passes them, and
  * the packages a release run waits on taken from them; without, every
- * package and no example.
+ * package and no example. Every tarball downloads, except those of the
+ * packages named in `unserved`, which answer 404; `heads` records each
+ * tarball URL asked for.
  */
 const resolveFor = (
   argv,
   branchVersion,
   tags,
-  { manifests, versions } = {}
+  { manifests, versions, unserved = [] } = {}
 ) => {
   const { view, asked } = fakeView(tags, versions)
+  const heads = []
+  const status = async (url) => {
+    heads.push(url)
+    return unserved.some((name) => url.startsWith(`${REGISTRY}${name}/-/`))
+      ? 404
+      : 200
+  }
   const run = resolveRun(
     {
       waitFor: parseArgs(argv).waitFor,
@@ -138,9 +157,9 @@ const resolveFor = (
       ...(manifests ? { manifests } : { packages: SCOPE_PACKAGES }),
     },
     // No polling: a package the tag does not name yet fails at once.
-    { view, timeoutMs: 0, wait: async () => {}, log: () => {} }
+    { view, status, timeoutMs: 0, wait: async () => {}, log: () => {} }
   )
-  return { run, asked }
+  return { run, asked, heads }
 }
 
 describe("distTagFor", () => {
@@ -204,13 +223,35 @@ describe("resolveRun", () => {
   })
 
   it("waits on latest for every package on the v4.0.0 release's run", async () => {
-    const { run, asked } = resolveFor(["--wait-for", "v4.0.0"], BETA, tags)
+    const { run, asked, heads } = resolveFor(
+      ["--wait-for", "v4.0.0"],
+      BETA,
+      tags
+    )
     assert.deepEqual(await run, { tag: "latest", version: STABLE })
     for (const name of SCOPE_PACKAGES) {
       assert.ok(asked.includes(`${name}@latest version`), name)
       assert.ok(asked.includes(`${name}@${STABLE} dist.integrity`), name)
+      assert.ok(asked.includes(`${name}@${STABLE} dist.tarball`), name)
+      assert.ok(heads.includes(tarballUrl(name, STABLE)), name)
     }
     assert.ok(!asked.some((line) => line.includes("@beta")), asked.join("; "))
+  })
+
+  it("fails a release run whose tarball the registry does not serve yet", async () => {
+    // 4.1.0's release run: core's dist-tag and integrity named 4.1.0 while
+    // its tarball still answered 404, and every example's install failed.
+    const { run, heads } = resolveFor(["--wait-for", "v4.0.0"], BETA, tags, {
+      unserved: ["@ic-reactor/core"],
+    })
+    await assert.rejects(
+      run,
+      (error) =>
+        /@ic-reactor\/core@4\.0\.0's tarball is not served yet/.test(
+          error.message
+        ) && !/@ic-reactor\/(react|vite-plugin)@/.test(error.message)
+    )
+    assert.ok(heads.includes(tarballUrl("@ic-reactor/core", STABLE)))
   })
 
   it("waits on beta for every package on a prerelease's run", async () => {
@@ -1377,18 +1418,26 @@ describe("waitForPublished", () => {
     "@ic-reactor/vite-plugin",
   ]
 
-  /** A registry where each package serves NEXT from its `readyAt`-th poll on. */
-  function registry(readyAt, { integrityLagsTag = false } = {}) {
+  /**
+   * A registry where each package serves NEXT from its `readyAt`-th poll on;
+   * on that first poll, its integrity is missing (`integrityLagsTag`) or its
+   * tarball is (`tarballLagsIntegrity`).
+   */
+  function registry(
+    readyAt,
+    { integrityLagsTag = false, tarballLagsIntegrity = false } = {}
+  ) {
     const polls = Object.fromEntries(names.map((n) => [n, 0]))
     const lookup = (name) => {
       const poll = ++polls[name]
       const ready = poll >= readyAt[name]
+      const first = poll === readyAt[name]
+      const integrity =
+        ready && !(integrityLagsTag && first) ? "sha512-x" : undefined
       return {
         tagged: ready ? NEXT : BETA,
-        integrity:
-          ready && !(integrityLagsTag && poll === readyAt[name])
-            ? "sha512-x"
-            : undefined,
+        integrity,
+        served: integrity !== undefined && !(tarballLagsIntegrity && first),
       }
     }
     return { lookup, polls }
@@ -1447,6 +1496,38 @@ describe("waitForPublished", () => {
         /vite-plugin@4\.0\.0-beta\.2 has no dist\.integrity/.test(l)
       )
     )
+  })
+
+  it("waits for the tarball once the tag and the integrity name the version", async () => {
+    // On 4.1.0's release run, core's tarball answered 404 for minutes after
+    // its dist-tag and integrity named 4.1.0.
+    const { lookup, polls } = registry(
+      {
+        "@ic-reactor/core": 1,
+        "@ic-reactor/react": 2,
+        "@ic-reactor/vite-plugin": 2,
+      },
+      { tarballLagsIntegrity: true }
+    )
+    const lines = []
+    const version = await waitForPublished(names, "beta", NEXT, {
+      lookup,
+      ...clock(),
+      pollMs: 1,
+      log: (line) => lines.push(line),
+    })
+    assert.equal(version, NEXT)
+    assert.equal(polls["@ic-reactor/core"], 3)
+    assert.match(
+      lines[0],
+      /@ic-reactor\/core@4\.0\.0-beta\.2's tarball is not served yet/
+    )
+    assert.match(
+      lines[1],
+      /@ic-reactor\/react@4\.0\.0-beta\.2's tarball is not served yet/
+    )
+    assert.doesNotMatch(lines[1], /@ic-reactor\/core@/)
+    assert.equal(lines.length, 2)
   })
 
   it("names each package still behind when it times out", async () => {

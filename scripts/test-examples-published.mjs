@@ -69,12 +69,13 @@
  *                          prerelease, `latest` for a stable version) of core
  *                          and of every @ic-reactor/* package the examples
  *                          declare names <version> (a leading "v" is
- *                          dropped), and the registry serves its integrity:
- *                          the release workflow runs this right after
- *                          publishing, with the tag it published. Without it,
- *                          the run tests the dist-tag of the branch's version
- *                          (packages/core/package.json), or defers while the
- *                          examples wait on that version's release
+ *                          dropped), and the registry serves its integrity
+ *                          and its tarball: the release workflow runs this
+ *                          right after publishing, with the tag it published.
+ *                          Without it, the run tests the dist-tag of the
+ *                          branch's version (packages/core/package.json), or
+ *                          defers while the examples wait on that version's
+ *                          release
  *   <example>              a directory under examples/ (default: every one)
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process"
@@ -1261,21 +1262,25 @@ export function scopePackageNames(manifests) {
 }
 
 /**
- * Polls each package until its `tag` dist-tag names `version` and the
- * registry answers with `version`'s integrity, for up to `timeoutMs`. The
- * release workflow publishes core, react and vite-plugin one after another, so
- * the last one can lag the first by minutes; every package the run reads must
- * be served before the examples install.
+ * Polls each package until its `tag` dist-tag names `version`, the registry
+ * answers with `version`'s integrity, and it serves `version`'s tarball, for
+ * up to `timeoutMs`. The release workflow publishes core, react and
+ * vite-plugin one after another, so the last one can lag the first by
+ * minutes; every package the run reads must be served before the examples
+ * install. The tarball can lag that metadata by minutes: on 4.1.0's release
+ * run, core's tarball answered 404 for about five minutes after its dist-tag
+ * and integrity named 4.1.0, and every example's install failed on it.
  *
  * `lookup(name)` resolves with what the registry serves now: the version the
- * dist-tag names (undefined when it has none) and `version`'s integrity
- * (undefined when that version is not served yet).
+ * dist-tag names (undefined when it has none), `version`'s integrity
+ * (undefined when that version is not served yet), and whether `version`'s
+ * tarball downloads (`served`).
  *
  * @param {string[]} names
  * @param {string} tag
  * @param {string} version
  * @param {{
- *   lookup: (name: string) => Promise<{ tagged?: string, integrity?: string }> | { tagged?: string, integrity?: string },
+ *   lookup: (name: string) => Promise<{ tagged?: string, integrity?: string, served?: boolean }> | { tagged?: string, integrity?: string, served?: boolean },
  *   timeoutMs?: number,
  *   pollMs?: number,
  *   wait?: (ms: number) => Promise<unknown>,
@@ -1301,11 +1306,13 @@ export async function waitForPublished(
   for (;;) {
     const pending = []
     for (const name of names) {
-      const { tagged, integrity } = await lookup(name)
+      const { tagged, integrity, served } = await lookup(name)
       if (tagged !== version) {
         pending.push(`${name}@${tag} is ${tagged ?? "unset"}`)
       } else if (!integrity) {
         pending.push(`${name}@${version} has no dist.integrity yet`)
+      } else if (!served) {
+        pending.push(`${name}@${version}'s tarball is not served yet`)
       }
     }
     if (pending.length === 0) return version
@@ -1319,16 +1326,48 @@ export async function waitForPublished(
   }
 }
 
-/** What the registry serves for `name` now, for `waitForPublished`. */
-function registryState(name, tag, version, view = npmView) {
+/**
+ * The HTTP status the registry answers a HEAD of `url` with now, or 0 when
+ * the request fails.
+ */
+async function headStatus(url) {
+  try {
+    const response = await fetch(url, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(30_000),
+    })
+    return response.status
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * What the registry serves for `name` now, for `waitForPublished`. The
+ * tarball is asked for only once the dist-tag and the integrity name
+ * `version`, at the URL the registry gives for it (`dist.tarball`), which is
+ * the one npm's install fetches.
+ */
+async function registryState(
+  name,
+  tag,
+  version,
+  view = npmView,
+  status = headStatus
+) {
   const tagged = view(`${name}@${tag}`, "version")
   const integrity =
     tagged === version
       ? view(`${name}@${version}`, "dist.integrity")
       : undefined
+  const tarball =
+    typeof integrity === "string"
+      ? view(`${name}@${version}`, "dist.tarball")
+      : undefined
   return {
     tagged: typeof tagged === "string" ? tagged : undefined,
     integrity: typeof integrity === "string" ? integrity : undefined,
+    served: typeof tarball === "string" && (await status(tarball)) === 200,
   }
 }
 
@@ -1365,9 +1404,10 @@ function registryState(name, tag, version, view = npmView) {
  *   packages?: string[],
  * }} run `manifests` are the examples' package.json files; `packages`, the
  *   ones a release run waits on, default to `scopePackageNames(manifests)`
- * @param {{ view?: (spec: string, field: string) => unknown } & Partial<Parameters<typeof waitForPublished>[3]>} [options]
+ * @param {{ view?: (spec: string, field: string) => unknown, status?: (url: string) => Promise<number> } & Partial<Parameters<typeof waitForPublished>[3]>} [options]
  *   `view(spec, field)` answers as `npm view <spec> <field> --json` does
- *   (undefined for a 404); the rest goes to `waitForPublished`
+ *   (undefined for a 404); `status(url)` with the HTTP status of a HEAD of a
+ *   tarball's URL; the rest goes to `waitForPublished`
  * @returns {Promise<{ tag: "latest" | "beta", version: string, deferred?: undefined } | { deferred: true, version: string }>}
  */
 export async function resolveRun(
@@ -1377,7 +1417,7 @@ export async function resolveRun(
     manifests = [],
     packages = scopePackageNames(manifests),
   },
-  { view = npmView, ...waitOptions } = {}
+  { view = npmView, status = headStatus, ...waitOptions } = {}
 ) {
   if (
     !waitFor &&
@@ -1395,7 +1435,7 @@ export async function resolveRun(
   const version = waitFor
     ? await waitForPublished(packages, tag, waitFor, {
         ...waitOptions,
-        lookup: (name) => registryState(name, tag, waitFor, view),
+        lookup: (name) => registryState(name, tag, waitFor, view, status),
       })
     : distTagVersion(`${SCOPE}core`, tag, view)
   return { tag, version }
