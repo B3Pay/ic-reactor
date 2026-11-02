@@ -17,11 +17,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-This release moves ic-reactor 4 onto Meant, the new name of the candid-core
-pair, and changes two things `@ic-reactor/core` does at run time: what the
-client keeps after the caller changes, and what it believes an `ic_env`
-cookie for. Each of those entries, under `@ic-reactor/core` below, says
-what an app does about it. Both packages of the pair are pinned exactly,
+Nothing yet.
+
+## core, react, vite-plugin 4.1.0
+
+Prepared on 2026-11-02. 4.1.0 moves ic-reactor 4 onto Meant, the new name of
+the candid-core pair, and changes two things `@ic-reactor/core` does at run
+time: what the client keeps after the caller changes, and what it believes an
+`ic_env` cookie for. Each of those entries, under `@ic-reactor/core` below,
+says what an app does about it. Both packages of the pair are pinned exactly,
 where 4.0.0 required `@candid-core/schema` `0.4.0` and `@candid-core/cli`
 `0.3.0`:
 
@@ -182,7 +186,7 @@ What an app on 4.0.0 does for the repin:
   list and the root README link the deploy guide, and the examples index and
   the root README say the Vite wallet deploys itself with security headers.
   The root README names b3pay.net/docs/ic-reactor as the docs site.
-- The agent tools guide no longer calls Candid Profile "coming next": it
+- The agent tools guide no longer announces a library as "coming next": it
   names Meant's `@meantjs/tools`, which generates tools of the same shape
   from a profile, and links its guide.
 - The repository's issue forms offer `@ic-reactor/vite-plugin` in place of the

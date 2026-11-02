@@ -12,9 +12,9 @@ releases, `@meantjs/schema` and `@meantjs/cli`, each pinned exactly.
 
 ### Packages
 
-- `@ic-reactor/core` (`packages/core`, `4.0.0`) — the 4 API of milestone 1: `createClient`, `ReactorError` and `isReactorError`, `parseUnits` and `formatUnits`, and their types (13 names, `scripts/export-budget.mjs`). `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
-- `@ic-reactor/react` (`packages/react`, `4.0.0`) — `'use client'` bindings over a core client: `ReactorProvider`, `useClient`, `useAuth` and the type `ReactorProviderProps`. It never re-exports core.
-- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0`) — generates the module by running `@meantjs/cli` (`meant gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
+- `@ic-reactor/core` (`packages/core`, `4.1.0`) — the 4 API of milestone 1: `createClient`, `ReactorError` and `isReactorError`, `parseUnits` and `formatUnits`, and their types (13 names, `scripts/export-budget.mjs`). `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
+- `@ic-reactor/react` (`packages/react`, `4.1.0`) — `'use client'` bindings over a core client: `ReactorProvider`, `useClient`, `useAuth` and the type `ReactorProviderProps`. It never re-exports core.
+- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.1.0`) — generates the module by running `@meantjs/cli` (`meant gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
 
 `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli` and
 `@ic-reactor/candid` are not in this tree (the last stays at 3.x on `v3`).
