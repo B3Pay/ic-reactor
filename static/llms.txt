@@ -1,6 +1,6 @@
 # @ic-reactor/core
 
-> How to call Internet Computer canisters with a module `candid-core-cli gen`
+> How to call Internet Computer canisters with a module `meant gen`
 > generated from a `.did`, a client from `@ic-reactor/core`, and TanStack
 > Query. The client applies the rules a hand-written integration must get
 > right; this guide names the call for each.
@@ -12,12 +12,12 @@ Applies to `@ic-reactor/core` 4.0.0.
 ```ts
 import { createClient, formatUnits, isReactorError, parseUnits } from "@ic-reactor/core"
 import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
-import { isPrincipal, principal, type Principal } from "@candid-core/schema"
+import { isPrincipal, principal, type Principal } from "@meantjs/schema"
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
 import { actor, type Actor } from "./generated/icrc1"
 ```
 
-One import path per name: Candid values only from `@candid-core/schema`,
+One import path per name: Candid values only from `@meantjs/schema`,
 `skipToken` and the hooks only from TanStack Query.
 
 `@ic-reactor/core` and `@ic-reactor/react` are ES modules only. A Node
@@ -27,9 +27,9 @@ top-level `await` fails in a CommonJS package. Under TypeScript's
 `moduleResolution: "nodenext"`, import local files with their `.js`
 extension (`./generated/icrc1.js`).
 
-The generated module (from `candid-core-cli gen` or `@ic-reactor/vite-plugin`;
-do not edit it) exports a type and schema per Candid type, the service schema
-`actor`, and `type Actor`.
+The generated module (from `meant gen` or `@ic-reactor/vite-plugin`; do not edit
+it) exports a type and schema per Candid type, the service schema `actor`, and
+`type Actor`.
 
 ## Setup
 
@@ -321,7 +321,7 @@ value; `Err` rejects as kind `"canister_err"`, with the `Err` value in `err`
 ## Reads
 
 ```tsx
-import type { Principal } from "@candid-core/schema"
+import type { Principal } from "@meantjs/schema"
 import { formatUnits } from "@ic-reactor/core"
 import { useClient } from "@ic-reactor/react"
 import { skipToken, useQuery } from "@tanstack/react-query"
@@ -527,7 +527,7 @@ was given last.
 ## Outside React
 
 ```ts
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { isReactorError, parseUnits } from "@ic-reactor/core"
 import { client, ledger } from "./ledger"
 
@@ -554,7 +554,7 @@ a sign-in you control.
 ## Example
 
 ```tsx
-import { principal } from "@candid-core/schema"
+import { principal } from "@meantjs/schema"
 import { createClient } from "@ic-reactor/core"
 import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
