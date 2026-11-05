@@ -1,7 +1,7 @@
 // Scenario 6: --json on every command, in one stable shape.
 import { principal } from "@meantjs/schema"
 import { describe, expect, it } from "vitest"
-import { stringify } from "./output.ts"
+import { createOutput, printable, stringify } from "./output.ts"
 import { createCli, generatePem } from "./test-kit.ts"
 
 const key = generatePem("ed25519")
@@ -99,6 +99,79 @@ describe("JSON output", () => {
     expect(failed.stderr[0]).toMatch(
       /^error: usage: owner "nobody" is not a principal/
     )
+  })
+})
+
+describe("text a ledger sends", () => {
+  // Any character a terminal acts on instead of showing.
+  const RAW = /[\u0000-\u001f\u007f-\u009f؜‎‏‪-‮⁦-⁩]/
+  const hostile = {
+    // Moves the cursor up a line, erases it and writes a balance in its place.
+    symbol: "ICP\u001b[1A\u001b[2Kbalance  1000000 ICP",
+    // A line break that adds a line of its own, then a right-to-left override.
+    name: "Token\nprincipal  aaaaa-aa‮",
+  }
+
+  it("is printed with each control character spelled out, so it can't move the cursor or add a line", async () => {
+    const { cli } = createCli({ ledger: hostile })
+    const result = await cli(["info"])
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContainEqual(
+      expect.stringMatching(
+        /^symbol\s+ICP\\u\{1b\}\[1A\\u\{1b\}\[2Kbalance {2}1000000 ICP$/
+      )
+    )
+    expect(result.stdout).toContainEqual(
+      expect.stringMatching(
+        /^name\s+Token\\u\{a\}principal {2}aaaaa-aa\\u\{202e\}$/
+      )
+    )
+    expect(
+      result.stdout.filter((line) => line.startsWith("principal"))
+    ).toEqual([])
+    for (const line of result.stdout) expect(line).not.toMatch(RAW)
+  })
+
+  it("is spelled out in a failure on stderr, and in a note", () => {
+    const stdout: string[] = []
+    const stderr: string[] = []
+    const out = createOutput(
+      {
+        stdout: (line) => stdout.push(line),
+        stderr: (line) => stderr.push(line),
+      },
+      false
+    )
+    // OSC 52 asks the terminal to put text on the clipboard; BEL ends it.
+    out.failure(
+      {
+        ok: false,
+        command: "transfer",
+        kind: "rejected",
+        mayHaveExecuted: false,
+        message: "",
+      },
+      ["error: rejected: \u001b]52;c;aGVsbG8=\u0007"]
+    )
+    out.note("\u009b2J")
+    expect(stderr).toEqual(["error: rejected: \\u{1b}]52;c;aGVsbG8=\\u{7}"])
+    expect(stdout).toEqual(["\\u{9b}2J"])
+  })
+
+  it("keeps printable text as it is, whatever its script", () => {
+    expect(printable("Ꭵ₿ Bitcoin · ckBTC — 1.5 ₿, ü, 東京")).toBe(
+      "Ꭵ₿ Bitcoin · ckBTC — 1.5 ₿, ü, 東京"
+    )
+  })
+
+  it("with --json, leaves no raw control character in the line and parses back exact", async () => {
+    const symbol = `${hostile.symbol}\u009b31m⁦`
+    const { cli } = createCli({ ledger: { ...hostile, symbol } })
+    const result = await cli(["info", "--json"])
+    expect(result.stdout).toHaveLength(1)
+    expect(result.stdout[0]).not.toMatch(RAW)
+    expect(result.stdout[0]).toContain("\\u009b31m\\u2066")
+    expect(result.docs[0]).toMatchObject({ symbol, name: hostile.name })
   })
 })
 

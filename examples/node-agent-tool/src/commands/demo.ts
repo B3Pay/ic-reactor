@@ -75,14 +75,13 @@ export async function demo(out: Output): Promise<number> {
   })
   ledger.mountOn(test)
 
-  out.note(
-    [
-      "node-agent-tool demo: how a transfer ends, every way, on an in-memory replica.",
-      "The client is real (createTestClient() from @ic-reactor/core/testing): it signs each call,",
-      "sends it to a replica in this process that checks the signature, and verifies the",
-      "certified reply. Only the ICRC-1 ledger is a mock. Nothing leaves this process.",
-    ].join("\n")
-  )
+  for (const line of [
+    "node-agent-tool demo: how a transfer ends, every way, on an in-memory replica.",
+    "The client is real (createTestClient() from @ic-reactor/core/testing): it signs each call,",
+    "sends it to a replica in this process that checks the signature, and verifies the",
+    "certified reply. Only the ICRC-1 ledger is a mock. Nothing leaves this process.",
+  ])
+    out.note(line)
 
   let resend: readonly string[] = []
   const to = RECIPIENT
@@ -250,7 +249,8 @@ export async function demo(out: Output): Promise<number> {
           []
         )
       } else {
-        out.note(`\n[${index + 1}/${steps.length}] ${step.title}`)
+        out.note("")
+        out.note(`[${index + 1}/${steps.length}] ${step.title}`)
         for (const [i, argv] of runs.entries()) {
           const s = seen[i]
           if (s === undefined) continue

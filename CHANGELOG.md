@@ -17,6 +17,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### Examples (not published)
+
+- `node-agent-tool` no longer prints text from a ledger raw. Without
+  `--json`, a token's name or symbol and an error message are printed with
+  each control character and bidirectional formatting character spelled out
+  (`\u{1b}`), so a ledger can't move the cursor, rewrite earlier lines, add a
+  line that looks like the CLI's own or reverse an amount. With `--json`,
+  DEL, the C1 controls and those formatting characters are `\u` escapes, as
+  the C0 controls already were.
+
 ### CI (not published)
 
 - A release's run of the published-examples check waits until npm serves
