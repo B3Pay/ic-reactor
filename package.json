@@ -90,7 +90,7 @@
       "happy-dom": "^21.0.4",
       "launch-editor": "^2.14.2",
       "shell-quote": "^1.11.0",
-      "seroval": "^1.6.3",
+      "seroval": "~1.6.8",
       "handlebars": "^4.7.10",
       "zod": "^4.6.6",
       "vitest>vite": "^8.3.3"
