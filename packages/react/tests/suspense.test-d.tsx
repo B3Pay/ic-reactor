@@ -24,7 +24,7 @@ type Account = { owner: Principal; subaccount: Uint8Array | null }
 type Query = WithMode<"query">
 /**
  * What a generated module's `Actor` type looks like, cut down: each method is
- * its call signature marked with its mode, as `meant gen` 0.5.0 writes it.
+ * its call signature marked with its mode, as `meant gen` 0.5.1 writes it.
  */
 type Ledger = {
   icrc1_fee: (() => Promise<bigint>) & Query

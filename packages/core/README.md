@@ -26,11 +26,11 @@ lists its exports and peers.
 ```bash
 npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
 npm install --save-exact @meantjs/schema@0.6.0
-npm install --save-dev --save-exact @meantjs/cli@0.5.0
+npm install --save-dev --save-exact @meantjs/cli@0.5.1
 ```
 
 `@meantjs/schema` is a peer at exactly that version: the module `meant gen`
-writes imports it, so the generator (`@meantjs/cli@0.5.0`) has to pair with it
+writes imports it, so the generator (`@meantjs/cli@0.5.1`) has to pair with it
 too. Install the CLI at that version: without a version, npm installs the
 newest CLI, and when that one pairs with another schema, npm stops with
 `ERESOLVE`.

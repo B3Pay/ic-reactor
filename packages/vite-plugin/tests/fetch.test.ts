@@ -484,7 +484,7 @@ describe("one didFile under two paths", () => {
     )
     const network = { host: ic.host }
     vi.stubEnv("IC_REACTOR_FETCH", "all")
-    // @meantjs/cli 0.5.0 reads no .did through a symlink to a file, so
+    // @meantjs/cli 0.5.1 reads no .did through a symlink to a file, so
     // "a" fails to generate, loudly, with did_source_not_found, as it would
     // with no fetch at all: failOnError is off to look past it.
     const { result, lines } = runBuild(app.root, {
@@ -577,7 +577,7 @@ describe("one didFile under two paths", () => {
       const network = { host: ic.host }
 
       // One canister: one fetch, written once. (The generator itself, at
-      // @meantjs/cli 0.5.0, reads a .did by its exact case, so the entry
+      // @meantjs/cli 0.5.1, reads a .did by its exact case, so the entry
       // that spells it in another case fails to generate, loudly, with
       // did_source_not_found: failOnError is off to look past it.)
       const app = newApp({})
@@ -953,7 +953,7 @@ describe("IC_REACTOR_FETCH", () => {
     )
     vi.stubEnv("IC_REACTOR_FETCH", "ledger")
     const { buildStart, context } = oneBuildPlugin(app, ic.host)
-    // The fetch and the write succeed. @meantjs/cli 0.5.0 then reads no
+    // The fetch and the write succeed. @meantjs/cli 0.5.1 then reads no
     // .did through a symlink to a file (did_source_not_found), as with no
     // fetch at all: that is the only error allowed.
     const onlyTheCliFailed = () => {

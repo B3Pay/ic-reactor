@@ -1635,7 +1635,7 @@ describe("a didFile written while a run reads it", () => {
   // The generator reads no file whose name does not end in `.did`
   // (`api.candid`, `api.DID`), and writes nothing for it: what was there,
   // under its name or under a name with the whole extension cut, stays.
-  // `meant` 0.5.0 writes nothing for those two, so no fault of the
+  // `meant` 0.5.1 writes nothing for those two, so no fault of the
   // put-back fails them: they guard against a CLI that reads such a file and
   // writes under another name than the one the plugin puts back. The test
   // bites through `.did`.
