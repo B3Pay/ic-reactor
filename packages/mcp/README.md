@@ -52,14 +52,14 @@ works and no update is sent. To send updates, give it a key (see below).
 
 ## Tools
 
-| Tool              | What it does                                                                                                        |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `whoami`          | The principal calls are signed as, the network, whether the client can show the approval form, the listed canisters |
-| `list_methods`    | A canister's methods and their Candid signatures, where the interface came from, and whether updates can be sent    |
-| `describe_method` | One method's Candid (the method and every type it uses), its doc comment, and the JSON Schema of its arguments      |
-| `query`           | Runs a query method of any canister; `certified: true` makes it a replicated call with a certified reply            |
-| `call`            | Sends an update to a listed canister once you approve it; a query method is run as a query                          |
-| `<name>_<method>` | One per method of each `--canister`, such as `ledger_icrc1_transfer`, with the method's own input schema            |
+| Tool              | What it does                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `whoami`          | The principal calls are signed as, the network, whether the client can show the approval form, the listed canisters                   |
+| `list_methods`    | A canister's methods and their Candid signatures, where the interface came from, and whether updates can be sent                      |
+| `describe_method` | One method's Candid (the method and every type it uses), its doc comment, and the JSON Schema of its arguments                        |
+| `query`           | Runs a query method of any canister; `certified: true` makes it a replicated call, as the anonymous principal, with a certified reply |
+| `call`            | Sends an update to a listed canister once you approve it; a query method is run as a query                                            |
+| `<name>_<method>` | One per method of each `--canister`, such as `ledger_icrc1_transfer`, with the method's own input schema                              |
 
 `call` and the update tools are listed only when an update can be sent: the
 server has a key, the client can show a form, and a canister is listed.
@@ -110,6 +110,14 @@ hash (or reads the `.did` file again) before it asks you and again after you
 approve, and sends nothing if the canister was upgraded in between. Declining,
 closing the form, ten minutes without an answer, or a client error all mean
 nothing is sent. One approval is asked at a time.
+
+A certified read (`query` with `certified: true`) is a replicated call, which
+the IC runs as whatever the canister's module exports under that name, while
+the `query` in its interface is only the canister's own word. So it is made as
+the anonymous principal, never with your key: a method a canister calls a
+query, but runs as an update, cannot act as you. A method that answers per
+caller then answers for the anonymous principal; without `certified` a query
+is signed with your key, and the IC runs only query methods that way.
 
 Claude Code shows the form in a dialog. `claude -p` cancels every form unless
 an `Elicitation` hook answers it, so a headless run sends no update unless you

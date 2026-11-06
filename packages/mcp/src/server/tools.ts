@@ -60,7 +60,7 @@ export const QUERY: Tool = {
   name: "query",
   title: "Run a query method",
   description:
-    "Runs a query method of any canister and returns the reply as JSON. A query changes nothing. With certified: true the reply is certified by the subnet, at the cost of a slower replicated call. Update methods are refused here: use call.",
+    "Runs a query method of any canister and returns the reply as JSON. A query changes nothing. With certified: true the reply is certified by the subnet, at the cost of a slower replicated call made as the anonymous principal, so a method that answers per caller answers for the anonymous principal. Update methods are refused here: use call.",
   inputSchema: {
     type: "object",
     properties: {
@@ -70,7 +70,7 @@ export const QUERY: Tool = {
       certified: {
         type: "boolean",
         description:
-          "Whether the reply must be certified (a replicated call; not for composite queries). Default false.",
+          "Whether the reply must be certified (a replicated call, made as the anonymous principal; not for composite queries). Default false.",
       },
     },
     required: ["canister", "method"],

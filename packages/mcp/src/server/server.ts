@@ -15,6 +15,12 @@
 //   caller, network, the arguments as Candid text, and the sha256 of the
 //   bytes that are sent.
 //
+// A certified read goes out as the anonymous principal, never with the key.
+// It is a replicated call, which the IC runs as whatever the canister's
+// module exports under that name: the interface's `query` is the canister's
+// own claim (or, for the tmp hack, one replica's), so a method it calls a
+// query could be an update that would otherwise act as the caller unasked.
+//
 // One approval is asked at a time, and the call it approves holds the turn
 // until it settles, so two writes never race each other.
 import { createHash } from "node:crypto"
@@ -71,6 +77,12 @@ import {
 export interface ServerDeps {
   /** The client calls go through: `createClient`, or `createTestClient` in tests. */
   readonly client: Client
+  /**
+   * An anonymous client (`identity: "anonymous"`), for certified reads only:
+   * a replicated call made with the key could run an update the interface
+   * calls a query, as the caller and without approval.
+   */
+  readonly anonymousClient: Client
   readonly loader: InterfaceLoader
   /** The canisters named with `--canister`. */
   readonly canisters: readonly ListedCanister[]
@@ -335,7 +347,10 @@ export function createMcpServer(deps: ServerDeps): Server {
       return errorResult(issuesText(methodName, converted.issues))
     const { values } = converted
 
-    const canister = deps.client.canister<Actor>(iface.actor, {
+    // A certified read is a replicated call: made as the anonymous principal,
+    // whatever the method turns out to be, it cannot act as the caller.
+    const through = !write && how.certified ? deps.anonymousClient : deps.client
+    const canister = through.canister<Actor>(iface.actor, {
       id: iface.canisterId,
       certified: how.certified,
     })
@@ -466,6 +481,11 @@ export function createMcpServer(deps: ServerDeps): Server {
   function whoami(): CallToolResult {
     const lines = [
       `Caller: ${deps.client.caller()}, ${deps.callerSource}`,
+      ...(anonymous()
+        ? []
+        : [
+            "Certified reads (query with certified: true) go out as the anonymous principal, never with the key.",
+          ]),
       `Network: ${deps.networkLabel}`,
       canApprove()
         ? "Approvals: this client can show the approval form, so an update can be sent once the person approves it."

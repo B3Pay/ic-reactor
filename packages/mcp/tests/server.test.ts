@@ -125,6 +125,8 @@ interface Setup {
   readonly mcp: McpClient
   readonly forms: string[]
   readonly sent: { method: string; args: unknown[] }[]
+  /** Who each call reached the canister as, by method. */
+  readonly callers: { method: string; caller: string }[]
   readonly logs: string[]
   readonly test: ReturnType<typeof createTestClient>
   readonly loader: FakeLoader
@@ -148,34 +150,42 @@ async function setup(
     identity: 7,
     signedIn: options.signedIn ?? true,
   })
+  // The anonymous client certified reads go through: its own fake replica,
+  // with the same canisters.
+  const reads = createTestClient({ signedIn: false })
   const sent: { method: string; args: unknown[] }[] = []
-  test.mock<TestActor>(actor, LEDGER, {
-    icrc1_balance_of: (account: unknown) => {
-      sent.push({ method: "icrc1_balance_of", args: [account] })
-      return 1_234_567_890_123_456_789n
-    },
-    icrc1_name: () => "Internet Computer",
-    icrc1_transfer: (arg: unknown) => {
-      sent.push({ method: "icrc1_transfer", args: [arg] })
-      const { amount } = arg as { amount: bigint }
-      return amount > 1000n
-        ? {
-            tag: "Err",
-            value: { tag: "InsufficientFunds", value: { balance: 1000n } },
-          }
-        : { tag: "Ok", value: 42n }
-    },
-    notify: (text) => {
-      sent.push({ method: "notify", args: [text] })
-    },
-  })
-  test.mock<TestActor>(actor, OTHER, {
-    icrc1_name: () => "Other",
-    icrc1_transfer: (arg: unknown) => {
-      sent.push({ method: "icrc1_transfer@other", args: [arg] })
-      return { tag: "Ok", value: 1n }
-    },
-  })
+  const callers: { method: string; caller: string }[] = []
+  for (const client of [test, reads]) {
+    client.mock<TestActor>(actor, LEDGER, {
+      icrc1_balance_of: (account: unknown, { caller }) => {
+        sent.push({ method: "icrc1_balance_of", args: [account] })
+        callers.push({ method: "icrc1_balance_of", caller })
+        return 1_234_567_890_123_456_789n
+      },
+      icrc1_name: () => "Internet Computer",
+      icrc1_transfer: (arg: unknown, { caller }) => {
+        sent.push({ method: "icrc1_transfer", args: [arg] })
+        callers.push({ method: "icrc1_transfer", caller })
+        const { amount } = arg as { amount: bigint }
+        return amount > 1000n
+          ? {
+              tag: "Err",
+              value: { tag: "InsufficientFunds", value: { balance: 1000n } },
+            }
+          : { tag: "Ok", value: 42n }
+      },
+      notify: (text) => {
+        sent.push({ method: "notify", args: [text] })
+      },
+    })
+    client.mock<TestActor>(actor, OTHER, {
+      icrc1_name: () => "Other",
+      icrc1_transfer: (arg: unknown) => {
+        sent.push({ method: "icrc1_transfer@other", args: [arg] })
+        return { tag: "Ok", value: 1n }
+      },
+    })
+  }
   const loader = new FakeLoader(
     new Map([
       [LEDGER, interfaceOf(LEDGER, actor, options.provenance)],
@@ -185,6 +195,7 @@ async function setup(
   const logs: string[] = []
   const server = createMcpServer({
     client: test.client,
+    anonymousClient: reads.client,
     loader,
     canisters: options.listed === false ? [] : [{ name: "ledger", id: LEDGER }],
     callerSource: "from a test key",
@@ -215,8 +226,9 @@ async function setup(
     await mcp.close()
     await server.close()
     test.client.dispose()
+    reads.client.dispose()
   })
-  return { mcp, forms, sent, logs, test, loader }
+  return { mcp, forms, sent, callers, logs, test, loader }
 }
 
 const text = (result: Awaited<ReturnType<McpClient["callTool"]>>): string =>
@@ -348,6 +360,50 @@ describe("queries", () => {
     expect(refused.isError).toBe(true)
     expect(text(refused)).toMatch(/the query tool runs only queries/)
     expect(forms).toEqual([])
+  })
+
+  it("makes a certified read as the anonymous principal, so a method its interface calls a query cannot act as the caller", async () => {
+    const { mcp, callers, loader, test, forms } = await setup()
+    const balance = await mcp.callTool({
+      name: "query",
+      arguments: {
+        canister: "ledger",
+        method: "icrc1_balance_of",
+        args: { owner: RECIPIENT },
+        certified: true,
+      },
+    })
+    expect(balance.isError).toBeFalsy()
+    expect(JSON.parse(text(balance))).toBe("1234567890123456789")
+
+    // The canister's interface says icrc1_transfer is a query; its module
+    // runs it as the update it is, and a certified read is a replicated call.
+    const lying = c.service({
+      icrc1_transfer: c.func(
+        [TransferArg],
+        [c.variant({ Ok: c.nat, Err: TransferError })],
+        "query"
+      ),
+    })
+    loader.interfaces.set(LEDGER, interfaceOf(LEDGER, lying))
+    const transfer = await mcp.callTool({
+      name: "query",
+      arguments: {
+        canister: "ledger",
+        method: "icrc1_transfer",
+        args: { to: { owner: RECIPIENT }, amount: "1" },
+        certified: true,
+      },
+    })
+    expect(transfer.isError).toBeFalsy()
+    expect(forms).toEqual([])
+    expect(callers).toEqual([
+      { method: "icrc1_balance_of", caller: "2vxsx-fae" },
+      { method: "icrc1_transfer", caller: "2vxsx-fae" },
+    ])
+    expect(callers.map(({ caller }) => caller)).not.toContain(
+      test.client.caller()
+    )
   })
 
   it("names every argument that does not fit, and sends nothing", async () => {

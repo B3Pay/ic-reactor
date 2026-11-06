@@ -6606,5 +6606,15 @@
     "file": "src/candid/candid-text.ts",
     "search": "    else if (isInvisible(cp)) {\n",
     "replace": "    else if (false) {\n"
+  },
+  {
+    "id": "mcp-certified-read-signed",
+    "package": "mcp",
+    "test": "tests/server.test.ts",
+    "testName": "makes a certified read as the anonymous principal, so a method its interface calls a query cannot act as the caller",
+    "why": "a certified read, a replicated call, goes out signed with the key, so a method the canister's interface calls a query but its module runs as an update acts as the caller without approval",
+    "file": "src/server/server.ts",
+    "search": "    const through = !write && how.certified ? deps.anonymousClient : deps.client\n",
+    "replace": "    const through = deps.client\n"
   }
 ]

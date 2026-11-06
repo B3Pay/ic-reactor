@@ -79,6 +79,11 @@ async function main(argv: readonly string[]): Promise<void> {
     network: network.network,
     identity: caller.identity,
   })
+  // Certified reads are replicated calls, so they never carry the key.
+  const anonymousClient =
+    caller.identity === "anonymous"
+      ? client
+      : createClient({ network: network.network, identity: "anonymous" })
   const loader = createInterfaceLoader({
     source: lazySource(() => createReadAgent(network.read)),
     files: options.didFiles,
@@ -88,6 +93,7 @@ async function main(argv: readonly string[]): Promise<void> {
   })
   const server = createMcpServer({
     client,
+    anonymousClient,
     loader,
     canisters: options.canisters,
     callerSource: caller.source,
@@ -103,6 +109,7 @@ async function main(argv: readonly string[]): Promise<void> {
     await server.close().catch(() => {})
     await loader.close().catch(() => {})
     client.dispose()
+    if (anonymousClient !== client) anonymousClient.dispose()
   }
   // The client closing stdin ends the session.
   server.onclose = () => void shutdown()
