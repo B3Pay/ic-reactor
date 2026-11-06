@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/vite-plugin",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "Vite plugin that generates modules from .did files with @meantjs/cli and injects the local IC environment (ic_env cookie and /api proxy) in development",
   "type": "module",
   "engines": {

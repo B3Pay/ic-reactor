@@ -17,6 +17,26 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+Nothing yet.
+
+## core, react, vite-plugin 4.1.1
+
+Prepared on 2026-11-06. 4.1.1 moves `@ic-reactor/vite-plugin` to
+`@meantjs/cli` 0.5.1, Meant's patch with the corrected source nesting count.
+`@ic-reactor/core` and `@ic-reactor/react` change only their version: the
+schema peer stays `@meantjs/schema` 0.6.0. The release adds or removes no
+`@ic-reactor/*` export (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2), and committed modules do not change.
+
+The plugin pins the CLI exactly, so an app on 4.1.0 moves the CLI with it:
+
+```sh
+npm install --save-exact @ic-reactor/core@4.1.1 @ic-reactor/react@4.1.1
+npm install --save-dev --save-exact @ic-reactor/vite-plugin@4.1.1 @meantjs/cli@0.5.1
+```
+
+Name only the packages the app has.
+
 ### @ic-reactor/vite-plugin
 
 #### Changed
