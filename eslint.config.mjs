@@ -23,6 +23,7 @@ const SOURCES = [
  */
 const TYPECHECK_PROJECTS = [
   "packages/core/tsconfig.typecheck.json",
+  "packages/mcp/tsconfig.typecheck.json",
   "packages/react/tsconfig.typecheck.json",
   "packages/vite-plugin/tsconfig.typecheck.json",
 ]

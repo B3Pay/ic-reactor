@@ -1,0 +1,63 @@
+{
+  "name": "@ic-reactor/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "An MCP server that gives an AI agent any Internet Computer canister's methods as tools: queries run at once, and an update is sent only after a person approves the exact call in the MCP client",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "bin": {
+    "ic-reactor-mcp": "./dist/cli.js"
+  },
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && chmod +x dist/cli.js",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "internet-computer",
+    "icp",
+    "candid",
+    "canister",
+    "ai-agent",
+    "ic-reactor"
+  ],
+  "author": "Behrad Deylami",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/B3Pay/ic-reactor",
+    "directory": "packages/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/B3Pay/ic-reactor/issues"
+  },
+  "homepage": "https://github.com/B3Pay/ic-reactor/tree/main/packages/mcp#readme",
+  "dependencies": {
+    "@ic-reactor/core": "workspace:^",
+    "@icp-sdk/core": "^6.1.0",
+    "@meantjs/cli": "0.5.1",
+    "@meantjs/schema": "0.6.0",
+    "@modelcontextprotocol/server": "^2.3.1",
+    "@noble/curves": "^2.2.0",
+    "@tanstack/query-core": "^5.102.8"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@types/node": "^26.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.0"
+  }
+}

@@ -17,7 +17,23 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### New, not published: @ic-reactor/mcp
+
+`packages/mcp` is an MCP server that gives an AI agent any Internet Computer
+canister's methods as tools. Each canister named with
+`--canister <name>=<id>` gets one tool per method, with an input schema built
+from the canister's certified `candid:service` metadata, and `list_methods`,
+`describe_method` and `query` read any canister. An update is sent only to a
+listed canister, signed with the key given as `--identity`, after the person
+approves the exact call in the MCP client's form (MCP form elicitation): the
+form shows the canister, method, caller, network, the arguments as Candid text
+and the sha256 of the encoded bytes, and the canister's module hash is
+confirmed before the form and again before the call is sent.
+
+The package is `private`, so no release publishes it until its npm name is
+settled. Run it from the repository: `pnpm --filter @ic-reactor/mcp build`,
+then `node packages/mcp/dist/cli.js --help`. `packages/mcp/README.md` has the
+tools, the JSON forms of Candid values and the security rules.
 
 ## core, react, vite-plugin 4.1.1
 
