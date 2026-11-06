@@ -173,14 +173,15 @@ jobs:
       - name: Approved
         run: echo "Publishing ${GITHUB_REF_NAME} was approved."
 
-  # `npm-release` has no reviewer, so it adds no prompt per leg. It exists so
-  # that npm can tell this job from the publish job of an older commit: a tag
-  # runs the workflow file of the commit it points at, and this branch's
-  # history holds commits whose workflows publish a stable version under
-  # `latest`. Once the trusted publishers name this environment (GA-flip
-  # runbook), npm refuses an OIDC token from any job without it, so such a tag
-  # can no longer publish. Until then, a trusted publisher without an
-  # environment accepts this job as before.
+  # `npm-release` has no reviewer, so it adds no prompt per leg. It carries
+  # the same deployment tag policy as `npm-publish` (v*, tools-v*, parser-v*),
+  # and the trusted publishers name it, so npm accepts an OIDC token only from
+  # a job in this environment, which only a release tag can reach. That holds
+  # where the approval above cannot: a run from any other ref cannot deploy
+  # here, whatever its workflow file says, and the publish job of an older
+  # commit names no environment (a tag runs the workflow file of the commit it
+  # points at, and this branch's history holds commits whose workflows publish
+  # a stable version under `latest`).
   release:
     name: Release to npm
     needs: [setup, preflight, approve]
