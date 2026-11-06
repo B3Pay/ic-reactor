@@ -31,19 +31,61 @@ import { typeText } from "./type-text.ts"
 /** `maxNodes` when the budget gives none. */
 export const DEFAULT_MAX_NODES = 2000
 
+/**
+ * `maxChars` when the budget gives none. The largest input on mainnet we
+ * measured, the NNS governance canister's `manage_neuron` (51,190
+ * characters), fits whole.
+ */
+export const DEFAULT_MAX_CHARS = 64_000
+
 const SEE_DESCRIBE = "the describe tool shows the method's Candid"
+
+/** The longest path a recursive occurrence's description names. */
+const MAX_PATH_CHARS = 200
+
+// The JSON each kind of node adds besides its children, the names it holds
+// and its description, written out: `maxChars` counts these, the names (as
+// JSON strings) and the descriptions, so it follows the schema's real size,
+// and a canister's long names cannot make a schema large.
+const CHARS = {
+  object: '{"type":"object","properties":{}}'.length,
+  required: ',"required":[]'.length,
+  closed: ',"additionalProperties":false'.length,
+  opt: '{"anyOf":[,{"type":"null"}]}'.length,
+  boxedOpt:
+    '{"anyOf":[{"type":"null"},{"type":"object","properties":{"some":},"required":["some"],"additionalProperties":false}]}'
+      .length,
+  vec: '{"type":"array","items":}'.length,
+  tuple: '{"type":"array","minItems":,"maxItems":,"prefixItems":[]}'.length,
+  variant: '{"oneOf":[]}'.length,
+  tagArm:
+    '{"type":"object","properties":{"tag":{"type":"string","const":}},"required":["tag"],"additionalProperties":false},'
+      .length,
+  valueArm:
+    '{"type":"object","properties":{"tag":{"type":"string","const":},"value":},"required":["tag","value"],"additionalProperties":false},'
+      .length,
+  description: ',"description":'.length,
+} as const
 
 /**
  * How a method's arguments are laid out in its tool input: none, the fields
  * of its one record argument, or `arg0`, `arg1`, …
+ *
+ * A record with a field named `__proto__` is laid out as `arg0`: the MCP SDK
+ * drops that key from the top level of a tool call's arguments, so as a
+ * field of the input object itself it would never arrive. One level down it
+ * does.
  */
 export function inputShape(args: readonly AnyFieldSchema[]): InputShape {
   const [only] = args
   if (only === undefined) return { kind: "none" }
   if (args.length === 1) {
     const node = resolve(only)
-    if (node.kind === "record" && fieldsOf(node).length > 0) {
-      return { kind: "fields" }
+    if (node.kind === "record") {
+      const fields = fieldsOf(node)
+      if (fields.length > 0 && !fields.some(([key]) => key === "__proto__")) {
+        return { kind: "fields" }
+      }
     }
   }
   return { kind: "positional", count: args.length }
@@ -59,11 +101,17 @@ export function methodInput(
   budget?: SchemaBudget
 ): MethodInput {
   const maxNodes = budget?.maxNodes ?? DEFAULT_MAX_NODES
-  if (!Number.isSafeInteger(maxNodes) || maxNodes < 1) {
-    throw new TypeError(`maxNodes must be a positive integer, got ${maxNodes}`)
+  const maxChars = budget?.maxChars ?? DEFAULT_MAX_CHARS
+  for (const [name, value] of [
+    ["maxNodes", maxNodes],
+    ["maxChars", maxChars],
+  ] as const) {
+    if (!Number.isSafeInteger(value) || value < 1) {
+      throw new TypeError(`${name} must be a positive integer, got ${value}`)
+    }
   }
   const shape = inputShape(args)
-  const writer = new SchemaWriter(maxNodes)
+  const writer = new SchemaWriter(maxNodes, maxChars)
   let schema: JsonSchema
   switch (shape.kind) {
     case "none":
@@ -88,47 +136,74 @@ export function methodInput(
 class SchemaWriter {
   complete = true
   private nodes = 0
+  /** About how many characters of JSON have been written. */
+  private chars = 0
   // Composite nodes being written, each with the path where it began: a node
   // met again below itself is recursion.
   private readonly active = new Map<object, string>()
   private readonly typeTexts = new Map<object, string>()
 
-  constructor(private readonly maxNodes: number) {}
+  constructor(
+    private readonly maxNodes: number,
+    private readonly maxChars: number
+  ) {}
 
   private get spent(): boolean {
-    return this.nodes >= this.maxNodes
+    return this.nodes >= this.maxNodes || this.chars >= this.maxChars
+  }
+
+  /** A schema with no children, counted whole. */
+  private leaf(schema: JsonSchema): JsonSchema {
+    this.chars += JSON.stringify(schema).length + 1
+    return schema
+  }
+
+  /** A description, counted. */
+  private text(description: string): string {
+    this.chars += CHARS.description + JSON.stringify(description).length
+    return description
+  }
+
+  /**
+   * Whether `cost` more characters (a name the canister chose, with what is
+   * written around it) fit what is left of the budget; counted when they do.
+   */
+  private fits(cost: number): boolean {
+    if (this.chars + cost > this.maxChars) return false
+    this.chars += cost
+    return true
   }
 
   /** The schema of a value of `schema` at `path`, `depth` levels below the input. */
   write(schema: AnyFieldSchema, path: string, depth: number): JsonSchema {
     if (depth > INPUT_LIMITS.maxDepth) {
       this.complete = false
-      return {
+      return this.leaf({
         description: `nested deeper than the ${INPUT_LIMITS.maxDepth} levels a tool input may have`,
-      }
+      })
     }
     if (this.spent) {
       this.complete = false
-      return {
+      return this.leaf({
         description: `${this.typeOf(schema)}: cut to fit; ${SEE_DESCRIBE}`,
-      }
+      })
     }
     this.nodes++
     const node = resolve(schema)
     switch (node.kind) {
       case "primitive":
-        return leafSchema(node.primitive)
+        return this.leaf(leafSchema(node.primitive))
       case "blob":
-        return blobSchema()
+        return this.leaf(blobSchema())
       case "unit":
-        return {
+        return this.leaf({
           type: "object",
           properties: {},
           additionalProperties: false,
           description: "record {}: the empty record, written {}",
-        }
+        })
       case "func":
-        return {
+        return this.leaf({
           type: "object",
           properties: {
             principal: {
@@ -140,18 +215,18 @@ class SchemaWriter {
           required: ["principal", "method"],
           additionalProperties: false,
           description: `a func reference: a method of type ${this.typeOf(schema)}`,
-        }
+        })
       case "service":
-        return {
+        return this.leaf({
           type: "string",
           description: `a service reference: the canister's principal, as text such as ${EXAMPLE_PRINCIPAL}`,
-        }
+        })
     }
     const enclosing = this.active.get(node)
     if (enclosing !== undefined) {
-      return {
+      return this.leaf({
         description: `recursive: a value of the same type as ${enclosing}, ${this.typeOf(schema)}`,
-      }
+      })
     }
     this.active.set(node, path)
     try {
@@ -159,15 +234,13 @@ class SchemaWriter {
         case "opt": {
           if (!admitsNull(resolve(node.inner))) {
             // The value itself or null, at the same level of the JSON.
+            this.chars += CHARS.opt
             return {
               anyOf: [this.write(node.inner, path, depth), { type: "null" }],
             }
           }
-          const inner = this.write(
-            node.inner,
-            childPath(path, "some"),
-            depth + 1
-          )
+          this.chars += CHARS.boxedOpt
+          const inner = this.write(node.inner, pathTo(path, "some"), depth + 1)
           return {
             anyOf: [
               { type: "null" },
@@ -178,23 +251,26 @@ class SchemaWriter {
                 additionalProperties: false,
               },
             ],
-            description:
-              'opt whose value can itself be null: null for none, { "some": value } for a value',
+            description: this.text(
+              'opt whose value can itself be null: null for none, { "some": value } for a value'
+            ),
           }
         }
         case "vec":
+          this.chars += CHARS.vec
           return {
             type: "array",
-            items: this.write(node.inner, `${path}[*]`, depth + 1),
+            items: this.write(node.inner, elementPath(path), depth + 1),
           }
         case "record":
           return this.object(fieldsOf(node), path, depth, "fields")
         case "tuple": {
           const elements = elementsOf(node)
+          this.chars += CHARS.tuple + 2 * String(elements.length).length
           const prefixItems: JsonSchema[] = []
           for (const [i, element] of elements.entries()) {
             if (this.spent) break
-            prefixItems.push(this.write(element, childPath(path, i), depth + 1))
+            prefixItems.push(this.write(element, pathTo(path, i), depth + 1))
           }
           const out: JsonSchema = {
             type: "array",
@@ -204,14 +280,18 @@ class SchemaWriter {
           // 2020-12 wants prefixItems non-empty; the length still binds.
           if (prefixItems.length > 0) out.prefixItems = prefixItems
           if (elements.length === 0) {
-            out.description = "an empty tuple, written []"
+            out.description = this.text("an empty tuple, written []")
           } else if (prefixItems.length === elements.length) {
-            out.description = `a tuple: an array of exactly ${elements.length} values in order`
+            out.description = this.text(
+              `a tuple: an array of exactly ${elements.length} values in order`
+            )
           } else {
             // The elements past the cut are left out, not written `{}`: a
             // wide tuple stays as small as the budget.
             this.complete = false
-            out.description = `a tuple of ${elements.length} values in order, the first ${prefixItems.length} shown (cut to fit); ${SEE_DESCRIBE}`
+            out.description = this.text(
+              `a tuple of ${elements.length} values in order, the first ${prefixItems.length} shown (cut to fit); ${SEE_DESCRIBE}`
+            )
           }
           return out
         }
@@ -234,17 +314,21 @@ class SchemaWriter {
     depth: number,
     noun: string
   ): JsonSchema {
+    this.chars += CHARS.object
     const properties: Record<string, JsonSchema> = {}
     const required: string[] = []
     let written = 0
     for (const [key, schema] of entries) {
       if (this.spent) break
-      setOwn(
-        properties,
-        key,
-        this.write(schema, childPath(path, key), depth + 1)
-      )
-      if (resolve(schema).kind !== "opt") required.push(key)
+      const isRequired = resolve(schema).kind !== "opt"
+      // `"key":` in `properties`, and `"key",` in `required`.
+      const name = JSON.stringify(key).length + 1
+      const cost = isRequired
+        ? 2 * name + (required.length === 0 ? CHARS.required : 0)
+        : name
+      if (!this.fits(cost)) break
+      setOwn(properties, key, this.write(schema, pathTo(path, key), depth + 1))
+      if (isRequired) required.push(key)
       written++
     }
     const out: JsonSchema = { type: "object", properties }
@@ -254,12 +338,15 @@ class SchemaWriter {
       // __proto__ and would count it as additional; the reader still
       // refuses unknown keys.
       if (!Object.hasOwn(properties, "__proto__")) {
+        this.chars += CHARS.closed
         out.additionalProperties = false
       }
     } else {
       this.complete = false
       const rest = entries.slice(written).map(([key]) => key)
-      out.description = `${rest.length} more ${noun} not shown (cut to fit): ${nameList(rest)}; ${SEE_DESCRIBE}`
+      out.description = this.text(
+        `${rest.length} more ${noun} not shown (cut to fit): ${nameList(rest)}; ${SEE_DESCRIBE}`
+      )
     }
     return out
   }
@@ -275,14 +362,17 @@ class SchemaWriter {
   ): JsonSchema {
     const arms = entries.filter(([, arm]) => !isEmptyType(arm))
     if (arms.length === 0) {
-      return {
+      return this.leaf({
         description:
           "a variant with no arm that has a value: nothing can be sent",
-      }
+      })
     }
+    this.chars += CHARS.variant
     const branches: JsonSchema[] = []
     for (const [tag, arm] of arms) {
       if (this.spent) break
+      const around = isTagOnly(arm) ? CHARS.tagArm : CHARS.valueArm
+      if (!this.fits(around + JSON.stringify(tag).length)) break
       this.nodes++
       const tagSchema = { type: "string", const: tag }
       branches.push(
@@ -297,7 +387,7 @@ class SchemaWriter {
               type: "object",
               properties: {
                 tag: tagSchema,
-                value: this.write(arm, childPath(path, "value"), depth + 1),
+                value: this.write(arm, pathTo(path, "value"), depth + 1),
               },
               required: ["tag", "value"],
               additionalProperties: false,
@@ -307,12 +397,14 @@ class SchemaWriter {
     if (branches.length === arms.length) return { oneOf: branches }
     this.complete = false
     const rest = arms.slice(branches.length).map(([tag]) => tag)
-    branches.push({
-      type: "object",
-      properties: { tag: { type: "string" } },
-      required: ["tag"],
-      description: `one of the ${rest.length} arms not shown (cut to fit): ${nameList(rest)}; ${SEE_DESCRIBE}`,
-    })
+    branches.push(
+      this.leaf({
+        type: "object",
+        properties: { tag: { type: "string" } },
+        required: ["tag"],
+        description: `one of the ${rest.length} arms not shown (cut to fit): ${nameList(rest)}; ${SEE_DESCRIBE}`,
+      })
+    )
     return { anyOf: branches }
   }
 
@@ -325,6 +417,24 @@ class SchemaWriter {
     }
     return text
   }
+}
+
+/**
+ * The path below `path`, for a recursive occurrence's description. Where it
+ * would grow past `MAX_PATH_CHARS` it ends in "…" and names nothing below,
+ * so a canister's long names are not repeated on every level.
+ */
+function pathTo(path: string, segment: string | number): string {
+  return path.endsWith("…") ? path : shortPath(path, childPath(path, segment))
+}
+
+/** The path of any element of the vec at `path`. */
+function elementPath(path: string): string {
+  return path.endsWith("…") ? path : shortPath(path, `${path}[*]`)
+}
+
+function shortPath(path: string, next: string): string {
+  return next.length > MAX_PATH_CHARS ? `${path}…` : next
 }
 
 function blobSchema(): JsonSchema {

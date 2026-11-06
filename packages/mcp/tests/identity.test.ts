@@ -203,4 +203,32 @@ describe("identityFromPem", () => {
     expect(() => identityFromPem(p256, "pem")).toThrow(/P-256/)
     expect(() => identityFromPem("hello", "pem")).toThrow(UsageError)
   })
+
+  it("refuses a secp256k1 key whose value is past the curve's order, without quoting it", () => {
+    // SEC1: SEQUENCE { INTEGER 1, OCTET STRING d, [0] the secp256k1 OID }.
+    // OpenSSL reads a d of n + 1; the signer does not.
+    const d = Buffer.from(
+      "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364142",
+      "hex"
+    )
+    const oid = Buffer.from("06052b8104000a", "hex")
+    const body = Buffer.concat([
+      Buffer.from([0x02, 0x01, 0x01, 0x04, d.length]),
+      d,
+      Buffer.from([0xa0, oid.length]),
+      oid,
+    ])
+    const der = Buffer.concat([Buffer.from([0x30, body.length]), body])
+    const pem = `-----BEGIN EC PRIVATE KEY-----\n${der.toString("base64")}\n-----END EC PRIVATE KEY-----\n`
+    let thrown: unknown
+    try {
+      identityFromPem(pem, "--identity k.pem")
+    } catch (error) {
+      thrown = error
+    }
+    expect(thrown).toBeInstanceOf(UsageError)
+    expect((thrown as Error).message).toBe(
+      "--identity k.pem holds a secp256k1 private key that is not valid: its value is not below the curve's order"
+    )
+  })
 })

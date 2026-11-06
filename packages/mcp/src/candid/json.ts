@@ -61,7 +61,12 @@ import {
 } from "./schema-walk.ts"
 import { typeText } from "./type-text.ts"
 
-export { DEFAULT_MAX_NODES, inputShape, methodInput } from "./json-schema.ts"
+export {
+  DEFAULT_MAX_CHARS,
+  DEFAULT_MAX_NODES,
+  inputShape,
+  methodInput,
+} from "./json-schema.ts"
 export { INPUT_LIMITS } from "./formats.ts"
 export {
   DEFAULT_SIGNATURE_CHARS,
@@ -108,6 +113,12 @@ export interface MethodInput {
 export interface SchemaBudget {
   /** The most schema nodes written for one method (default 2000). */
   readonly maxNodes?: number
+  /**
+   * About the most characters of JSON written for one method (default
+   * 64,000), names and descriptions included: a canister's long field names
+   * cannot make a schema larger than this.
+   */
+  readonly maxChars?: number
 }
 
 export type ReadResult =

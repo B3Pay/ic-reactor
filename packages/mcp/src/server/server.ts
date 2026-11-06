@@ -33,6 +33,7 @@ import {
 } from "@modelcontextprotocol/server"
 import { candidArgsText, candidName } from "../candid/candid-text.ts"
 import {
+  DEFAULT_MAX_CHARS,
   argsFromInput,
   inputShape,
   methodInput,
@@ -52,6 +53,7 @@ import type { ListedCanister } from "../options.ts"
 import {
   APPROVAL_TIMEOUT_MS,
   MAX_APPROVAL_ARGS_CHARS,
+  MAX_APPROVAL_METHOD_CHARS,
   approvalMessage,
   askApproval,
   provenanceText,
@@ -92,12 +94,35 @@ export interface ServerDeps {
   readonly networkLabel: string
   readonly version: string
   readonly approvalTimeoutMs?: number
+  /** How long a read waits for its answer (default `READ_TIMEOUT_MS`). */
+  readonly readTimeoutMs?: number
+  /** How long an approved write waits for its answer (default `WRITE_TIMEOUT_MS`). */
+  readonly writeTimeoutMs?: number
   /** A line for the person's log (stderr): never the protocol's stdout. */
   readonly log?: (line: string) => void
 }
 
+/** How long a read (a query, or a certified read) waits for its answer. */
+export const READ_TIMEOUT_MS = 60_000
+/**
+ * How long an approved write waits for its answer: past the 5 minutes an
+ * ingress message may wait to be run, after which its outcome is unknown.
+ */
+export const WRITE_TIMEOUT_MS = 6 * 60_000
+
 /** The longest signature one line of list_methods or a tool description shows. */
 const MAX_SIGNATURE_CHARS = 600
+
+/**
+ * The most characters of typed tools one tools/list carries. Past it the
+ * remaining methods get no tool of their own; query and call still reach
+ * them. Mainnet's largest interfaces come to far less: Internet Identity's
+ * 127 methods to 139,447 characters of input schemas, the NNS governance
+ * canister's 33 to 116,108.
+ */
+const MAX_TYPED_TOOLS_CHARS = 1_000_000
+/** What is left of `MAX_TYPED_TOOLS_CHARS` below which no more typed tools are listed. */
+const MIN_TYPED_TOOL_CHARS = 4_000
 
 type Method = (...args: unknown[]) => Promise<unknown>
 /** A canister whose methods are known only at run time. */
@@ -177,6 +202,8 @@ export function createMcpServer(deps: ServerDeps): Server {
       const writable = writesOff(canister, result.iface) === undefined
       for (const method of result.iface.methods.values()) {
         if (isWrite(method.mode) && !writable) continue
+        // A name too long to show the person gets no tool of its own.
+        if (candidName(method.name).length > MAX_APPROVAL_METHOD_CHARS) continue
         entries.push({ canister, method })
       }
     })
@@ -192,10 +219,23 @@ export function createMcpServer(deps: ServerDeps): Server {
     if (!anonymous() && canApprove() && deps.canisters.length > 0) {
       tools.push(CALL)
     }
+    let left = MAX_TYPED_TOOLS_CHARS
+    let leftOut = 0
     entries.forEach(({ canister, method }, i) => {
+      if (left < MIN_TYPED_TOOL_CHARS) {
+        leftOut++
+        return
+      }
+      const tool = typedTool(names[i], canister, method, left)
+      left -= JSON.stringify(tool).length
       next.set(names[i], { canister, method: method.name })
-      tools.push(typedTool(names[i], canister, method))
+      tools.push(tool)
     })
+    if (leftOut > 0) {
+      log(
+        `${leftOut} methods got no tool of their own: the tools of the listed canisters reached ${MAX_TYPED_TOOLS_CHARS.toLocaleString("en-US")} characters. query and call still reach them.`
+      )
+    }
     typed = next
     return tools
   }
@@ -337,6 +377,24 @@ export function createMcpServer(deps: ServerDeps): Server {
         `${candidName(methodName)} is a composite query, which has no certified path: run it with certified: false.`
       )
     }
+    if (how.certified) {
+      // A certified reply is read with the interface of the module installed
+      // now, and never with one a replica answered unproven.
+      const confirmed = await load(target, { fresh: true })
+      if (!confirmed.ok) return errorResult(confirmed.text)
+      iface = confirmed.iface
+      method = iface.methods.get(methodName)
+      if (method === undefined || method.mode !== "query") {
+        return errorResult(
+          `The canister was upgraded, and ${candidName(methodName)} is no longer the query it was. list_methods shows its methods now.`
+        )
+      }
+      if (iface.provenance.kind === "tmp_hack") {
+        return errorResult(
+          `A certified read needs an interface that is certified too, and this canister's came from ${provenanceText(iface.provenance)}. Run it with certified: false${target.listed === undefined ? "" : `, or give its .did with --did ${target.listed.name}=<path>`}.`
+        )
+      }
+    }
 
     const off = write ? writesOff(target.listed, iface) : undefined
     if (off !== undefined) return errorResult(`Not sent: ${off}.`)
@@ -353,6 +411,9 @@ export function createMcpServer(deps: ServerDeps): Server {
     const canister = through.canister<Actor>(iface.actor, {
       id: iface.canisterId,
       certified: how.certified,
+      timeoutMs: write
+        ? (deps.writeTimeoutMs ?? WRITE_TIMEOUT_MS)
+        : (deps.readTimeoutMs ?? READ_TIMEOUT_MS),
     })
     const arms = resultArms(method.results)
     if (!write) {
@@ -405,6 +466,12 @@ export function createMcpServer(deps: ServerDeps): Server {
       bytes = deps.client.encode(canister, method.name, vars as never)
     } catch (error) {
       return errorResult(failureText(error, false, undefined))
+    }
+    const shownName = candidName(method.name)
+    if (shownName.length > MAX_APPROVAL_METHOD_CHARS) {
+      return errorResult(
+        `Not sent: the method's name is ${shownName.length} characters long as Candid, too long to show the person for approval (at most ${MAX_APPROVAL_METHOD_CHARS}).`
+      )
     }
     const argsText = candidArgsText(method.args, values, { width: 72 })
     if (argsText.length > MAX_APPROVAL_ARGS_CHARS) {
@@ -583,9 +650,12 @@ export function createMcpServer(deps: ServerDeps): Server {
   function typedTool(
     name: string,
     canister: ListedCanister,
-    method: MethodInfo
+    method: MethodInfo,
+    maxChars: number
   ): Tool {
-    const input = methodInput(method.args)
+    const input = methodInput(method.args, {
+      maxChars: Math.min(DEFAULT_MAX_CHARS, maxChars),
+    })
     const write = isWrite(method.mode)
     const lines = [
       write

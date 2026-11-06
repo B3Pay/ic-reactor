@@ -83,7 +83,9 @@ strings:
 | `func`                               | `{ "principal": "…", "method": "…" }`                                              |
 
 A method that takes one record gets that record's fields as its tool's
-arguments. One that takes anything else gets `arg0`, `arg1`, …. A method whose
+arguments, unless a field is named `__proto__`, a key the MCP SDK drops from
+the top level of a tool call's arguments. One that takes anything else, or
+such a record, gets `arg0`, `arg1`, …. A method whose
 one result is an `Ok`/`Err` variant answers with the `Ok` payload, and an `Err`
 comes back as a tool error that carries its payload.
 
@@ -104,8 +106,10 @@ refusal says which one did not:
 The form shows the canister, the method, the principal that signs, the
 network, the arguments as Candid text (with invisible and bidirectional
 characters escaped), the size and sha256 of the encoded arguments, and where
-the interface came from. Arguments too long to show (over 20,000 characters of
-Candid) are refused, never cut. The server confirms the canister's module
+the interface came from, in a code fence, so that a client that renders the
+form as Markdown shows the call as written. Arguments too long to show (over
+20,000 characters of Candid), or a method name over 200 characters, are
+refused, never cut. The server confirms the canister's module
 hash (or reads the `.did` file again) before it asks you and again after you
 approve, and sends nothing if the canister was upgraded in between. Declining,
 closing the form, ten minutes without an answer, or a client error all mean
@@ -117,7 +121,10 @@ the `query` in its interface is only the canister's own word. So it is made as
 the anonymous principal, never with your key: a method a canister calls a
 query, but runs as an update, cannot act as you. A method that answers per
 caller then answers for the anonymous principal; without `certified` a query
-is signed with your key, and the IC runs only query methods that way.
+is signed with your key, and the IC runs only query methods that way. The
+reply is read with the interface of the module installed now (its hash is
+confirmed first), and never with one read through the tmp hack: a certified
+read of such a canister is refused, and `certified: false` still reads it.
 
 Claude Code shows the form in a dialog. `claude -p` cancels every form unless
 an `Elicitation` hook answers it, so a headless run sends no update unless you
@@ -155,7 +162,17 @@ and a remote replica's must be given with `--root-key`.
 
 - A `.did` over 256 KiB, a service with more than 1,000 methods, or a compile
   over 2 seconds is refused; the compiler runs in a worker thread.
+- A tool's input schema is cut at about 64,000 characters, names and
+  descriptions included (the NNS governance canister's largest, for
+  `manage_neuron`, is 51,190), and says it was cut; `describe_method` shows
+  the whole Candid, and the arguments are still checked in full. The typed
+  tools of one `tools/list` stop at 1,000,000 characters: a method past that,
+  or one whose name is over 200 characters, gets no tool of its own, and
+  `query` and `call` still reach it.
 - A tool result is cut at 60,000 characters, with a note that it was cut.
+- A read waits 60 seconds for its answer, and an approved update 6 minutes;
+  an update that gets no answer in time may still have run, and its result
+  says so.
 - Interfaces are cached by module hash and read again a minute after they
   were last confirmed. When a listed canister's interface changes, the server
   tells the client to list tools again.

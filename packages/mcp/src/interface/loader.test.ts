@@ -395,6 +395,71 @@ describe("a fresh load, for a write", () => {
     expect(plain).not.toBe(fresh)
     expect(t.reads.moduleHash).toBe(1)
   })
+
+  it("never joins another load in flight, a confirming one included", async () => {
+    // A confirming load reads the canister after it was asked: one already
+    // running may have read it before (before the person approved, say).
+    const t = setup({ [CKBTC_LEDGER]: { did: icrc1Did } })
+    ok(await t.loader.load(CKBTC_LEDGER))
+    const [first, second] = await Promise.all([
+      t.loader.load(CKBTC_LEDGER, { fresh: true }),
+      t.loader.load(CKBTC_LEDGER, { fresh: true }),
+    ])
+    expect(first).not.toBe(second)
+    expect(t.reads.moduleHash).toBe(2)
+  })
+
+  it("keeps what a later load read over what an earlier, slower load stores after it", async () => {
+    // A plain load re-checks the module hash and is slow to hear back; the
+    // canister is upgraded (a query became an update) and a fresh load reads
+    // the new interface; then the slow load lands with the old one.
+    const installed = { did: "service : { f : () -> () query }", hash: HASH_A }
+    let hold: Promise<void> | undefined
+    const source: CandidSource = {
+      async readCandidAndHash() {
+        return { did: installed.did, moduleHash: installed.hash }
+      },
+      async readModuleHash() {
+        const seen = installed.hash
+        const wait = hold
+        hold = undefined
+        await wait
+        return seen
+      },
+      async readTmpHack() {
+        throw noTmpHack()
+      },
+    }
+    let time = 1_000_000
+    const loader = createInterfaceLoader({
+      source,
+      cli: countingCli().cli,
+      now: () => time,
+    })
+    const mode = (result: LoadResult) => ok(result).methods.get("f")?.mode
+    expect(mode(await loader.load(CKBTC_LEDGER))).toBe("query")
+
+    time += RECHECK_MS
+    let release: () => void = () => {}
+    hold = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const slow = loader.load(CKBTC_LEDGER)
+    await vi.waitFor(() => expect(hold).toBeUndefined())
+    Object.assign(installed, {
+      did: "service : { f : () -> () }",
+      hash: HASH_B,
+    })
+    expect(mode(await loader.load(CKBTC_LEDGER, { fresh: true }))).toBe(
+      "update"
+    )
+    release()
+    // The slow load answers with what it read, as of when it read it…
+    expect(mode(await slow)).toBe("query")
+    // …but the cache keeps the later read.
+    time += 1
+    expect(mode(await loader.load(CKBTC_LEDGER))).toBe("update")
+  })
 })
 
 describe("fallbacks and failures", () => {

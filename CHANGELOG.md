@@ -28,7 +28,11 @@ listed canister, signed with the key given as `--identity`, after the person
 approves the exact call in the MCP client's form (MCP form elicitation): the
 form shows the canister, method, caller, network, the arguments as Candid text
 and the sha256 of the encoded bytes, and the canister's module hash is
-confirmed before the form and again before the call is sent.
+confirmed before the form and again before the call is sent. A certified read
+goes out as the anonymous principal, never with the key, and is read with the
+interface of the module installed now. Input schemas, `tools/list`, method
+names in the form and each call's wait are bounded, so a hostile interface
+cannot exhaust the server's memory or crowd the form.
 
 The package is `private`, so no release publishes it until its npm name is
 settled. Run it from the repository: `pnpm --filter @ic-reactor/mcp build`,

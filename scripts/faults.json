@@ -6514,8 +6514,8 @@
     "testName": "confirms the interface with the canister before asking, and asks with what it found",
     "why": "a write is built from the cached interface, which may predate an upgrade, and the form names a module that is no longer installed",
     "file": "src/server/server.ts",
-    "search": "      const confirmed = await load(target, { fresh: true })\n",
-    "replace": "      const confirmed = await load(target)\n"
+    "search": "      // from a cache that may predate an upgrade.\n      const confirmed = await load(target, { fresh: true })\n",
+    "replace": "      // from a cache that may predate an upgrade.\n      const confirmed = await load(target)\n"
   },
   {
     "id": "mcp-update-to-unlisted-canister",
@@ -6534,8 +6534,8 @@
     "testName": "leaves out updates of a canister whose interface is the uncertified tmp hack, and refuses them",
     "why": "an update is built from one replica's uncertified answer to __get_candid_interface_tmp_hack",
     "file": "src/server/server.ts",
-    "search": "    if (iface.provenance.kind === \"tmp_hack\") {\n",
-    "replace": "    if (false) {\n"
+    "search": "    if (iface.provenance.kind === \"tmp_hack\") {\n      return `its interface came from",
+    "replace": "    if (false) {\n      return `its interface came from"
   },
   {
     "id": "mcp-anonymous-asks-approval",
@@ -6616,5 +6616,134 @@
     "file": "src/server/server.ts",
     "search": "    const through = !write && how.certified ? deps.anonymousClient : deps.client\n",
     "replace": "    const through = deps.client\n"
+  },
+  {
+    "id": "mcp-schema-names-uncounted",
+    "package": "mcp",
+    "test": "src/candid/json-schema.test.ts",
+    "testName": "counts names and descriptions against maxChars, so long names cannot make a schema large",
+    "why": "field and tag names are no longer counted against maxChars, so a canister's long names make a tool's input schema as large as they like: 160 million characters for one method of a 193 KB .did, and tools/list then runs Node out of memory",
+    "file": "src/candid/json-schema.ts",
+    "search": "    if (this.chars + cost > this.maxChars) return false\n    this.chars += cost\n    return true\n",
+    "replace": "    return true\n"
+  },
+  {
+    "id": "mcp-recursive-path-unbounded",
+    "package": "mcp",
+    "test": "src/candid/json-schema.test.ts",
+    "testName": "names a recursive occurrence's enclosing value by a short path",
+    "why": "the path a recursive occurrence's description names grows with every enclosing field name, so a .did of long names nested deep repeats them all on every recursive field",
+    "file": "src/candid/json-schema.ts",
+    "search": "  return next.length > MAX_PATH_CHARS ? `${path}…` : next\n",
+    "replace": "  return next\n"
+  },
+  {
+    "id": "mcp-typed-tools-uncapped",
+    "package": "mcp",
+    "test": "tests/server.test.ts",
+    "testName": "keeps the typed tools of a hostile interface to a bounded size",
+    "why": "tools/list has no total bound, so a listed canister with many methods of large schemas makes it as large as they add up to",
+    "file": "src/server/server.ts",
+    "search": "    let left = MAX_TYPED_TOOLS_CHARS\n",
+    "replace": "    let left = Number.POSITIVE_INFINITY\n"
+  },
+  {
+    "id": "mcp-long-method-name-in-form",
+    "package": "mcp",
+    "test": "tests/server.test.ts",
+    "testName": "gives no tool to a method whose name is too long to show, and sends nothing to it",
+    "why": "an update to a method with a name of any length is put to the person, and a name of 200,000 characters pushes the arguments and their sha256 out of the approval form",
+    "file": "src/server/server.ts",
+    "search": "    if (shownName.length > MAX_APPROVAL_METHOD_CHARS) {\n",
+    "replace": "    if (shownName.length > Number.MAX_SAFE_INTEGER) {\n"
+  },
+  {
+    "id": "mcp-proto-field-at-top-level",
+    "package": "mcp",
+    "test": "tests/server.test.ts",
+    "testName": "takes a record with a field named __proto__ as arg0, so the field arrives",
+    "why": "a record with a field named __proto__ is spread over the tool input's top level, where the MCP SDK drops that key, so the canister gets null (or a refusal) for a value the agent sent",
+    "file": "src/candid/json-schema.ts",
+    "search": "      if (fields.length > 0 && !fields.some(([key]) => key === \"__proto__\")) {\n",
+    "replace": "      if (fields.length > 0) {\n"
+  },
+  {
+    "id": "mcp-certified-read-tmp-hack",
+    "package": "mcp",
+    "test": "tests/server.test.ts",
+    "testName": "reads a certified reply with the interface of the module installed now, never the tmp hack's",
+    "why": "a certified read is decoded with the tmp hack's interface, one replica's unproven answer, and its reply is still presented as certified",
+    "file": "src/server/server.ts",
+    "search": "      if (iface.provenance.kind === \"tmp_hack\") {\n        return errorResult(\n          `A certified read needs",
+    "replace": "      if (iface.provenance.kind === \"tmp_hack\" && false) {\n        return errorResult(\n          `A certified read needs"
+  },
+  {
+    "id": "mcp-certified-read-cached-interface",
+    "package": "mcp",
+    "test": "tests/server.test.ts",
+    "testName": "reads a certified reply with the interface of the module installed now, never the tmp hack's",
+    "why": "a certified read is decoded with the cached interface, which may predate an upgrade, instead of the module installed now",
+    "file": "src/server/server.ts",
+    "search": "      // now, and never with one a replica answered unproven.\n      const confirmed = await load(target, { fresh: true })\n",
+    "replace": "      // now, and never with one a replica answered unproven.\n      const confirmed = await load(target)\n"
+  },
+  {
+    "id": "mcp-loader-older-load-wins",
+    "package": "mcp",
+    "test": "src/interface/loader.test.ts",
+    "testName": "keeps what a later load read over what an earlier, slower load stores after it",
+    "why": "a slow load that read the canister before an upgrade overwrites what a later load read after it, and plain loads then use the old interface for another minute",
+    "file": "src/interface/loader.ts",
+    "search": "    if (overtaken(canisterId, entry.seq)) return\n",
+    "replace": ""
+  },
+  {
+    "id": "mcp-confirm-joins-inflight",
+    "package": "mcp",
+    "test": "src/interface/loader.test.ts",
+    "testName": "never joins another load in flight, a confirming one included",
+    "why": "a confirming load joins another one already running, which may have read the canister before the caller asked: the re-check after an approval could rest on a read made before the person answered",
+    "edits": [
+      {
+        "file": "src/interface/loader.ts",
+        "search": "    if (!confirm) {\n      const running = inflight.get(canisterId)\n",
+        "replace": "    {\n      const running = inflight.get(confirm ? `${canisterId} fresh` : canisterId)\n"
+      },
+      {
+        "file": "src/interface/loader.ts",
+        "search": "    if (confirm) return promise\n    const running = promise.finally(() => inflight.delete(canisterId))\n    inflight.set(canisterId, running)\n",
+        "replace": "    const key = confirm ? `${canisterId} fresh` : canisterId\n    const running = promise.finally(() => inflight.delete(key))\n    inflight.set(key, running)\n"
+      }
+    ]
+  },
+  {
+    "id": "mcp-approval-unfenced",
+    "package": "mcp",
+    "test": "tests/approval.test.ts",
+    "testName": "puts the facts and the arguments in one code fence",
+    "why": "the approval form is plain text again, and a client that renders it as Markdown lets a text argument such as \"<!--\" hide the rest of the call",
+    "file": "src/server/approval.ts",
+    "search": "  const fence = fenceFor(call)\n",
+    "replace": "  const fence = \"\"\n"
+  },
+  {
+    "id": "mcp-approval-fence-closable",
+    "package": "mcp",
+    "test": "tests/approval.test.ts",
+    "testName": "makes the fence longer than any run of backticks that starts a line inside it",
+    "why": "the fence around the call is always three backticks, so a line of the call that starts with three or more closes it early",
+    "file": "src/server/approval.ts",
+    "search": "  return \"`\".repeat(Math.max(3, longest + 1))\n",
+    "replace": "  return \"```\"\n"
+  },
+  {
+    "id": "mcp-call-without-timeout",
+    "package": "mcp",
+    "test": "tests/server.test.ts",
+    "testName": "stops waiting for",
+    "why": "a call that gets no HTTP answer waits as long as fetch does, and an approved update holds the approval turn all that time",
+    "file": "src/server/server.ts",
+    "search": "      timeoutMs: write\n        ? (deps.writeTimeoutMs ?? WRITE_TIMEOUT_MS)\n        : (deps.readTimeoutMs ?? READ_TIMEOUT_MS),\n",
+    "replace": ""
   }
 ]

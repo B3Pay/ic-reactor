@@ -122,10 +122,17 @@ export function identityFromPem(
     )
   }
   const secret = new Uint8Array(Buffer.from(jwk.d, "base64url"))
-  return {
-    identity: Secp256k1KeyIdentity.fromSecretKey(secret),
-    algorithm: "secp256k1",
+  let identity: Identity
+  try {
+    identity = Secp256k1KeyIdentity.fromSecretKey(secret)
+  } catch {
+    // OpenSSL reads a private value of n or more; the signer does not. The
+    // signer's message is left out: it could quote the key.
+    throw new UsageError(
+      `${what} holds a secp256k1 private key that is not valid: its value is not below the curve's order`
+    )
   }
+  return { identity, algorithm: "secp256k1" }
 }
 
 /** The DER bytes of the first `label` block of a PEM text. */

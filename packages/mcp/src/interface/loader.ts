@@ -88,6 +88,12 @@ type Failure = Extract<LoadResult, { ok: false }>
 type Outcome = { result: LoadResult; ttl: number }
 
 type CanisterEntry = {
+  /**
+   * The order of the load that read it, from when that load began: a load
+   * that began later read the canister later, and its entry is kept over
+   * this one whichever finishes last.
+   */
+  seq: number
   /** When the module hash was last confirmed against the canister. */
   checkedAt: number
   /** Hex; a canister with no module never gets an entry. */
@@ -139,6 +145,7 @@ export function createInterfaceLoader(options: LoaderOptions): InterfaceLoader {
     maxEntries: MAX_FAILURES,
   })
   const inflight = new Map<string, Promise<LoadResult>>()
+  let loads = 0
   const compiling = new Map<
     string,
     Promise<CompiledInterface | CompileFailure>
@@ -191,7 +198,14 @@ export function createInterfaceLoader(options: LoaderOptions): InterfaceLoader {
       entry.checkedAt
     )
 
+  /** Whether a load that began after load `seq` has stored what it read. */
+  const overtaken = (canisterId: string, seq: number): boolean =>
+    (byCanister.peek(canisterId)?.seq ?? -1) > seq
+
   const remember = (canisterId: string, entry: CanisterEntry): void => {
+    // A slow load that read the canister before an upgrade must not replace
+    // what a later load read after it.
+    if (overtaken(canisterId, entry.seq)) return
     byCanister.set(canisterId, entry)
     // A load that outlived its timeout still lands here: drop the timeout
     // it left behind, so the next call gets the answer.
@@ -233,7 +247,8 @@ export function createInterfaceLoader(options: LoaderOptions): InterfaceLoader {
   // back to the cache when that read fails.
   async function fromCache(
     canisterId: string,
-    confirm: boolean
+    confirm: boolean,
+    seq: number
   ): Promise<LoadResult | undefined> {
     const hit = byCanister.get(canisterId)
     const didEntry = hit === undefined ? undefined : byDid.get(hit.didSha256)
@@ -267,12 +282,15 @@ export function createInterfaceLoader(options: LoaderOptions): InterfaceLoader {
     if (moduleHash === null || toHex(moduleHash) !== hit.moduleHash) {
       return undefined
     }
-    const fresh = { ...hit, checkedAt: now() }
+    const fresh = { ...hit, seq, checkedAt: now() }
     remember(canisterId, fresh)
     return fromEntry(canisterId, fresh, didEntry)
   }
 
-  async function readFresh(canisterId: string): Promise<LoadResult> {
+  async function readFresh(
+    canisterId: string,
+    seq: number
+  ): Promise<LoadResult> {
     let did: string | null = null
     let moduleHash: Uint8Array | null
     let isPrivate = false
@@ -330,6 +348,7 @@ export function createInterfaceLoader(options: LoaderOptions): InterfaceLoader {
     const found = await compiled(canisterId, did)
     if ("ok" in found) return found
     const entry: CanisterEntry = {
+      seq,
       checkedAt: now(),
       moduleHash: toHex(moduleHash),
       didSha256: found.didSha256,
@@ -373,15 +392,16 @@ export function createInterfaceLoader(options: LoaderOptions): InterfaceLoader {
 
   async function resolve(
     canisterId: string,
-    confirm: boolean
+    confirm: boolean,
+    seq: number
   ): Promise<Outcome> {
     const path = files.get(canisterId)
     try {
       const result =
         path !== undefined
           ? await readFromFile(canisterId, path)
-          : ((await fromCache(canisterId, confirm)) ??
-            (await readFresh(canisterId)))
+          : ((await fromCache(canisterId, confirm, seq)) ??
+            (await readFresh(canisterId, seq)))
       return { result, ttl: failureTtl(result, path) }
     } catch (error) {
       // The reads never throw past classifyReadError, so this is the
@@ -416,14 +436,19 @@ export function createInterfaceLoader(options: LoaderOptions): InterfaceLoader {
     if (known !== undefined && known.until > now()) {
       return Promise.resolve(known.result)
     }
-    // A confirming load never joins one that may answer from the cache.
+    // A confirming load reads the canister itself, after it was asked: it
+    // never joins a load already running, which may answer from the cache
+    // or have read the canister before the caller asked (before the person
+    // approved a call, say).
     const confirm = options.fresh === true
-    const key = confirm ? `${canisterId} fresh` : canisterId
-    const running = inflight.get(key)
-    if (running !== undefined) return running
+    if (!confirm) {
+      const running = inflight.get(canisterId)
+      if (running !== undefined) return running
+    }
 
+    const seq = loads++
     const promise = withTimeout(
-      resolve(canisterId, confirm),
+      resolve(canisterId, confirm, seq),
       timeoutMs,
       () => ({
         result: failed(
@@ -433,18 +458,19 @@ export function createInterfaceLoader(options: LoaderOptions): InterfaceLoader {
         ),
         ttl: files.has(canisterId) ? 0 : TRANSIENT_FAILURE_TTL_MS,
       })
-    )
-      .then(({ result, ttl }) => {
-        // A confirming load's failure is not remembered: the plain loads
-        // after it may still answer from the cache.
-        if (!result.ok && ttl > 0 && !confirm) {
-          failures.set(canisterId, { until: now() + ttl, result })
-        }
-        return result
-      })
-      .finally(() => inflight.delete(key))
-    inflight.set(key, promise)
-    return promise
+    ).then(({ result, ttl }) => {
+      // A confirming load's failure is not remembered: the plain loads
+      // after it may still answer from the cache. Nor is one that a later
+      // load's answer has overtaken.
+      if (!result.ok && ttl > 0 && !confirm && !overtaken(canisterId, seq)) {
+        failures.set(canisterId, { until: now() + ttl, result })
+      }
+      return result
+    })
+    if (confirm) return promise
+    const running = promise.finally(() => inflight.delete(canisterId))
+    inflight.set(canisterId, running)
+    return running
   }
 
   async function methodDid(

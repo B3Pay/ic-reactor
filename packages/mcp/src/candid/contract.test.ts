@@ -366,7 +366,14 @@ describe("schemas loaded from a Contract", () => {
       type: null,
       "évil\u202e": true,
     })
-    const properties = methodInput([Odd]).schema.properties as object
+    // A field named __proto__ puts the record under arg0: the MCP SDK drops
+    // that key from the top level of a tool call's arguments.
+    const input = methodInput([Odd])
+    expect(input.shape).toEqual({ kind: "positional", count: 1 })
+    const arg0 = (
+      input.schema.properties as Record<string, { properties?: object }>
+    ).arg0
+    const properties = arg0?.properties as object
     expect(Object.keys(properties).sort()).toEqual(
       [
         "_0_",

@@ -2,8 +2,18 @@ import { c, principal, type AnyFieldSchema, type Schema } from "@meantjs/schema"
 import type { JsonSchemaType } from "@modelcontextprotocol/server"
 import { AjvJsonSchemaValidator } from "@modelcontextprotocol/server/validators/ajv"
 import { describe, expect, it } from "vitest"
-import { DEFAULT_MAX_NODES, inputShape, methodInput } from "./json-schema.ts"
-import { valueToJson, type JsonSchema, type MethodInput } from "./json.ts"
+import {
+  DEFAULT_MAX_CHARS,
+  DEFAULT_MAX_NODES,
+  inputShape,
+  methodInput,
+} from "./json-schema.ts"
+import {
+  valueToJson,
+  type JsonSchema,
+  type MethodInput,
+  type SchemaBudget,
+} from "./json.ts"
 
 const LEDGER = principal("ryjl3-tyaaa-aaaaa-aaaba-cai")
 
@@ -100,10 +110,13 @@ function keywordsOf(schema: unknown, into = new Set<string>()): Set<string> {
 }
 
 /** methodInput, its schema checked: valid 2020-12, in the accepted subset. */
-function inputOf(args: AnyFieldSchema[], maxNodes?: number): MethodInput {
+function inputOf(
+  args: AnyFieldSchema[],
+  budget?: number | SchemaBudget
+): MethodInput {
   const input = methodInput(
     args,
-    maxNodes === undefined ? undefined : { maxNodes }
+    typeof budget === "number" ? { maxNodes: budget } : budget
   )
   expect(metaSchema(input.schema).errorMessage).toBeUndefined()
   const unknown = [...keywordsOf(input.schema)].filter((k) => !KEYWORDS.has(k))
@@ -139,6 +152,14 @@ describe("inputShape", () => {
     ]) {
       expect(inputShape([arg])).toEqual({ kind: "positional", count: 1 })
     }
+    // The MCP SDK drops a __proto__ key from the top level of a tool call's
+    // arguments: such a record goes under arg0, where the key arrives.
+    expect(
+      inputShape([c.record({ ["__proto__"]: c.opt(c.nat), x: c.nat })])
+    ).toEqual({ kind: "positional", count: 1 })
+    expect(
+      inputShape([c.record({ inner: c.record({ ["__proto__"]: c.nat }) })])
+    ).toEqual({ kind: "fields" })
     expect(inputShape([Account, c.nat])).toEqual({
       kind: "positional",
       count: 2,
@@ -577,7 +598,11 @@ describe("methodInput: budget", () => {
   })
 
   it("keeps many arguments, a wide tuple and a wide variant small", () => {
-    const args = inputOf(Array.from({ length: 3000 }, () => c.nat))
+    // maxNodes alone: maxChars would cut first.
+    const args = inputOf(
+      Array.from({ length: 3000 }, () => c.nat),
+      { maxChars: 10_000_000 }
+    )
     expect(args.complete).toBe(false)
     expect(Object.keys(propertiesOf(args.schema))).toHaveLength(
       DEFAULT_MAX_NODES
@@ -652,10 +677,77 @@ describe("methodInput: budget", () => {
     expect(JSON.stringify(input.schema).length).toBeLessThan(200_000)
   })
 
-  it("refuses a maxNodes that is not a positive integer", () => {
+  it("counts names and descriptions against maxChars, so long names cannot make a schema large", () => {
+    // 60 records, each with one field of a 3,004-character name holding the
+    // next, and the last with 900 fields that hold itself: before names were
+    // counted, its schema came to 160 million characters.
+    const long = (i: number): string =>
+      `${String(i).padStart(4, "0")}${"x".repeat(3000)}`
+    type Last = { [field: string]: Last | null }
+    const last: Schema<Last> = c.rec(() =>
+      c.record(
+        Object.fromEntries(
+          Array.from({ length: 900 }, (_, i) => [`a${i}`, c.opt(last)])
+        )
+      )
+    )
+    let deep: AnyFieldSchema = last
+    for (let i = 59; i >= 1; i--) deep = c.record({ [long(i)]: deep })
+    const input = inputOf([deep])
+    expect(input.complete).toBe(false)
+    const size = JSON.stringify(input.schema).length
+    expect(size).toBeGreaterThan(DEFAULT_MAX_CHARS / 2)
+    expect(size).toBeLessThan(DEFAULT_MAX_CHARS + 10_000)
+    // The cut names the field it left out, shortened.
+    expect(JSON.stringify(input.schema)).toMatch(
+      /1 more fields not shown \(cut to fit\): \\"0011x{36}…\\"/
+    )
+
+    // The same field names under the default node budget, but a small one
+    // for characters: the cut follows maxChars.
+    const small = inputOf([deep], { maxChars: 10_000 })
+    expect(JSON.stringify(small.schema).length).toBeLessThan(10_000 + 2_000)
+    expect(
+      inputOf([TransferArg], { maxChars: DEFAULT_MAX_CHARS }).complete
+    ).toBe(true)
+  })
+
+  it("names a recursive occurrence's enclosing value by a short path", () => {
+    const long = "y".repeat(3000)
+    const descriptions = (schema: unknown, into: string[] = []): string[] => {
+      if (typeof schema !== "object" || schema === null) return into
+      for (const [key, value] of Object.entries(schema)) {
+        if (key === "description" && typeof value === "string") {
+          into.push(value)
+        } else descriptions(value, into)
+      }
+      return into
+    }
+    // Under a long name: the path stops at it.
+    const under = descriptions(
+      inputOf([c.record({ [long]: c.record({ list: List }) })]).schema
+    ).filter((text) => text.startsWith("recursive:"))
+    expect(under).toEqual([
+      "recursive: a value of the same type as $…, record { head : nat; tail : opt … }",
+    ])
+    // Under many short names: the path stops growing near 200 characters.
+    let nested: AnyFieldSchema = c.record({ list: List })
+    for (let i = 0; i < 50; i++) nested = c.record({ [`level_${i}`]: nested })
+    const [recursive] = descriptions(inputOf([nested]).schema).filter((text) =>
+      text.startsWith("recursive:")
+    )
+    expect(recursive).toMatch(
+      /^recursive: a value of the same type as \$\.level_49\.level_48\..*…, record \{ head : nat; tail : opt … \}$/
+    )
+    expect(recursive?.length).toBeLessThan(400)
+  })
+
+  it("refuses a maxNodes or maxChars that is not a positive integer", () => {
     expect(DEFAULT_MAX_NODES).toBe(2000)
-    for (const maxNodes of [0, -1, 1.5, Number.NaN, Infinity]) {
-      expect(() => methodInput([c.nat], { maxNodes })).toThrow(TypeError)
+    expect(DEFAULT_MAX_CHARS).toBe(64_000)
+    for (const bad of [0, -1, 1.5, Number.NaN, Infinity]) {
+      expect(() => methodInput([c.nat], { maxNodes: bad })).toThrow(TypeError)
+      expect(() => methodInput([c.nat], { maxChars: bad })).toThrow(TypeError)
     }
     expect(inputOf([TransferArg], 1).schema).toEqual({
       type: "object",

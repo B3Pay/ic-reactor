@@ -4,7 +4,13 @@
 // tests are in src/interface.
 import { createHash } from "node:crypto"
 import { createTestClient } from "@ic-reactor/core/testing"
-import { c, serviceMethods, type AnySchema } from "@meantjs/schema"
+import {
+  c,
+  serviceMethods,
+  type AnyFieldSchema,
+  type AnySchema,
+  type Schema,
+} from "@meantjs/schema"
 import {
   Client as McpClient,
   InMemoryTransport,
@@ -24,6 +30,25 @@ import { createMcpServer } from "../src/server/server.ts"
 const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"
 const OTHER = "mxzaz-hqaaa-aaaar-qaada-cai"
 const RECIPIENT = "rrkah-fqaaa-aaaaa-aaaaq-cai"
+
+/** A record type whose JSON Schema is large: nested fields of long names. */
+function largeType(): AnyFieldSchema {
+  type Last = { [field: string]: Last | null }
+  const last: Schema<Last> = c.rec(() =>
+    c.record(
+      Object.fromEntries(
+        Array.from({ length: 900 }, (_, i) => [`a${i}`, c.opt(last)])
+      )
+    )
+  )
+  let deep: AnyFieldSchema = last
+  for (let i = 59; i >= 1; i--) {
+    deep = c.record({
+      [`${String(i).padStart(4, "0")}${"x".repeat(3000)}`]: deep,
+    })
+  }
+  return deep
+}
 
 const Account = c.record({ owner: c.principal, subaccount: c.opt(c.blob()) })
 const TransferError = c.variant({
@@ -129,6 +154,8 @@ interface Setup {
   readonly callers: { method: string; caller: string }[]
   readonly logs: string[]
   readonly test: ReturnType<typeof createTestClient>
+  /** The anonymous client certified reads go through. */
+  readonly reads: ReturnType<typeof createTestClient>
   readonly loader: FakeLoader
 }
 
@@ -144,6 +171,8 @@ async function setup(
     readonly signedIn?: boolean
     readonly listed?: boolean
     readonly provenance?: InterfaceProvenance
+    readonly readTimeoutMs?: number
+    readonly writeTimeoutMs?: number
   } = {}
 ): Promise<Setup> {
   const test = createTestClient({
@@ -202,6 +231,12 @@ async function setup(
     networkLabel: "a fake replica",
     version: "0.0.0-test",
     log: (line) => logs.push(line),
+    ...(options.readTimeoutMs === undefined
+      ? {}
+      : { readTimeoutMs: options.readTimeoutMs }),
+    ...(options.writeTimeoutMs === undefined
+      ? {}
+      : { writeTimeoutMs: options.writeTimeoutMs }),
   })
   const forms: string[] = []
   const mcp = new McpClient(
@@ -228,7 +263,7 @@ async function setup(
     test.client.dispose()
     reads.client.dispose()
   })
-  return { mcp, forms, sent, callers, logs, test, loader }
+  return { mcp, forms, sent, callers, logs, test, reads, loader }
 }
 
 const text = (result: Awaited<ReturnType<McpClient["callTool"]>>): string =>
@@ -322,6 +357,100 @@ describe("tools/list", () => {
     expect(forms).toEqual([])
     expect(sent).toEqual([])
   })
+
+  it("keeps the typed tools of a hostile interface to a bounded size", async () => {
+    // 40 methods that each take a type whose schema, written in full, would
+    // come to millions of characters.
+    const large = largeType()
+    const hostile = c.service(
+      Object.fromEntries(
+        Array.from({ length: 40 }, (_, i) => [
+          `m${String(i).padStart(2, "0")}`,
+          c.func([large], [], "query"),
+        ])
+      )
+    )
+    const { mcp, loader, logs } = await setup()
+    loader.interfaces.set(LEDGER, interfaceOf(LEDGER, hostile))
+    const { tools } = await mcp.listTools()
+    const typed = tools.filter((tool) => tool.name.startsWith("ledger_"))
+    expect(typed.length).toBeGreaterThan(5)
+    expect(typed.length).toBeLessThan(40)
+    for (const tool of typed) {
+      expect(JSON.stringify(tool.inputSchema).length).toBeLessThan(70_000)
+      expect(tool.description).toMatch(/input schema is shortened/)
+    }
+    expect(JSON.stringify(tools).length).toBeLessThan(1_100_000)
+    expect(logs).toContainEqual(
+      expect.stringMatching(/^\d+ methods got no tool of their own/)
+    )
+    // describe_method stays bounded too.
+    const described = await mcp.callTool({
+      name: "describe_method",
+      arguments: { canister: LEDGER, method: "m39" },
+    })
+    expect(text(described).length).toBeLessThan(70_000)
+  })
+
+  it("gives no tool to a method whose name is too long to show, and sends nothing to it", async () => {
+    const name = `icrc1_transfer${"_".repeat(300)}x`
+    const longNamed = c.service({
+      [name]: c.func(
+        [TransferArg],
+        [c.variant({ Ok: c.nat, Err: TransferError })],
+        "update"
+      ),
+      icrc1_name: c.func([], [c.text], "query"),
+    })
+    const { mcp, loader, forms } = await setup({
+      answer: { action: "accept", content: { approve: true } },
+    })
+    loader.interfaces.set(LEDGER, interfaceOf(LEDGER, longNamed))
+    const names = (await mcp.listTools()).tools.map((tool) => tool.name)
+    expect(names).toContain("ledger_icrc1_name")
+    expect(names.filter((tool) => tool.startsWith("ledger_"))).toHaveLength(1)
+    const refused = await mcp.callTool({
+      name: "call",
+      arguments: { canister: "ledger", method: name, args: transfer },
+    })
+    expect(refused.isError).toBe(true)
+    expect(text(refused)).toMatch(
+      /^Not sent: the method's name is 315 characters long as Candid, too long to show the person/
+    )
+    expect(forms).toEqual([])
+  })
+
+  it("takes a record with a field named __proto__ as arg0, so the field arrives", async () => {
+    const odd = c.service({
+      odd: c.func(
+        [c.record({ ["__proto__"]: c.opt(c.nat), x: c.nat })],
+        [c.text],
+        "query"
+      ),
+    })
+    const { mcp, loader, test } = await setup()
+    const got: unknown[] = []
+    test.mock<{ odd: (arg: unknown) => Promise<string> }>(odd, LEDGER, {
+      odd: (arg: unknown) => {
+        got.push(arg)
+        return "ok"
+      },
+    })
+    loader.interfaces.set(LEDGER, interfaceOf(LEDGER, odd))
+    const { tools } = await mcp.listTools()
+    const tool = tools.find((each) => each.name === "ledger_odd")
+    // The MCP SDK drops a __proto__ key from the top level of a tool call's
+    // arguments; one level down it arrives.
+    expect(Object.keys(tool?.inputSchema.properties ?? {})).toEqual(["arg0"])
+    const result = await mcp.callTool({
+      name: "ledger_odd",
+      arguments: { arg0: JSON.parse('{"__proto__": "5", "x": "1"}') as object },
+    })
+    expect(result.isError).toBeFalsy()
+    expect(got).toHaveLength(1)
+    expect(Object.hasOwn(got[0] as object, "__proto__")).toBe(true)
+    expect(Object.getOwnPropertyDescriptor(got[0], "__proto__")?.value).toBe(5n)
+  })
 })
 
 describe("queries", () => {
@@ -406,6 +535,68 @@ describe("queries", () => {
     )
   })
 
+  it("reads a certified reply with the interface of the module installed now, never the tmp hack's", async () => {
+    const { mcp, loader, reads } = await setup()
+    const certifiedName = {
+      name: "query",
+      arguments: { canister: "ledger", method: "icrc1_name", certified: true },
+    }
+    const ok = await mcp.callTool(certifiedName)
+    expect(ok.isError).toBeFalsy()
+    expect(loader.loads).toContain(`${LEDGER} fresh`)
+
+    // An upgrade turned it into an update: refused, as no read.
+    loader.freshResult = {
+      ok: true,
+      iface: interfaceOf(
+        LEDGER,
+        c.service({ icrc1_name: c.func([], [c.text], "update") })
+      ),
+    }
+    const upgraded = await mcp.callTool(certifiedName)
+    expect(upgraded.isError).toBe(true)
+    expect(text(upgraded)).toMatch(/no longer the query it was/)
+
+    loader.freshResult = {
+      ok: true,
+      iface: interfaceOf(LEDGER, actor, {
+        kind: "tmp_hack",
+        certified: false,
+        moduleHash: null,
+        reason: "absent",
+      }),
+    }
+    const before = reads.requests.length
+    const refused = await mcp.callTool(certifiedName)
+    expect(refused.isError).toBe(true)
+    expect(text(refused)).toMatch(
+      /^A certified read needs an interface that is certified too/
+    )
+    expect(text(refused)).toMatch(/--did ledger=<path>/)
+    expect(reads.requests.length).toBe(before)
+    // Uncertified, it is still read.
+    const plain = await mcp.callTool({
+      name: "query",
+      arguments: { canister: "ledger", method: "icrc1_name" },
+    })
+    expect(plain.isError).toBeFalsy()
+  })
+
+  it("stops waiting for a read that gets no answer", async () => {
+    const { mcp, test, loader } = await setup({ readTimeoutMs: 50 })
+    const silent = c.service({ wait: c.func([], [c.text], "query") })
+    test.mock<{ wait: () => Promise<string> }>(silent, OTHER, {
+      wait: () => new Promise<string>(() => {}),
+    })
+    loader.interfaces.set(OTHER, interfaceOf(OTHER, silent))
+    const result = await mcp.callTool({
+      name: "query",
+      arguments: { canister: OTHER, method: "wait" },
+    })
+    expect(result.isError).toBe(true)
+    expect(text(result)).toMatch(/^Cancelled: /)
+  })
+
   it("names every argument that does not fit, and sends nothing", async () => {
     const { mcp, sent } = await setup()
     const result = await mcp.callTool({
@@ -469,6 +660,13 @@ describe("updates", () => {
 
     expect(forms).toHaveLength(1)
     const [form] = forms
+    // The facts and the arguments sit in one code fence.
+    const lines = (form ?? "").split("\n")
+    const fences = lines.flatMap((line, i) => (line === "```" ? [i] : []))
+    expect(fences).toHaveLength(2)
+    expect(lines[(fences[0] ?? 0) + 1]).toBe(`Canister: ${LEDGER} (ledger)`)
+    expect(lines.indexOf("Arguments, in Candid:")).toBeLessThan(fences[1] ?? 0)
+    expect(lines.at(-1)).toMatch(/Nothing is sent unless you tick/)
     expect(form).toContain(`Canister: ${LEDGER} (ledger)`)
     expect(form).toContain("Method:   icrc1_transfer")
     expect(form).toContain(test.client.caller())
@@ -723,6 +921,32 @@ describe("updates", () => {
     expect(text(second)).toMatch(/another update is waiting/)
     release?.()
     expect(text(await first)).toMatch(/declined/)
+  })
+
+  it("stops waiting for an approved update that gets no answer, says it may have run, and takes the next", async () => {
+    const { mcp, test, loader, forms } = await setup({
+      answer: { action: "accept", content: { approve: true } },
+      writeTimeoutMs: 100,
+    })
+    const silent = c.service({ hang: c.func([c.nat], [c.nat], "update") })
+    test.mock<{ hang: (n: bigint) => Promise<bigint> }>(silent, LEDGER, {
+      hang: () => new Promise<bigint>(() => {}),
+    })
+    loader.interfaces.set(LEDGER, interfaceOf(LEDGER, silent))
+    const first = await mcp.callTool({
+      name: "ledger_hang",
+      arguments: { arg0: "1" },
+    })
+    expect(first.isError).toBe(true)
+    expect(text(first)).toMatch(/^No answer: /)
+    expect(text(first)).toMatch(/It may have run/)
+    // The approval turn was given back.
+    const second = await mcp.callTool({
+      name: "ledger_hang",
+      arguments: { arg0: "2" },
+    })
+    expect(text(second)).not.toMatch(/another update is waiting/)
+    expect(forms).toHaveLength(2)
   })
 
   it("says a oneway call's outcome is not known", async () => {
