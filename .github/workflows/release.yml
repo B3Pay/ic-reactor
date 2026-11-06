@@ -206,14 +206,15 @@ jobs:
   # skips one npm already has with the same integrity, so a release that
   # stopped half-way is finished, not superseded (#909).
   #
-  # `npm-release` has no reviewer, so it adds no prompt. It exists so that npm
-  # can tell this job from the publish job of an older commit: a tag runs the
+  # `npm-release` has no reviewer, so it adds no prompt. It carries the same
+  # deployment tag policy as `npm-publish` (v*, tools-v*, parser-v*), and the
+  # trusted publishers of core, react and vite-plugin name it, so npm accepts
+  # an OIDC token only from a job in this environment, which only a release
+  # tag can reach. That holds where the approval above cannot: a run from any
+  # other ref cannot deploy here, whatever its workflow file says, and the
+  # publish job of an older commit names no environment (a tag runs the
   # workflow file of the commit it points at, and main's history holds 3.x
-  # commits whose release.yml publishes a stable version under `latest`. Once
-  # the trusted publishers of core, react and vite-plugin name this
-  # environment (runbook, after the 4.0.0 release), npm refuses an OIDC token
-  # from any job without it, so such a tag can no longer publish. Until then,
-  # a trusted publisher without an environment accepts this job as before.
+  # commits whose release.yml publishes a stable version under `latest`).
   publish:
     name: Publish to npm
     needs: [preflight, ci-passed, approve]

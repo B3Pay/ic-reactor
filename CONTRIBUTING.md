@@ -321,7 +321,7 @@ This repository enforces **OIDC Trusted Publishing** for releases (no long-lived
 
 - To enable: go to your package on npmjs.com → Settings → Trusted publishers and add this repository's workflow filename (e.g., `release.yml`).
 - `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` trust `release.yml` (4.x from `main`, and core and react 3.x from `v3`). Until the 3.x line's end, `@ic-reactor/vite-plugin` also trusts `release-tools.yml`, which publishes its 0.x security releases from `v3`; remove that publisher then.
-- Bind each trusted publisher to the `npm-release` environment, the environment of every publish job on `main` and `v3` (the GA-flip runbook does this after the 4.0.0 release). npm cannot edit a trusted publisher: add a new one with the same workflow and environment `npm-release`, then delete the old one that names no environment. A package can hold up to 10 publishers, and an unbound entry left next to a bound one still accepts any job, so the binding holds only once no entry for that workflow is left without an environment. It has no reviewer; it only lets npm refuse the publish job of an older commit, which has no environment (see "Tagging a 3.x release" below).
+- Bind each trusted publisher to the `npm-release` environment, the environment of every publish job on `main` and `v3`; every publisher of the seven packages names it. A package can hold up to 10 publishers, and an entry without an environment still accepts any job of its workflow, even next to a bound one, so the binding holds only while no entry is left without it: a new entry names `npm-release` from the start, and an unbound one is never added back. npm expires a new entry that no publish uses within 2 days ([npm docs](https://docs.npmjs.com/trusted-publishers)), so add one right before the release that uses it. `npm-release` has no reviewer. With the same deployment tag policy as `npm-publish`, it lets npm refuse the publish job of an older commit, which has no environment (see "Tagging a 3.x release" below), and any job from a ref other than a release tag (see "Approving a release" below).
 - Ensure the publish job of `release.yml` has `permissions: id-token: write` (already configured). It is the only job that has it.
 - After enabling and validating Trusted Publishing, do not add a write `NPM_TOKEN` secret — publishing will use the OIDC token.
 
@@ -341,7 +341,7 @@ git show "$SHA":.github/workflows/release.yml | grep -q v3-latest && echo "v3 la
 git show "$SHA":.github/workflows/release-tools.yml | grep -q v0-latest && echo "v0 lane"     # for a tools-v* or parser-v* tag
 ```
 
-Push the tag only when the check prints its line. The `npm-release` environment closes this for good once no package has a trusted publisher left without it: the publish jobs of `release.yml` on `main` and of both lanes on `v3` run in it, and the publish jobs of older commits do not, so npm refuses their tokens.
+Push the tag only when the check prints its line. The `npm-release` environment closes this for good, since no package has a trusted publisher without it: the publish jobs of `release.yml` on `main` and of both lanes on `v3` run in it, and the publish jobs of older commits do not, so npm refuses their tokens.
 
 `v3` and `main` may carry a ruleset that requires pull requests. A 3.x release script's printed `git push origin v3` then works only for a maintainer on the ruleset's bypass list. Otherwise push the release commit to a branch, merge its pull request with a merge commit (a squash or rebase would leave the tagged commit off the branch, and the preflight refuses it), and push the tag after the merge. A 4.x release from `main` always goes this way (below).
 
@@ -357,6 +357,8 @@ The environment lives in repository settings (Settings → Environments → `npm
 
 - a required reviewer (self-approval allowed, so for a solo maintainer this is a confirmation step, not a second-person requirement);
 - a deployment tag policy limited to `v*`, `tools-v*` and `parser-v*`, so a run from any other ref cannot deploy to it at all.
+
+The publish job runs in a second environment, `npm-release`, which carries the same tag policy and no reviewer. Every trusted publisher names it (see the publishing section above), so npm accepts a token only from a job in it, and a run from any other ref cannot publish whatever its workflow file says: the approval is read from that file, but the tag policy and the binding are not.
 
 The `environment:` key is read from the tagged revision, like the preflight, so a tag pointing at a commit that predates it would skip the pause. The tag policy is settings-enforced, but it applies only to a job that names the environment, and such a commit names none: the `npm-release` binding of the trusted publishers is what refuses its publish. The `Release tags` ruleset, which limits who can create those tags, is the third leg; none of the three is sufficient alone.
 
