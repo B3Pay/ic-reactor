@@ -7,7 +7,7 @@ prev: true
 
 > **createTestClient**(`options?`): `object`
 
-Defined in: [core/src/testing/test-client.ts:265](https://github.com/B3Pay/ic-reactor/blob/632536e39f6de92ca8b94f7b34955c4f2401ecd7/packages/core/src/testing/test-client.ts#L265)
+Defined in: [core/src/testing/test-client.ts:265](https://github.com/B3Pay/ic-reactor/blob/679bb13f6d5077d9b960e9da26636b786a21ed35/packages/core/src/testing/test-client.ts#L265)
 
 Creates a client for a test: a real one, over a fake replica, signed in as
 a principal the test picks and can change.

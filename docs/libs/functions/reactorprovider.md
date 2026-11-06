@@ -7,7 +7,7 @@ prev: true
 
 > **ReactorProvider**(`__namedParameters`): `ReactElement`
 
-Defined in: [react/src/index.tsx:417](https://github.com/B3Pay/ic-reactor/blob/632536e39f6de92ca8b94f7b34955c4f2401ecd7/packages/react/src/index.tsx#L417)
+Defined in: [react/src/index.tsx:417](https://github.com/B3Pay/ic-reactor/blob/679bb13f6d5077d9b960e9da26636b786a21ed35/packages/react/src/index.tsx#L417)
 
 Gives a tree one client: it gets it from `client` once, on the first
 render, makes it available to [useClient](/docs/ic-reactor/libs/functions/useclient/) and [useAuth](/docs/ic-reactor/libs/functions/useauth/), renders

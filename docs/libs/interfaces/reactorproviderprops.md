@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [react/src/index.tsx:281](https://github.com/B3Pay/ic-reactor/blob/632536e39f6de92ca8b94f7b34955c4f2401ecd7/packages/react/src/index.tsx#L281)
+Defined in: [react/src/index.tsx:281](https://github.com/B3Pay/ic-reactor/blob/679bb13f6d5077d9b960e9da26636b786a21ed35/packages/react/src/index.tsx#L281)
 
 Props of [ReactorProvider](/docs/ic-reactor/libs/functions/reactorprovider/).
 
@@ -15,7 +15,7 @@ Props of [ReactorProvider](/docs/ic-reactor/libs/functions/reactorprovider/).
 
 > `readonly` **client**: () => [`Client`](/docs/ic-reactor/libs/interfaces/client/)
 
-Defined in: [react/src/index.tsx:298](https://github.com/B3Pay/ic-reactor/blob/632536e39f6de92ca8b94f7b34955c4f2401ecd7/packages/react/src/index.tsx#L298)
+Defined in: [react/src/index.tsx:298](https://github.com/B3Pay/ic-reactor/blob/679bb13f6d5077d9b960e9da26636b786a21ed35/packages/react/src/index.tsx#L298)
 
 Returns the client of this tree. Either it creates one, such as
 `() => createClient({ network: "ic", auth: (network) => new AuthClient(network) })`, and
@@ -42,6 +42,6 @@ provider by giving it another `key`.
 
 > `readonly` **children**: `ReactNode`
 
-Defined in: [react/src/index.tsx:300](https://github.com/B3Pay/ic-reactor/blob/632536e39f6de92ca8b94f7b34955c4f2401ecd7/packages/react/src/index.tsx#L300)
+Defined in: [react/src/index.tsx:300](https://github.com/B3Pay/ic-reactor/blob/679bb13f6d5077d9b960e9da26636b786a21ed35/packages/react/src/index.tsx#L300)
 
 The tree that reads the client with [useClient](/docs/ic-reactor/libs/functions/useclient/) and [useAuth](/docs/ic-reactor/libs/functions/useauth/).
