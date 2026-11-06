@@ -7,7 +7,7 @@ prev: true
 
 > **createClient**(`options`): [`Client`](/docs/ic-reactor/libs/interfaces/client/)
 
-Defined in: [core/src/client.ts:1299](https://github.com/B3Pay/ic-reactor/blob/2efe303a00585c10489700f6170276188b0ce2bb/packages/core/src/client.ts#L1299)
+Defined in: [core/src/client.ts:1299](https://github.com/B3Pay/ic-reactor/blob/632536e39f6de92ca8b94f7b34955c4f2401ecd7/packages/core/src/client.ts#L1299)
 
 Creates a client: who calls, on which network, with which cache.
 
