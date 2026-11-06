@@ -23,7 +23,7 @@
     "@tanstack/query-core": "^5.102.8"
   },
   "devDependencies": {
-    "@meantjs/cli": "0.5.0",
+    "@meantjs/cli": "0.5.1",
     "@icp-sdk/icp-cli": "1.2.0",
     "@types/node": "^26.5.1",
     "typescript": "^6.0.3",

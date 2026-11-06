@@ -28,7 +28,7 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@meantjs/cli": "0.5.0",
+    "@meantjs/cli": "0.5.1",
     "@ic-reactor/vite-plugin": "^4.1.0",
     "@icp-sdk/icp-cli": "1.2.0",
     "@noble/curves": "^2.2.0",

@@ -24,7 +24,7 @@ import { describeError, describePath } from "./describe-value.js"
  * install the generator that pairs with the `@meantjs/schema` runtime its
  * generated modules import.
  */
-export const MEANT_CLI_VERSION = "0.5.0"
+export const MEANT_CLI_VERSION = "0.5.1"
 
 /** The `schemaVersion` of the `--json` document this module understands. */
 const REPORT_SCHEMA_VERSION = 1

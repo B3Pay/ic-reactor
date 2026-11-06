@@ -33,7 +33,7 @@ and so is the plugin's peer on the CLI:
 
 ```sh
 npm install --save-exact @meantjs/schema@0.6.0
-npm install --save-dev --save-exact @meantjs/cli@0.5.0
+npm install --save-dev --save-exact @meantjs/cli@0.5.1
 npm install --save-dev @ic-reactor/vite-plugin
 ```
 
@@ -221,7 +221,7 @@ export default defineConfig({
   its own `didFile`, or write the file yourself. A `didFile` on disk is shared
   whatever their `canisterId`s. A `didFile` that is a symlink is written
   through, to the file it links to. Only the fetch is shared: the generator
-  (`@meantjs/cli` 0.5.0) reads a `didFile` only by its exact name on disk,
+  (`@meantjs/cli` 0.5.1) reads a `didFile` only by its exact name on disk,
   and not through a symlink to a file, so an entry that names it either way
   fails with `did_source_not_found`. Name the file as it is on disk in each
   entry.

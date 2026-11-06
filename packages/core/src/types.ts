@@ -7,7 +7,7 @@
  * and an app never names them: it reads them off a call, such as
  * `client.queryOptions(...)`.
  *
- * A generated `Actor` type (from `meant gen` 0.5.0) carries each
+ * A generated `Actor` type (from `meant gen` 0.5.1) carries each
  * method's mode as `$.WithMode<mode>`. {@link ReadMethod} and
  * {@link OptInMethod} read it, so that `client.queryOptions()` refuses an
  * update or a oneway method at compile time. A method whose mode the type does

@@ -22,7 +22,7 @@
     "@icp-sdk/core": "^6.1.0"
   },
   "devDependencies": {
-    "@meantjs/cli": "0.5.0",
+    "@meantjs/cli": "0.5.1",
     "@ic-reactor/vite-plugin": "workspace:*",
     "@icp-sdk/ic-wasm": "0.11.1",
     "@icp-sdk/icp-cli": "1.2.0",

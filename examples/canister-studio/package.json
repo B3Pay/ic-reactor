@@ -14,7 +14,7 @@
     "smoke": "node scripts/smoke.ts"
   },
   "dependencies": {
-    "@meantjs/cli": "0.5.0",
+    "@meantjs/cli": "0.5.1",
     "@meantjs/schema": "0.6.0",
     "@ic-reactor/core": "^4.1.0",
     "@ic-reactor/react": "^4.1.0",

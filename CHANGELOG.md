@@ -17,6 +17,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/vite-plugin
+
+#### Changed
+
+- Peer `@meantjs/cli` at exactly `0.5.1`, where it was exactly `0.5.0`, and
+  the install hints name `@meantjs/cli@0.5.1`. Meant's 0.5.1 is 0.5.0 with
+  one compiler fix, a hardening: the source nesting limit counts every `opt`
+  and `vec` until its operand ends, so a `.did` nested past the limit is
+  refused before parsing with `resource_limit_exceeded`, where 0.5.0 could
+  run out of stack on it and fail that canister with `internal_error`. A type
+  nested exactly to the type depth limit whose innermost `record {}`,
+  `variant {}` or `func () -> ()` is empty now compiles, where 0.5.0 refused
+  it. For a `.did` both accept, the module and the envelope are the same, so
+  committed modules do not change. Move the CLI with the plugin, both exact.
+
 ### Examples (not published)
 
 - `node-agent-tool` no longer prints text from a ledger raw. Without

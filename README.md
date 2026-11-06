@@ -63,7 +63,7 @@ peers name:
 npm install @ic-reactor/core @ic-reactor/react \
   @icp-sdk/core @tanstack/react-query
 npm install --save-exact @meantjs/schema@0.6.0
-npm install --save-dev --save-exact @meantjs/cli@0.5.0
+npm install --save-dev --save-exact @meantjs/cli@0.5.1
 npm install --save-dev @ic-reactor/vite-plugin # optional, for Vite
 ```
 

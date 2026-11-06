@@ -16,11 +16,11 @@ as an app does.
 
 ## Regenerating
 
-With `@meantjs/cli@0.5.0` (the generator that pairs with
+With `@meantjs/cli@0.5.1` (the generator that pairs with
 `@meantjs/schema@0.6.0`), from this directory:
 
 ```sh
-npx -y @meantjs/cli@0.5.0 gen icrc1.did shapes.did archive.did management.did skippable.did accounts.did -o .
+npx -y @meantjs/cli@0.5.1 gen icrc1.did shapes.did archive.did management.did skippable.did accounts.did -o .
 ```
 
 Add `--check` to the same command to verify that nothing drifted. Each
