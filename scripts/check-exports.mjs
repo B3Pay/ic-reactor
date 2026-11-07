@@ -13,6 +13,8 @@
  *   has no entry for, has no `exports` map at all, or is publishable with no
  *   entry (a subpath is public surface whatever it is called: `./internal`
  *   would hand out every name the entries do not);
+ * - a package's `bin` names a command the budget's `COMMANDS` does not list
+ *   for it, or lacks one it lists (a command is public surface too);
  * - the declarations behind two conditions of one entry (`import` and
  *   `require`, say) do not export the same names;
  * - an entry exports a name its budget does not plan;
@@ -39,7 +41,11 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { EXPORT_BUDGET } from "./export-budget.mjs"
-import { exportsMapOf, publicSubpaths } from "./lib/package-exports.mjs"
+import {
+  commandsOf,
+  exportsMapOf,
+  publicSubpaths,
+} from "./lib/package-exports.mjs"
 
 const ts = createRequire(import.meta.url)("typescript")
 
@@ -625,7 +631,8 @@ function declaredVersions(rootDir, name, packagesDir) {
  * ever looked at.
  *
  * Private packages are skipped, and so is `./package.json`. A subpath mapped
- * to `null` is blocked, not exposed.
+ * to `null` is blocked, not exposed. A package of `COMMANDS` is budgeted with
+ * no subpath, and the commands of every package are held to that list.
  *
  * @returns {string[]} The failures.
  */
@@ -638,10 +645,23 @@ export function checkPackages({ rootDir, budget = EXPORT_BUDGET }) {
       entry.subpath,
     ])
   }
+  const commands = new Map() // package dir -> the commands of its `bin`
+  for (const command of budget.commands ?? []) {
+    commands.set(command.package, command.bin)
+    if (!budgeted.has(command.package)) budgeted.set(command.package, [])
+  }
   for (const dir of packageDirsOf(rootDir, budget.packagesDir)) {
     const manifest = readJson(join(rootDir, dir, "package.json"))
     if (manifest.private === true) continue
     const name = manifest.name ?? dir
+    const declared = commandsOf(manifest).sort()
+    const listed = [...(commands.get(dir) ?? [])].sort()
+    if (declared.join("\n") !== listed.join("\n")) {
+      failures.push(
+        `${dir}/package.json installs ${declared.length > 0 ? `the commands ${declared.join(", ")}` : "no command"}, but the export budget lists ${listed.length > 0 ? listed.join(", ") : "none"} for ${name}. ` +
+          `A command is public surface: list it under COMMANDS in scripts/export-budget.mjs, or remove it from \`bin\`.`
+      )
+    }
     const subpaths = budgeted.get(dir)
     if (subpaths === undefined) {
       failures.push(
@@ -722,6 +742,12 @@ function main() {
       console.log(
         `  transitional, allowed until the first beta: ${leftover.join(", ")}`
       )
+  }
+
+  for (const command of EXPORT_BUDGET.commands ?? []) {
+    console.log(
+      `${command.id}: the command${command.bin.length === 1 ? "" : "s"} ${command.bin.join(", ")}, and nothing to import`
+    )
   }
 
   if (all.length > 0) {

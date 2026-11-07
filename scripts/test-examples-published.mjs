@@ -1264,12 +1264,13 @@ export function scopePackageNames(manifests) {
 /**
  * Polls each package until its `tag` dist-tag names `version`, the registry
  * answers with `version`'s integrity, and it serves `version`'s tarball, for
- * up to `timeoutMs`. The release workflow publishes core, react and
- * vite-plugin one after another, so the last one can lag the first by
- * minutes; every package the run reads must be served before the examples
- * install. The tarball can lag that metadata by minutes: on 4.1.0's release
- * run, core's tarball answered 404 for about five minutes after its dist-tag
- * and integrity named 4.1.0, and every example's install failed on it.
+ * up to `timeoutMs`. The release workflow publishes the lane's packages
+ * (core, react, vite-plugin and mcp) one after another, so the last one can
+ * lag the first by minutes; every package the run reads must be served before
+ * the examples install. The tarball can lag that metadata by minutes: on
+ * 4.1.0's release run, core's tarball answered 404 for about five minutes
+ * after its dist-tag and integrity named 4.1.0, and every example's install
+ * failed on it.
  *
  * `lookup(name)` resolves with what the registry serves now: the version the
  * dist-tag names (undefined when it has none), `version`'s integrity

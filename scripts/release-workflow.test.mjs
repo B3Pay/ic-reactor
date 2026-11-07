@@ -8,6 +8,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { describe, it } from "node:test"
+import { LANE_PACKAGES } from "./release-tag.mjs"
 
 const workflow = readFileSync(
   new URL("../.github/workflows/release.yml", import.meta.url),
@@ -52,5 +53,46 @@ describe("release.yml's npm publish", () => {
       ["tarballs/a.tgz"]
     )
     assert.deepEqual(publishedPaths("npm publish ./a.tgz"), ["./a.tgz"])
+  })
+})
+
+/**
+ * The words of each shell loop of `text` that runs over the packages: a
+ * `for <variable> in <words>; do` whose words name core, as `core` or
+ * `packages/core`.
+ */
+function packageLoops(text) {
+  return [...text.matchAll(/\bfor \w+ in ([^;\n]+); do/g)]
+    .map(([, words]) => words.trim().split(/\s+/))
+    .filter((words) => words.some((word) => /^(?:packages\/)?core$/.test(word)))
+}
+
+describe("release.yml's packages", () => {
+  // The publish job checks nothing out, so the workflow cannot read the lane
+  // from scripts/release-tag.mjs: it names the packages in four loops, and a
+  // package left out of one would be bumped by release.js and then never
+  // checked, packed or published.
+  it("names the lane of release-tag.mjs, in its order, in each of its four loops", () => {
+    const loops = packageLoops(workflow)
+    assert.equal(
+      loops.length,
+      4,
+      `loops over the packages: ${JSON.stringify(loops)}`
+    )
+    for (const words of loops) {
+      assert.deepEqual(
+        words.map((word) => word.replace(/^packages\//, "")),
+        [...LANE_PACKAGES]
+      )
+    }
+  })
+
+  it("finds a loop over the packages, and only such a loop", () => {
+    assert.deepEqual(
+      packageLoops(
+        "for workflow in ci.yml e2e.yml; do\nfor pkg in packages/core packages/react; do\nfor name in core; do"
+      ),
+      [["packages/core", "packages/react"], ["core"]]
+    )
   })
 })

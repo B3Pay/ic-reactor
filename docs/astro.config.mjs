@@ -144,6 +144,7 @@ export default defineConfig({
             { label: "@ic-reactor/core", slug: "packages/core" },
             { label: "@ic-reactor/react", slug: "packages/react" },
             { label: "@ic-reactor/vite-plugin", slug: "packages/vite-plugin" },
+            { label: "@ic-reactor/mcp", slug: "packages/mcp" },
             {
               label: "API reference",
               collapsed: true,

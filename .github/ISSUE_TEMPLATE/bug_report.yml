@@ -26,6 +26,7 @@ body:
         - "@ic-reactor/core"
         - "@ic-reactor/react"
         - "@ic-reactor/vite-plugin"
+        - "@ic-reactor/mcp"
         - "@ic-reactor/candid (3.x)"
         - "@ic-reactor/parser, codegen or cli (3.x)"
     validations:

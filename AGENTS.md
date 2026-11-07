@@ -15,6 +15,7 @@ releases, `@meantjs/schema` and `@meantjs/cli`, each pinned exactly.
 - `@ic-reactor/core` (`packages/core`, `4.1.1`) — the 4 API of milestone 1: `createClient`, `ReactorError` and `isReactorError`, `parseUnits` and `formatUnits`, and their types (13 names, `scripts/export-budget.mjs`). `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
 - `@ic-reactor/react` (`packages/react`, `4.1.1`) — `'use client'` bindings over a core client: `ReactorProvider`, `useClient`, `useAuth` and the type `ReactorProviderProps`. It never re-exports core.
 - `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.1.1`) — generates the module by running `@meantjs/cli` (`meant gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
+- `@ic-reactor/mcp` (`packages/mcp`, `4.1.1`) — the `ic-reactor-mcp` command, an MCP server that gives an AI agent any canister's methods as tools and sends an update only after the person approves the exact call in the MCP client's form. It exports nothing to import (`COMMANDS` in `scripts/export-budget.mjs`).
 
 `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli` and
 `@ic-reactor/candid` are not in this tree (the last stays at 3.x on `v3`).
@@ -27,6 +28,7 @@ releases, `@meantjs/schema` and `@meantjs/cli`, each pinned exactly.
 | React bindings                | `packages/react/src/`, `packages/react/tests/`                                              |
 | Vite plugin generation        | `packages/vite-plugin/src/generate.ts`, `src/index.ts`                                      |
 | `ic_env` cookie and dev proxy | `packages/vite-plugin/src/dev-environment.ts`, `src/env.ts`, `src/index.ts`                 |
+| MCP server                    | `packages/mcp/src/server/` (tools, approval), `src/interface/` (loader), `src/candid/`      |
 | Test client, fake replica     | `packages/core/src/testing/` (`test-client.ts` is the entry's only export)                  |
 | Real-replica e2e              | `e2e/` (Rust `hello_actor` canister, `e2e/test.sh`)                                         |
 | Example apps                  | `examples/<name>/` (own tests and `gen:check`; a page in `docs/src/content/docs/examples/`) |

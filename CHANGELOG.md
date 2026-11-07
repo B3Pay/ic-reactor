@@ -1,10 +1,11 @@
 # Changelog
 
 Notable changes to the published `@ic-reactor/*` packages. ic-reactor 4
-releases from `main` in one lane, `@ic-reactor/core`, `@ic-reactor/react` and
-`@ic-reactor/vite-plugin` at one version: stable versions under npm's `latest`
-dist-tag, prereleases under `beta`. The 3.x line, on the `v3` branch since the
-4.0 GA flip, releases in three lanes, each with its own version:
+releases from `main` in one lane, `@ic-reactor/core`, `@ic-reactor/react`,
+`@ic-reactor/vite-plugin` and `@ic-reactor/mcp` at one version: stable
+versions under npm's `latest` dist-tag, prereleases under `beta`. The 3.x
+line, on the `v3` branch since the 4.0 GA flip, releases in three lanes, each
+with its own version:
 
 - runtime: `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/candid`
 - codegen: `@ic-reactor/codegen`, `@ic-reactor/cli`, `@ic-reactor/vite-plugin`
@@ -17,10 +18,10 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-### New, not published: @ic-reactor/mcp
+### New: @ic-reactor/mcp
 
-`packages/mcp` is an MCP server that gives an AI agent any Internet Computer
-canister's methods as tools. Each canister named with
+`@ic-reactor/mcp` is an MCP server that gives an AI agent any Internet
+Computer canister's methods as tools. Each canister named with
 `--canister <name>=<id>` gets one tool per method, with an input schema built
 from the canister's certified `candid:service` metadata, and `list_methods`,
 `describe_method` and `query` read any canister. An update is sent only to a
@@ -34,10 +35,12 @@ interface of the module installed now. Input schemas, `tools/list`, method
 names in the form and each call's wait are bounded, so a hostile interface
 cannot exhaust the server's memory or crowd the form.
 
-The package is `private`, so no release publishes it until its npm name is
-settled. Run it from the repository: `pnpm --filter @ic-reactor/mcp build`,
-then `node packages/mcp/dist/cli.js --help`. `packages/mcp/README.md` has the
-tools, the JSON forms of Candid values and the security rules.
+It releases with core, react and vite-plugin, at their version, and installs
+one command: `npm install --global @ic-reactor/mcp`, then
+`ic-reactor-mcp --help`. Its page,
+[@ic-reactor/mcp](https://ic-reactor.b3pay.net/v4/packages/mcp/), has the
+tools, the approval rules and the limits, and `packages/mcp/README.md` the
+JSON forms of Candid values too.
 
 ## core, react, vite-plugin 4.1.1
 

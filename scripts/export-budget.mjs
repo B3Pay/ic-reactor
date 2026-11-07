@@ -18,7 +18,9 @@
  * of `packages/` that publishes may map nothing in its `exports` that has no
  * entry here (`./package.json` aside), and a new publishable package needs its
  * entries before it ships. A subpath nobody budgeted would otherwise export
- * names no gate ever read.
+ * names no gate ever read. In the same way, `COMMANDS` is the list of every
+ * command a package installs (its `bin`), and a package that publishes only a
+ * command is listed there, with no entry.
  *
  * Alongside the count, no name may be exported twice. D35: one import path
  * per name across every ic-reactor package, `@meantjs/schema` and
@@ -87,6 +89,22 @@ export const ENTRIES = [
 ]
 
 /**
+ * The commands each package installs, from its `bin`. A package that publishes
+ * a command and nothing to import is listed here and has no entry above: its
+ * `exports` maps `./package.json` alone, so a subpath added to it fails the
+ * check like any unbudgeted one. A package not listed here may declare no
+ * `bin`.
+ */
+export const COMMANDS = [
+  {
+    // The MCP server: `ic-reactor-mcp`, run by an MCP client over stdio.
+    id: "@ic-reactor/mcp",
+    package: "packages/mcp",
+    bin: ["ic-reactor-mcp"],
+  },
+]
+
+/**
  * Packages whose exports no ic-reactor entry may repeat (D35). Resolved from
  * `from`, a directory under the repository root, the way that directory's
  * own imports resolve them.
@@ -120,4 +138,8 @@ export const FOREIGN = [
   },
 ]
 
-export const EXPORT_BUDGET = { entries: ENTRIES, foreign: FOREIGN }
+export const EXPORT_BUDGET = {
+  entries: ENTRIES,
+  commands: COMMANDS,
+  foreign: FOREIGN,
+}

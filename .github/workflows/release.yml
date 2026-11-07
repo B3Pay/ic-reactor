@@ -1,13 +1,15 @@
 name: Release
 
-# The 4.x release lane: @ic-reactor/core, @ic-reactor/react and
-# @ic-reactor/vite-plugin in lockstep, from main. A stable 4.x tag publishes
-# under npm's `latest` dist-tag and becomes the latest GitHub Release; a 4.x
-# prerelease publishes under `beta` (scripts/release-tag.mjs decides, for this
-# workflow and scripts/release.js alike). A tag push runs the workflow file of
-# the tagged commit, so 3.x tags (`v3.*`, `tools-v*`, `parser-v*`) on the v3
-# branch run v3's own lanes, which never touch `latest` for core, react or
-# vite-plugin.
+# The 4.x release lane: @ic-reactor/core, @ic-reactor/react,
+# @ic-reactor/vite-plugin and @ic-reactor/mcp in lockstep, from main. Every
+# list of them below names the lane of scripts/release-tag.mjs
+# (LANE_PACKAGES), in its order; scripts/release-workflow.test.mjs checks
+# that. A stable 4.x tag publishes under npm's `latest` dist-tag and becomes
+# the latest GitHub Release; a 4.x prerelease publishes under `beta`
+# (scripts/release-tag.mjs decides, for this workflow and scripts/release.js
+# alike). A tag push runs the workflow file of the tagged commit, so 3.x tags
+# (`v3.*`, `tools-v*`, `parser-v*`) on the v3 branch run v3's own lanes, which
+# never touch `latest` for core, react or vite-plugin.
 on:
   push:
     tags:
@@ -75,7 +77,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Tag version: $EXPECTED"
-          for pkg in packages/core packages/react packages/vite-plugin; do
+          for pkg in packages/core packages/react packages/vite-plugin packages/mcp; do
             ACTUAL="$(node -p "require('./$pkg/package.json').version")"
             if [ "$ACTUAL" != "$EXPECTED" ]; then
               echo "::error::$pkg is at $ACTUAL but the tag says $EXPECTED."
@@ -105,7 +107,7 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p "$RUNNER_TEMP/tarballs"
-          for name in core react vite-plugin; do
+          for name in core react vite-plugin mcp; do
             (cd "packages/$name" && pnpm pack --pack-destination "$RUNNER_TEMP/tarballs")
             if [ ! -s "$RUNNER_TEMP/tarballs/ic-reactor-$name-$VERSION.tgz" ]; then
               echo "::error::pnpm pack made no ic-reactor-$name-$VERSION.tgz."
@@ -201,14 +203,14 @@ jobs:
   # The publish holds the OIDC token, so it does only that: no checkout, no
   # install, no cache and no build, and the one package it installs is npm,
   # pinned exactly. It publishes the tarballs preflight packed and tested,
-  # back to back, core first and vite-plugin last, and stops at the first that
+  # back to back, core first and mcp last, and stops at the first that
   # fails. Run again (Re-run failed jobs), it publishes the same tarballs and
   # skips one npm already has with the same integrity, so a release that
   # stopped half-way is finished, not superseded (#909).
   #
   # `npm-release` has no reviewer, so it adds no prompt. It carries the same
   # deployment tag policy as `npm-publish` (v*, tools-v*, parser-v*), and the
-  # trusted publishers of core, react and vite-plugin name it, so npm accepts
+  # trusted publishers of the lane's packages name it, so npm accepts
   # an OIDC token only from a job in this environment, which only a release
   # tag can reach. That holds where the approval above cannot: a run from any
   # other ref cannot deploy here, whatever its workflow file says, and the
@@ -240,7 +242,7 @@ jobs:
       - name: Install npm
         run: npm install -g npm@11.21.0 && npm --version
 
-      - name: Publish core, react and vite-plugin
+      - name: Publish core, react, vite-plugin and mcp
         shell: bash
         env:
           # Decided once, by preflight (scripts/release-tag.mjs).
@@ -257,13 +259,13 @@ jobs:
               ;;
           esac
           VERSION="${GITHUB_REF_NAME#v}"
-          for name in core react vite-plugin; do
+          for name in core react vite-plugin mcp; do
             if [ ! -s "tarballs/ic-reactor-$name-$VERSION.tgz" ]; then
               echo "::error::tarballs/ic-reactor-$name-$VERSION.tgz is missing or empty; publishing nothing."
               exit 1
             fi
           done
-          for name in core react vite-plugin; do
+          for name in core react vite-plugin mcp; do
             # The leading ./ makes npm read a file: without it, npm reads
             # `tarballs/<file>.tgz` as a GitHub repository and runs git.
             TARBALL="./tarballs/ic-reactor-$name-$VERSION.tgz"
@@ -283,8 +285,8 @@ jobs:
           done
 
   # The one job that can write to the repository, once every package is out:
-  # a stable tag's release is marked Latest only after react and vite-plugin
-  # have published too, never while one of them may still fail.
+  # a stable tag's release is marked Latest only after the last of them has
+  # published too, never while one of them may still fail.
   release-notes:
     name: GitHub release
     needs: [preflight, publish]
@@ -310,8 +312,8 @@ jobs:
   # The release PR's own run of that workflow, and the push that merges it,
   # defer while the examples pin only this unpublished version (awaitsRelease
   # in scripts/test-examples-published.mjs): this run is the one that tests them.
-  # The publish job publishes core, react and vite-plugin before it ends, and
-  # --wait-for waits for every one of them, not only core.
+  # The publish job publishes every package of the lane before it ends, and
+  # --wait-for waits for each one the examples install, not only core.
   # The script tests the dist-tag the tag's version publishes under: `beta`
   # for a prerelease, `latest` for a stable version.
   examples-published:

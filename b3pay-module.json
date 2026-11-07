@@ -127,6 +127,10 @@
           "page": "packages/vite-plugin"
         },
         {
+          "label": "@ic-reactor/mcp",
+          "page": "packages/mcp"
+        },
+        {
           "label": "API reference",
           "collapsed": true,
           "items": [

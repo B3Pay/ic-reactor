@@ -24,6 +24,7 @@ body:
         - "@ic-reactor/core"
         - "@ic-reactor/react"
         - "@ic-reactor/vite-plugin"
+        - "@ic-reactor/mcp"
         - "New package"
         - "Documentation"
     validations:
