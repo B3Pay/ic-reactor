@@ -7,7 +7,7 @@ prev: true
 
 > **ClientOptions** = `object` & \{ `identity`: `Identity` \| `"anonymous"`; `auth?`: `never`; \} \| \{ `auth`: (`network`) => [`AuthLike`](/docs/ic-reactor/libs/interfaces/authlike/); `identity?`: `never`; \}
 
-Defined in: [core/src/client.ts:186](https://github.com/B3Pay/ic-reactor/blob/679bb13f6d5077d9b960e9da26636b786a21ed35/packages/core/src/client.ts#L186)
+Defined in: [core/src/client.ts:186](https://github.com/B3Pay/ic-reactor/blob/e8941d325ad71ef24e0d673072cbd9d65028bee9/packages/core/src/client.ts#L186)
 
 Options for [createClient](/docs/ic-reactor/libs/functions/createclient/): a network, and exactly one of `identity`
 and `auth`, so that who calls is always written down.

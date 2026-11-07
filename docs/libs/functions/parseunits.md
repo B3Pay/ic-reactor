@@ -7,7 +7,7 @@ prev: true
 
 > **parseUnits**(`text`, `decimals`, `options?`): `bigint`
 
-Defined in: [core/src/units.ts:150](https://github.com/B3Pay/ic-reactor/blob/679bb13f6d5077d9b960e9da26636b786a21ed35/packages/core/src/units.ts#L150)
+Defined in: [core/src/units.ts:150](https://github.com/B3Pay/ic-reactor/blob/e8941d325ad71ef24e0d673072cbd9d65028bee9/packages/core/src/units.ts#L150)
 
 Read a decimal amount a person typed, such as `"1.5"`, as the token's base
 units, exactly.
