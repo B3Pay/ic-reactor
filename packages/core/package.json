@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/core",
-  "version": "4.1.1",
+  "version": "4.2.0",
   "description": "ic-reactor 4 client for Internet Computer canisters: TanStack Query options with caller-scoped keys, one error type that says whether a call may have executed, token-unit helpers and a test client, over a module generated from the canister's .did file",
   "main": "dist/index.js",
   "module": "dist/index.js",

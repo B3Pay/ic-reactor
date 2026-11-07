@@ -24,9 +24,9 @@ earlier ic-reactor versions (their names are gone in 4).
 
 This skill describes these versions:
 
-- `@ic-reactor/core`: `4.1.1`
-- `@ic-reactor/react`: `4.1.1`
-- `@ic-reactor/vite-plugin`: `4.1.1`
+- `@ic-reactor/core`: `4.2.0`
+- `@ic-reactor/react`: `4.2.0`
+- `@ic-reactor/vite-plugin`: `4.2.0`
 
 ## Workflow
 
