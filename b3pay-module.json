@@ -116,6 +116,10 @@
           "page": "packages/vite-plugin"
         },
         {
+          "label": "@ic-reactor/mcp",
+          "page": "packages/mcp"
+        },
+        {
           "label": "API reference",
           "collapsed": true,
           "items": [
@@ -179,6 +183,6 @@
   "home": "index",
   "origin": {
     "repository": "B3Pay/ic-reactor",
-    "commit": "e8941d325ad71ef24e0d673072cbd9d65028bee9"
+    "commit": "7be7fe0251046bed82f29ff7181457c0efa1813b"
   }
 }
