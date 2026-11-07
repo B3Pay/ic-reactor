@@ -18,29 +18,50 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-### New: @ic-reactor/mcp
+Nothing yet.
 
-`@ic-reactor/mcp` is an MCP server that gives an AI agent any Internet
-Computer canister's methods as tools. Each canister named with
-`--canister <name>=<id>` gets one tool per method, with an input schema built
-from the canister's certified `candid:service` metadata, and `list_methods`,
-`describe_method` and `query` read any canister. An update is sent only to a
-listed canister, signed with the key given as `--identity`, after the person
-approves the exact call in the MCP client's form (MCP form elicitation): the
-form shows the canister, method, caller, network, the arguments as Candid text
-and the sha256 of the encoded bytes, and the canister's module hash is
-confirmed before the form and again before the call is sent. A certified read
-goes out as the anonymous principal, never with the key, and is read with the
-interface of the module installed now. Input schemas, `tools/list`, method
-names in the form and each call's wait are bounded, so a hostile interface
-cannot exhaust the server's memory or crowd the form.
+## core, react, vite-plugin, mcp 4.2.0
 
-It releases with core, react and vite-plugin, at their version, and installs
-one command: `npm install --global @ic-reactor/mcp`, then
-`ic-reactor-mcp --help`. Its page,
-[@ic-reactor/mcp](https://ic-reactor.b3pay.net/v4/packages/mcp/), has the
-tools, the approval rules and the limits, and `packages/mcp/README.md` the
-JSON forms of Candid values too.
+Prepared on 2026-11-07. 4.2.0 adds `@ic-reactor/mcp`, an MCP server that
+releases with core, react and vite-plugin from this version on, at their
+version. `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin`
+change only their version: their peers stay `@meantjs/schema` 0.6.0 and
+`@meantjs/cli` 0.5.1, the release adds or removes no `@ic-reactor/*` export
+(core 13, `@ic-reactor/core/testing` 2, react 4, vite-plugin 2; mcp has nothing
+to import), and committed modules do not change. An app on 4.1.1 has nothing to
+change.
+
+```sh
+npm install --global @ic-reactor/mcp
+ic-reactor-mcp --help
+```
+
+### @ic-reactor/mcp
+
+#### Added
+
+- The `ic-reactor-mcp` command, an MCP server that gives an AI agent any
+  Internet Computer canister's methods as tools. Each canister named with
+  `--canister <name>=<id>` gets one tool per method, with an input schema
+  built from the canister's certified `candid:service` metadata, and
+  `list_methods`, `describe_method` and `query` read any canister.
+- An update is sent only to a listed canister, signed with the key given as
+  `--identity`, after the person approves the exact call in the MCP client's
+  form (MCP form elicitation). The form shows the canister, method, caller,
+  network, the arguments as Candid text and the sha256 of the encoded bytes,
+  and the canister's module hash is confirmed before the form and again before
+  the call is sent.
+- A certified read goes out as the anonymous principal, never with the key,
+  and is read with the interface of the module installed now.
+- Input schemas, `tools/list`, method names in the form and each call's wait
+  are bounded, so a hostile interface cannot exhaust the server's memory or
+  crowd the form.
+- Its page, [@ic-reactor/mcp](https://ic-reactor.b3pay.net/v4/packages/mcp/),
+  has the tools, the approval rules and the limits, and
+  `packages/mcp/README.md` the JSON forms of Candid values too. Its API under
+  semantic versioning is its command line, its five fixed tools, how its typed
+  tools are named and the JSON forms of Candid values
+  ([Versioning and support](docs/src/content/docs/versioning.mdx)).
 
 ## core, react, vite-plugin 4.1.1
 
