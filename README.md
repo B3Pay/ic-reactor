@@ -43,6 +43,7 @@ canister:
 | [`@ic-reactor/core`](./packages/core)               | The client, errors, network and units                                                                                        |
 | [`@ic-reactor/react`](./packages/react)             | `'use client'` bindings over core                                                                                            |
 | [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Generates the module with `meant gen` in a child process, and sets the local `ic_env` cookie and `/api` proxy for `vite dev` |
+| [`@ic-reactor/mcp`](./packages/mcp)                 | An MCP server that gives an AI agent any canister's methods as tools, and sends an update only after you approve it          |
 
 `@ic-reactor/parser`, `@ic-reactor/codegen` and `@ic-reactor/cli` are not part
 of ic-reactor 4: `meant gen` generates the canister module instead.
@@ -117,6 +118,7 @@ The 3.x examples are on the `v3` branch.
   - [`@ic-reactor/react`](./packages/react/README.md)
   - [`@ic-reactor/core`](./packages/core/README.md)
   - [`@ic-reactor/vite-plugin`](./packages/vite-plugin/README.md)
+  - [`@ic-reactor/mcp`](./packages/mcp/README.md)
 
 Run docs locally:
 

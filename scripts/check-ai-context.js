@@ -8,15 +8,17 @@ import {
   RUNTIME_PLUGIN_MANIFESTS,
 } from "./ai-context-files.js"
 import { fencedLines } from "./lib/markdown-fences.mjs"
+import { LANE_PACKAGES } from "./release-tag.mjs"
 import { REMOVED_V3_NAMES } from "./removed-v3-names.js"
 
 const rootDir = process.cwd()
 
-const versionChecks = [
-  { packageName: "@ic-reactor/core", packageDir: "core" },
-  { packageName: "@ic-reactor/react", packageDir: "react" },
-  { packageName: "@ic-reactor/vite-plugin", packageDir: "vite-plugin" },
-]
+// The packages of the release lane (scripts/release-tag.mjs): each one
+// publishes, at the lane's version.
+const versionChecks = LANE_PACKAGES.map((packageDir) => ({
+  packageName: `@ic-reactor/${packageDir}`,
+  packageDir,
+}))
 
 // The one consumer guide of the 4.x line: core ships `packages/core/llms.txt`
 // in its npm tarball, and it must open with an "Applies to
@@ -895,8 +897,8 @@ for (const page of [...sourcePages].sort()) {
 // ── 11. Each package's homepage is its own page of the 4 docs ───────────────
 // npm shows `homepage` as the package's link, so it names the package's page
 // (`https://ic-reactor.b3pay.net/v4/packages/core/`), and that page must exist.
-// All three packages publish, so a missing `homepage` fails too: npm would
-// fall back to the repository's README.
+// Every package of the lane publishes, so a missing `homepage` fails too: npm
+// would fall back to the repository's README.
 for (const { packageName, packageDir } of versionChecks) {
   const relPath = `packages/${packageDir}/package.json`
   const { homepage } = JSON.parse(readFileSync(join(rootDir, relPath), "utf8"))

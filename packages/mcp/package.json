@@ -1,7 +1,6 @@
 {
   "name": "@ic-reactor/mcp",
-  "version": "0.0.0",
-  "private": true,
+  "version": "4.1.1",
   "description": "An MCP server that gives an AI agent any Internet Computer canister's methods as tools: queries run at once, and an update is sent only after a person approves the exact call in the MCP client",
   "type": "module",
   "engines": {
@@ -44,9 +43,9 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
-  "homepage": "https://github.com/B3Pay/ic-reactor/tree/main/packages/mcp#readme",
+  "homepage": "https://ic-reactor.b3pay.net/v4/packages/mcp/",
   "dependencies": {
-    "@ic-reactor/core": "workspace:^",
+    "@ic-reactor/core": "workspace:*",
     "@icp-sdk/core": "^6.1.0",
     "@meantjs/cli": "0.5.1",
     "@meantjs/schema": "0.6.0",

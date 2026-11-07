@@ -15,6 +15,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { after, describe, it } from "node:test"
 import { fileURLToPath } from "node:url"
+import { LANE_PACKAGES } from "./release-tag.mjs"
 import { REMOVED_V3_NAMES } from "./removed-v3-names.js"
 
 const scripts = dirname(fileURLToPath(import.meta.url))
@@ -40,6 +41,7 @@ function repo(files = {}) {
     "check-ai-context.js",
     "ai-context-files.js",
     "removed-v3-names.js",
+    "release-tag.mjs",
     "lib/markdown-fences.mjs",
   ]) {
     mkdirSync(dirname(join(root, "scripts", name)), { recursive: true })
@@ -49,7 +51,7 @@ function repo(files = {}) {
     "docs/astro.config.mjs": `export default {\n  base: "/v4/",\n}\n`,
     "docs/src/content/docs/index.md": "# Docs\n",
     ...Object.fromEntries(
-      ["core", "react", "vite-plugin"].flatMap((name) => [
+      LANE_PACKAGES.flatMap((name) => [
         [
           `packages/${name}/package.json`,
           JSON.stringify({
@@ -582,8 +584,11 @@ describe("docs pages", () => {
       repo({ [`${PAGES}/a.mdx`]: "# A\n", [`${PAGES}/b.mdx`]: "# B\n" })
     )
     assert.equal(run.status, 0, run.output)
-    // index.md, the three package pages, a.mdx and b.mdx
-    assert.match(run.output, /, 6 docs pages,/)
+    // index.md, a page per package of the lane, a.mdx and b.mdx
+    assert.match(
+      run.output,
+      new RegExp(`, ${1 + LANE_PACKAGES.length + 2} docs pages,`)
+    )
   })
 })
 

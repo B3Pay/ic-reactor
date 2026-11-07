@@ -5,7 +5,10 @@
  * the script itself never pushes, tags or publishes (#969).
  */
 
-import { releaseFor } from "../release-tag.mjs"
+import { LANE_PACKAGES, releaseFor } from "../release-tag.mjs"
+
+/** The lane's packages as prose: "core, react, vite-plugin and mcp". */
+const LANE_IN_WORDS = `${LANE_PACKAGES.slice(0, -1).join(", ")} and ${LANE_PACKAGES.at(-1)}`
 
 /** A new pull request against `main`, the 4.x line and the default branch. */
 const COMPARE_WITH_MAIN = "https://github.com/B3Pay/ic-reactor/compare/main..."
@@ -27,7 +30,7 @@ export function releasePrSteps(version) {
     `Nothing is pushed, tagged or published. Release ${tag} through a pull request:`,
     "",
     `  1. Move the entries under "## Unreleased" in CHANGELOG.md into a new`,
-    `     "## core, react, vite-plugin ${version}" section below it, and commit that.`,
+    `     "## ${LANE_PACKAGES.join(", ")} ${version}" section below it, and commit that.`,
     `  2. Push the commits as ${branch}, and open its pull request into main:`,
     `       git push origin HEAD:refs/heads/${branch}`,
     `       ${COMPARE_WITH_MAIN}${branch}?expand=1`,
@@ -39,6 +42,6 @@ export function releasePrSteps(version) {
     `       git tag -a ${tag} -m "ic-reactor ${version}" <merge-commit>`,
     `       git push origin ${tag}`,
     `     release.yml checks the tag, waits for approval on npm-publish, and`,
-    `     publishes core, react and vite-plugin under the ${distTag} dist-tag.`,
+    `     publishes ${LANE_IN_WORDS} under the ${distTag} dist-tag.`,
   ].join("\n")
 }

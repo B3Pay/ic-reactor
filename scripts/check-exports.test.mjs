@@ -20,7 +20,8 @@ import {
   readExportNames,
   typesFileOf,
 } from "./check-exports.mjs"
-import { ENTRIES, EXPORT_BUDGET } from "./export-budget.mjs"
+import { COMMANDS, ENTRIES, EXPORT_BUDGET } from "./export-budget.mjs"
+import { commandsOf } from "./lib/package-exports.mjs"
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 
@@ -655,6 +656,90 @@ describe("a subpath of `exports` that the budget has no entry for", () => {
 
   it("holds for the real packages", () => {
     assert.deepEqual(checkPackages({ rootDir: repoRoot }), [])
+  })
+})
+
+describe("a command", () => {
+  const MCP = COMMANDS.find((command) => command.id === "@ic-reactor/mcp")
+  const budget = { entries: [ENTRIES[0]], commands: [MCP], foreign: [] }
+  const core = manifest("@ic-reactor/core", {
+    exports: { ".": "./dist/index.js" },
+  })
+  const mcp = (fields) =>
+    manifest("@ic-reactor/mcp", {
+      bin: { "ic-reactor-mcp": "./dist/cli.js" },
+      exports: { "./package.json": "./package.json" },
+      ...fields,
+    })
+  const check = (files) =>
+    checkPackages({
+      rootDir: makeRepo({ "packages/core/package.json": core, ...files }),
+      budget,
+    })
+
+  it("is budgeted with no subpath: a package of COMMANDS that maps `./package.json` alone passes", () => {
+    assert.deepEqual(check({ "packages/mcp/package.json": mcp() }), [])
+  })
+
+  it("fails when a package of COMMANDS maps a subpath, which would make its files importable", () => {
+    const failures = check({
+      "packages/mcp/package.json": mcp({
+        exports: { ".": "./dist/server/server.js" },
+      }),
+    })
+    assert.equal(failures.length, 1, failures.join("\n"))
+    assert.match(
+      failures[0],
+      /packages\/mcp\/package\.json maps the subpath "\.", which the export budget has no entry for/
+    )
+  })
+
+  it("fails on a command the budget does not list, in a package of COMMANDS or not", () => {
+    const failures = check({
+      "packages/core/package.json": manifest("@ic-reactor/core", {
+        bin: { reactor: "./dist/cli.js" },
+        exports: { ".": "./dist/index.js" },
+      }),
+      "packages/mcp/package.json": mcp({
+        bin: { "ic-reactor-mcp": "./dist/cli.js", mcp: "./dist/cli.js" },
+      }),
+    })
+    assert.equal(failures.length, 2, failures.join("\n"))
+    assert.match(
+      failures[0],
+      /packages\/core\/package\.json installs the commands reactor, but the export budget lists none for @ic-reactor\/core/
+    )
+    assert.match(
+      failures[1],
+      /packages\/mcp\/package\.json installs the commands ic-reactor-mcp, mcp, but the export budget lists ic-reactor-mcp/
+    )
+  })
+
+  it("fails when a command the budget lists is gone from `bin`", () => {
+    const failures = check({
+      "packages/mcp/package.json": mcp({ bin: undefined }),
+    })
+    assert.equal(failures.length, 1, failures.join("\n"))
+    assert.match(
+      failures[0],
+      /installs no command, but the export budget lists ic-reactor-mcp/
+    )
+  })
+
+  it("names a string `bin` after the package without its scope, as npm does", () => {
+    assert.deepEqual(
+      commandsOf({ name: "@ic-reactor/mcp", bin: "./dist/cli.js" }),
+      ["mcp"]
+    )
+    assert.deepEqual(commandsOf({ name: "tool", bin: "./cli.js" }), ["tool"])
+    assert.deepEqual(
+      commandsOf({
+        name: "@ic-reactor/mcp",
+        bin: { a: "./a.js", b: "./b.js" },
+      }),
+      ["a", "b"]
+    )
+    assert.deepEqual(commandsOf({ name: "@ic-reactor/core" }), [])
   })
 })
 

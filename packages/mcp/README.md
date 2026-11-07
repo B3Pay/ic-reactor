@@ -6,14 +6,12 @@ one tool per method, with an input schema built from the canister's Candid.
 Queries run at once. An update is sent only after you approve that exact call
 in the client.
 
-> **Not published.** The package is `private` until its npm name is settled.
-> Run it from this repository:
->
-> ```sh
-> pnpm install
-> pnpm --filter @ic-reactor/mcp build
-> node packages/mcp/dist/cli.js --help
-> ```
+```sh
+npm install --global @ic-reactor/mcp
+```
+
+It installs one command, `ic-reactor-mcp`, and has nothing to import. It needs
+Node 22.12.0 or later.
 
 It is built on ic-reactor and Meant: the canister's interface is read from its
 certified `candid:service` metadata and compiled with `@meantjs/cli`, the
@@ -26,8 +24,7 @@ says whether a failed write may have run.
 Claude Code, for the ICP ledger:
 
 ```sh
-claude mcp add icp -- node /path/to/ic-reactor/packages/mcp/dist/cli.js \
-  --canister ledger=ryjl3-tyaaa-aaaaa-aaaba-cai
+claude mcp add icp -- ic-reactor-mcp --canister ledger=ryjl3-tyaaa-aaaaa-aaaba-cai
 ```
 
 Cursor (`.cursor/mcp.json`) and other clients that take a JSON entry:
@@ -36,12 +33,8 @@ Cursor (`.cursor/mcp.json`) and other clients that take a JSON entry:
 {
   "mcpServers": {
     "icp": {
-      "command": "node",
-      "args": [
-        "/path/to/ic-reactor/packages/mcp/dist/cli.js",
-        "--canister",
-        "ledger=ryjl3-tyaaa-aaaaa-aaaba-cai"
-      ]
+      "command": "ic-reactor-mcp",
+      "args": ["--canister", "ledger=ryjl3-tyaaa-aaaaa-aaaba-cai"]
     }
   }
 }
@@ -49,6 +42,10 @@ Cursor (`.cursor/mcp.json`) and other clients that take a JSON entry:
 
 Without `--identity` the server calls as the anonymous principal: every query
 works and no update is sent. To send updates, give it a key (see below).
+
+To run a build of this repository instead, run `pnpm install` and
+`pnpm --filter @ic-reactor/mcp build` in it, and give the client `node` with
+`packages/mcp/dist/cli.js` as its first argument.
 
 ## Tools
 

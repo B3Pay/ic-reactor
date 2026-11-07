@@ -2,12 +2,12 @@
 /**
  * What a release of this line publishes, from its version or its tag.
  *
- * `main` releases `@ic-reactor/core`, `@ic-reactor/react` and
- * `@ic-reactor/vite-plugin` in lockstep, at 4.x only: the 3.x line has its own
- * lane on the `v3` branch. A stable version goes to npm's `latest` dist-tag and
- * becomes the repository's latest GitHub Release; a prerelease goes to `beta`
- * and never to `latest`. Anything else is refused, so a 3.x or 5.x tag pushed
- * here publishes nothing.
+ * `main` releases the packages of `LANE_PACKAGES` (`@ic-reactor/core`,
+ * `@ic-reactor/react`, `@ic-reactor/vite-plugin` and `@ic-reactor/mcp`) in
+ * lockstep, at 4.x only: the 3.x line has its own lane on the `v3` branch. A
+ * stable version goes to npm's `latest` dist-tag and becomes the repository's
+ * latest GitHub Release; a prerelease goes to `beta` and never to `latest`.
+ * Anything else is refused, so a 3.x or 5.x tag pushed here publishes nothing.
  *
  * `.github/workflows/release.yml` runs this as a command on the tag, and
  * `scripts/release.js` imports it, so the two cannot disagree about a version.
@@ -21,6 +21,22 @@ import { fileURLToPath } from "node:url"
 
 /** The only major this line releases. */
 export const RELEASE_MAJOR = 4
+
+/**
+ * The packages of the lane, as directories under `packages/`, in the order
+ * `release.yml` publishes them: core first, since react and mcp depend on it,
+ * and mcp, the newest, last, so that a first publish of it that fails leaves
+ * the other three released. `scripts/release.js` bumps them, and `release.yml`
+ * checks, packs and publishes them. Its publish job checks nothing out, so the
+ * workflow names them itself, and `scripts/release-workflow.test.mjs` holds
+ * each of its lists to this one.
+ */
+export const LANE_PACKAGES = Object.freeze([
+  "core",
+  "react",
+  "vite-plugin",
+  "mcp",
+])
 
 // No build metadata: npm drops `+build` from the version it publishes, so the
 // tag, the manifests and the registry would disagree.

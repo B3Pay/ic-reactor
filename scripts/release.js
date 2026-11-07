@@ -12,7 +12,7 @@ import {
   syncPluginManifestVersions,
 } from "./sync-ai-context-versions.js"
 import { releasePrSteps } from "./lib/release-pr-steps.mjs"
-import { releaseFor } from "./release-tag.mjs"
+import { LANE_PACKAGES, releaseFor } from "./release-tag.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, "..")
@@ -66,8 +66,9 @@ function updatePackageJson(filePath, newVersion) {
 }
 
 // The version being replaced. Captured before any file is rewritten so the
-// AI-context sync below can target exactly that string. core, react and
-// vite-plugin release in lockstep on this line.
+// AI-context sync below can target exactly that string. The packages of
+// LANE_PACKAGES (core, react, vite-plugin and mcp) release in lockstep on this
+// line.
 const previousVersion = JSON.parse(
   readFileSync(join(rootDir, "packages/core/package.json"), "utf-8")
 ).version
@@ -76,9 +77,9 @@ console.log(`\n🚀 Starting release process for v${version}...\n`)
 
 // 1. Update library versions
 updatePackageJson("package.json", version)
-updatePackageJson("packages/core/package.json", version)
-updatePackageJson("packages/react/package.json", version)
-updatePackageJson("packages/vite-plugin/package.json", version)
+for (const name of LANE_PACKAGES) {
+  updatePackageJson(`packages/${name}/package.json`, version)
+}
 
 // 2. Regenerate packages/core/src/version.ts from the bumped package.json.
 //    `version:sync` normally runs only as part of core's `build`, which a
@@ -94,11 +95,12 @@ try {
 
 // 3. Sync every AI-context file the check:ai-context gate reads
 console.log("\n🧠 Syncing AI-context versions...")
-const syncedFiles = syncAiContextVersions(rootDir, previousVersion, version, [
-  "@ic-reactor/core",
-  "@ic-reactor/react",
-  "@ic-reactor/vite-plugin",
-])
+const syncedFiles = syncAiContextVersions(
+  rootDir,
+  previousVersion,
+  version,
+  LANE_PACKAGES.map((name) => `@ic-reactor/${name}`)
+)
 syncedFiles.forEach((f) => console.log(`✅ Synced ${f} to ${version}`))
 
 // The Claude Code plugin that installs the consumer skill carries the runtime
@@ -136,9 +138,7 @@ const RELEASE_PATHS = [
   ...RUNTIME_PLUGIN_MANIFESTS,
   "package.json",
   "pnpm-lock.yaml",
-  "packages/core/package.json",
-  "packages/react/package.json",
-  "packages/vite-plugin/package.json",
+  ...LANE_PACKAGES.map((name) => `packages/${name}/package.json`),
   // Regenerated from package.json by core's `version:sync` at build time. It is
   // committed, so without staging it here the repo keeps reporting the previous
   // release's VERSION even though the published artifact is correct.

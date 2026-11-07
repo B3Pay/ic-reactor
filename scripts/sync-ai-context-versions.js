@@ -8,7 +8,7 @@ import {
 /**
  * Rewrite version references belonging to the packages being released.
  *
- * The v4 line has one lockstep lane (core, react, vite-plugin), but a blind
+ * The v4 line has one lockstep lane (core, react, vite-plugin, mcp), but a blind
  * textual replacement of the outgoing version is still unsafe: a version
  * string that happens to equal another package's (a peer, a TypeScript floor)
  * would be rewritten too, and `check-ai-context.js` would not catch it.

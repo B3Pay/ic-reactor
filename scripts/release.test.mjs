@@ -31,6 +31,7 @@ import { delimiter, dirname, join } from "node:path"
 import { after, describe, it } from "node:test"
 import { fileURLToPath } from "node:url"
 import { releasePrSteps } from "./lib/release-pr-steps.mjs"
+import { LANE_PACKAGES } from "./release-tag.mjs"
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(scriptsDir, "..")
@@ -102,7 +103,7 @@ function repository() {
       version: PREVIOUS,
     })
   )
-  for (const pkg of ["core", "react", "vite-plugin"]) {
+  for (const pkg of LANE_PACKAGES) {
     write(
       `packages/${pkg}/package.json`,
       json({ name: `@ic-reactor/${pkg}`, private: true, version: PREVIOUS })
@@ -198,6 +199,7 @@ describe("release.js", () => {
           "packages/core/llms.txt",
           "packages/core/package.json",
           "packages/core/src/version.ts",
+          "packages/mcp/package.json",
           "packages/react/package.json",
           "packages/vite-plugin/package.json",
           "pnpm-lock.yaml",
@@ -326,11 +328,17 @@ describe("releasePrSteps", () => {
   })
 
   it("names the CHANGELOG section the way the released ones are named", () => {
+    // A released section names the packages it released, then the version:
+    // "## core, react, vite-plugin 4.1.1". The lane only grows, so the newest
+    // released section names a start of the lane, and the next one names it
+    // all.
     const changelog = readFileSync(join(repoRoot, "CHANGELOG.md"), "utf8")
-    const [heading, version] =
-      changelog.match(/^## core, react, vite-plugin (4\.\S+)$/m) ?? []
-    assert.ok(heading, "CHANGELOG.md has no released 4.x section")
-    const expected = heading.replace(version, NEXT)
+    const [, names] =
+      changelog.match(/^## ((?:[a-z-]+, )*[a-z-]+) 4\.\S+$/m) ?? []
+    assert.ok(names, "CHANGELOG.md has no released 4.x section")
+    const released = names.split(", ")
+    assert.deepEqual(released, LANE_PACKAGES.slice(0, released.length))
+    const expected = `## ${LANE_PACKAGES.join(", ")} ${NEXT}`
     assert.ok(
       steps.includes(`"${expected}"`),
       `expected "${expected}" in:\n${steps}`

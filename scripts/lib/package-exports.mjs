@@ -1,7 +1,7 @@
 /**
  * A package's public entry points, read from its manifest's `exports` the one
  * way `check-exports.mjs`, `verify-package-artifacts.mjs` and
- * `verify-typescript-floor.js` share.
+ * `verify-typescript-floor.js` share, and the commands its `bin` installs.
  */
 
 /**
@@ -40,4 +40,15 @@ export function publicSubpaths(manifest) {
 /** The specifier that imports `subpath` of the package `name`. */
 export function specifierOf(name, subpath) {
   return subpath === "." ? name : `${name}/${subpath.replace(/^\.\//, "")}`
+}
+
+/**
+ * The commands a manifest's `bin` installs. A string `bin` installs one,
+ * named after the package without its scope, as npm names it.
+ */
+export function commandsOf(manifest) {
+  const { bin, name = "" } = manifest
+  if (typeof bin === "string") return [name.replace(/^@[^/]+\//, "")]
+  if (bin === null || typeof bin !== "object") return []
+  return Object.keys(bin)
 }
