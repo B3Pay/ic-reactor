@@ -18,7 +18,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### Examples (not published)
+
+- The Next.js SSR example's balance route reads only the ledgers of its
+  `src/ledgers.ts`, named by label or canister id. Any other canister is a 400
+  before a client is built. It read whatever canister the URL named, so anyone
+  could use the server to call any canister's `icrc1_balance_of`,
+  `icrc1_decimals` and `icrc1_symbol`. An app that copied the route keeps its
+  own list of ledgers next to it.
 
 ## core, react, vite-plugin, mcp 4.2.0
 

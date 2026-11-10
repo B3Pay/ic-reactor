@@ -20,7 +20,7 @@ running server.
 | 4   | Renders with JavaScript disabled                                            | `scripts/smoke.ts`                                                                   | turn JavaScript off and reload `/`                                                    |
 | 5   | Streaming with Suspense: certified balances arrive after the page           | `src/app/account/CertifiedBalances.tsx`                                              | `/account?owner=rkp4c-7iaaa-aaaaa-aaaca-cai`                                          |
 | 6   | Progressive enhancement: a GET form, validated on the server                | `src/app/account/page.tsx`, `src/server/parse-owner.ts`                              | look up with JavaScript on and off; `/account?owner=not-a-principal`                  |
-| 7   | Route Handler: a client per request, amounts as text, kind as HTTP status   | `src/app/api/balance/[ledger]/[principal]/route.ts`, `src/server/balance-route.ts`   | `/api/balance/ckBTC/rkp4c-7iaaa-aaaaa-aaaca-cai`; a bad principal is a 400            |
+| 7   | Route Handler: a client per request, amounts as text, kind as HTTP status   | `src/app/api/balance/[ledger]/[principal]/route.ts`, `src/server/balance-route.ts`   | `/api/balance/ckBTC/rkp4c-7iaaa-aaaaa-aaaca-cai`; a bad principal or ledger is a 400  |
 | 8   | Errors on the server: one section fails with its `kind`, not the page       | `src/components/LedgerError.tsx`, `src/server/error-summary.ts`                      | `/`: the "NNS governance (not a ledger)" section                                      |
 | 9   | Sign in after hydration: the new caller's keys, nothing anonymous reused    | `src/components/MyBalances.tsx`, `src/components/LedgerCard.tsx`                     | sign in with Internet Identity: "My balances" loads, each card reads again as you     |
 | 10  | A reload while signed in: hydrated from the server's data, then read as you | `src/app/providers.tsx`, `src/components/LedgerCard.tsx`                             | sign in, then reload `/`: no hydration error, then each card reads again as you       |
@@ -39,12 +39,18 @@ To see scenario 4, turn JavaScript off (Chrome DevTools: the command menu,
 "Disable JavaScript") and reload `/` or `/account?owner=...`: every value is
 there, and the certified section shows its fallback, which says why.
 
-The route of scenario 7 answers a failure with a status that says whether
-asking again can help. A canister id that names no canister,
-`/api/balance/2y4s5-zaaaa-aaad7-7777q-cai/rkp4c-7iaaa-aaaaa-aaaca-cai`, is a
-502 with `kind: "not_delivered"`, `httpStatus: 400` and
-`code: "canister_not_found"`: the IC refused it for good. A rate limit or a
-5xx from the IC is a 503.
+The route of scenario 7 reads only the ledgers of `src/ledgers.ts`, named by
+label or canister id. Any other canister,
+`/api/balance/rrkah-fqaaa-aaaaa-aaaaq-cai/rkp4c-7iaaa-aaaaa-aaaca-cai` say, is
+a 400 before a client is built: a route that called whatever canister the URL
+names would let anyone send calls to any canister through your server. Keep
+that list when you copy the route.
+
+It answers a failure from the IC with a status that says whether asking again
+can help. A rejection, or a refusal that stands (any HTTP 4xx but 408 and
+429, such as the 400 with `code: "canister_not_found"` that mainnet answers
+for a canister id that names no canister), is a 502: the IC refused it for
+good. A rate limit or a 5xx from the IC is a 503.
 
 The pages read mainnet when a request comes in, never during `next build`
 (`/` calls `connection()`; `/account` and the route read their parameters), so

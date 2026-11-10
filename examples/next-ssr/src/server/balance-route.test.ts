@@ -1,6 +1,8 @@
 // Scenario 7: the balance route's handler, called as Next calls it, over a
 // test client per request.
+import { createTestClient } from "@ic-reactor/core/testing"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { actor, type Actor } from "@/canisters/icrc1"
 import { LEDGERS, NOT_A_LEDGER, NO_CANISTER, SAMPLE_OWNER } from "@/ledgers"
 import {
   mockLedgers,
@@ -56,7 +58,7 @@ describe("GET /api/balance/[ledger]/[principal]", () => {
     expect(newClient).toHaveBeenCalledTimes(2)
   })
 
-  it("takes a label in any case, or a canister id", async () => {
+  it("takes a label in any case, or a listed ledger's canister id", async () => {
     const { GET } = handler()
 
     expect((await get(GET, "cketh", SAMPLE_OWNER)).body).toMatchObject({
@@ -82,10 +84,40 @@ describe("GET /api/balance/[ledger]/[principal]", () => {
     expect(newClient).not.toHaveBeenCalled()
   })
 
-  it("maps a rejected read to 502, with the kind and reject code", async () => {
-    const { GET } = handler()
+  it.each([
+    ["a canister that is not a ledger", NOT_A_LEDGER.id],
+    ["a canister id that names no canister", NO_CANISTER],
+    ["the cycles minting canister", SAMPLE_OWNER],
+    ["the management canister", "aaaaa-aa"],
+  ])(
+    "answers 400 for %s, which is none of the app's ledgers, before building a client",
+    async (_, id) => {
+      // The route reads only the ledgers of src/ledgers.ts. One that called
+      // whatever canister the URL names would let anyone send calls to any
+      // canister through the server.
+      const { GET, newClient } = handler()
 
-    const { status, body } = await get(GET, NOT_A_LEDGER.id, SAMPLE_OWNER)
+      const { status, body } = await get(GET, id, SAMPLE_OWNER)
+
+      expect(status).toBe(400)
+      expect(body).toMatchObject({
+        error: {
+          kind: "invalid_args",
+          message: `${id} is none of this app's ledgers: ICP, ckBTC, ckETH, or the canister id of one.`,
+        },
+      })
+      expect(newClient).not.toHaveBeenCalled()
+    }
+  )
+
+  it("maps a rejected read to 502, with the kind and reject code", async () => {
+    // The ICP ledger traps on every method here (reject code 5), as a
+    // canister that is not a ledger does.
+    const { GET } = handler((test) =>
+      test.mock<Actor>(actor, LEDGERS[0]!.id, {})
+    )
+
+    const { status, body } = await get(GET, "ICP", SAMPLE_OWNER)
 
     expect(status).toBe(502)
     expect(body).toMatchObject({ error: { kind: "rejected", rejectCode: 5 } })
@@ -133,15 +165,23 @@ describe("GET /api/balance/[ledger]/[principal]", () => {
     expect(tests[0] && requestsFor(tests[0], "icrc1_balance_of").length).toBe(1)
   })
 
-  it("maps a canister that does not exist to 502, with code canister_not_found", async () => {
-    // For this id, outside every subnet's range, mainnet answers HTTP 400
-    // `canister_not_found` (`kind: "not_delivered"`); the fake replica rejects
-    // with code 3 and IC0301 (`kind: "rejected"`), as a mainnet replica does
-    // for an id inside its range that holds no canister. All say
-    // `code: "canister_not_found"`, and all are a 502.
-    const { GET } = handler()
+  it("maps a listed ledger the IC has no canister for to 502, with code canister_not_found", async () => {
+    // A ledger listed with an id that names no canister: here, a replica
+    // that runs none of the ledgers. For an id outside every subnet's range,
+    // mainnet answers HTTP 400 `canister_not_found` (`kind:
+    // "not_delivered"`); the fake replica rejects with code 3 and IC0301
+    // (`kind: "rejected"`), as a mainnet replica does for an id inside its
+    // range that holds no canister. All say `code: "canister_not_found"`, and
+    // all are a 502.
+    const test = createTestClient({
+      network: "ic",
+      identity: 1,
+      signedIn: false,
+    })
+    tests.push(test)
+    const GET = balanceRoute(() => test.client)
 
-    const { status, body } = await get(GET, NO_CANISTER, SAMPLE_OWNER)
+    const { status, body } = await get(GET, "ckETH", SAMPLE_OWNER)
 
     expect(status).toBe(502)
     expect(body).toMatchObject({
