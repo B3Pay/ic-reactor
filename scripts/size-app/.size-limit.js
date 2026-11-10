@@ -46,7 +46,7 @@ export default [
     // With #976 on top of v4: measured 93,775 B, so the limit moved from 93,840 B to 93.86 kB.
     // With #949 on top of v4: measured 93,777 B, so the limit moved from 93,860 B to 93.87 kB.
     // With #913 on top of v4: measured 93,924 B, so the limit moved from 93,870 B to 94.07 kB.
-    // With client.time() refusing a time five minutes before an earlier one: measured 94,097 B (94,031 B before, +66 B), so the limit moved from 94,070 B to 94.15 kB.
+    // With client.time() refusing a time five minutes before an earlier one (#1066): measured 94,097 B (94,031 B before, +66 B), so the limit moved from 94,070 B to 94.15 kB.
     limit: "94.15 kB",
     gzip: true,
   },
@@ -84,7 +84,7 @@ export default [
     // With #976 on top of v4: measured 95,091 B, so the limit moved from 95,150 B to 95.18 kB.
     // With #949 on top of v4: measured 95,092 B, so the limit moved from 95,180 B to 95.19 kB.
     // With #913 on top of v4: measured 95,239 B, so the limit moved from 95,190 B to 95.38 kB.
-    // With client.time() refusing a time five minutes before an earlier one: measured 95,387 B (95,322 B before, +65 B), so the limit moved from 95,380 B to 95.44 kB.
+    // With client.time() refusing a time five minutes before an earlier one (#1066): measured 95,387 B (95,322 B before, +65 B), so the limit moved from 95,380 B to 95.44 kB.
     limit: "95.44 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
