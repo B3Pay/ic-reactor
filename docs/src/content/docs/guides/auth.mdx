@@ -1,6 +1,6 @@
 ---
 title: "Auth"
-description: "Signing users in with @icp-sdk/auth 10 or any AuthLike, useAuth, caller changes, and identity attributes"
+description: "Signing users in with @icp-sdk/auth 11 or any AuthLike, useAuth, caller changes, and identity attributes"
 ---
 
 import { Aside } from "@astrojs/starlight/components"
@@ -17,19 +17,23 @@ Query keys carry the caller. When the user signs in or out, the client moves
 every read to the new caller's keys, and nothing read for one principal shows
 under another.
 
-## Internet Identity with @icp-sdk/auth 10
+## Internet Identity with @icp-sdk/auth 11
 
-The `AuthClient` of `@icp-sdk/auth` 10 is an `AuthLike` as it is. The
-supported range is `^10.0.1`, and a weekly CI job checks the newest release
+The `AuthClient` of `@icp-sdk/auth` 11 is an `AuthLike` as it is. The
+supported range is `^11.2.0`, and a weekly CI job checks the newest release
 against `AuthLike`. A later release whose session has a state the client does
 not know still compiles: the client calls anonymously in that state, and
-`useAuth()` reads it as `"anonymous"`. npm's newest release is 11, which is
-outside that range, so name the major version when you install it, and pass a
-factory that builds one:
+`useAuth()` reads it as `"anonymous"`. Name the major version when you install
+it, so that a later major is a step you take, and pass a factory that builds
+one:
 
 ```sh
-npm install @icp-sdk/auth@^10
+npm install @icp-sdk/auth@^11.2.0
 ```
+
+An app on `@icp-sdk/auth` 10 moves to 11 with no change to its ic-reactor
+code. The two have the same sessions; 11's breaking change is how an
+`ssoDomain` is checked (`getSsoStatus()` replaces `isValidSsoDomain`).
 
 ```ts
 import { createClient } from "@ic-reactor/core"
@@ -52,7 +56,9 @@ You write no adapter. The client does the rest:
 - It sets a timer for the session's end, `getStatus().expiresAtMs`.
   `AuthClient`'s status turns `"expired"` by the clock and tells nobody, so
   the client tells its listeners itself: `useAuth()` renders `"expired"` when
-  the session ends, with no user activity needed.
+  the session ends, with no user activity needed. Internet Identity can also
+  end a session before then, and `AuthClient` tells its listeners when it
+  does (see [Sessions that end early](#sessions-that-end-early)).
 - It forwards `signIn(options)` and `signOut(options)` to it. Two `signIn()`
   calls with the same options in one synchronous run reach it once (see
   [Sign-in options](#sign-in-options)).
@@ -86,7 +92,7 @@ network the client calls:
   client's own agents, and its `fetch`, when you gave one. `AuthClient` makes
   its mint and revoke calls with them.
 - `identityProvider` is the Internet Identity to sign in with, as the two
-  values `AuthClient` 10 takes (the page a person signs in on and the canister
+  values `AuthClient` 11 takes (the page a person signs in on and the canister
   that mints their delegations), or absent, which `AuthClient` reads as
   mainnet's.
 
@@ -164,9 +170,10 @@ handed `http://id.ai.localhost:4943/authorize`, a page that does not load,
 and nothing warns. Name the Internet Identity your dfx project deploys, as
 above: `authorizeUrl` is its sign-in page on dfx's gateway,
 `http://<the id of the canister that serves it>.localhost:4943/authorize`,
-and `canisterId` the canister that mints its delegations. It must be a release
-of Internet Identity that answers the `ii_session_delegation` request
-`@icp-sdk/auth` 10 signs in with.
+and `canisterId` the canister that mints its delegations. It must be
+Internet Identity release-2026-09-11 or later, which answers the
+`ii_session_delegation` request `@icp-sdk/auth` 11 signs in with and mints the
+session's delegations.
 
 ### Sign-in options
 
@@ -217,6 +224,42 @@ one-click sign-in and `transport: "redirect"`. They belong to
 `@icp-sdk/auth`, not to this library: [Internet Identity 2.0](#internet-identity-20)
 lists them. One of them, `transport: "redirect"`, changes how the page that
 signs in is written: see [Redirect sign-in](#redirect-sign-in).
+
+### Sessions that end early
+
+`AuthClient` signs calls with short-lived delegations that it asks the
+Internet Identity canister for while the session lasts, and replaces as they
+age. So a session can end before `expiresAtMs`:
+
+- A sign-out ends it at Internet Identity, and in every tab and sibling
+  subdomain that shares the sign-in. `useAuth()` renders `"anonymous"` in the
+  app's other tabs at once, and on a sibling subdomain when its page is next
+  shown or focused, if not before.
+- Internet Identity ends it once it has gone unused for `maxTimeToIdle`, or
+  when the user signs the device out of every app from Devices in its
+  settings. `AuthClient` finds out the next time it asks for a delegation,
+  which it does as the one it holds runs out (for a call, or when the tab
+  comes back to the foreground or the user interacts with the page), and its
+  status turns `"expired"`.
+
+Either way, the client drops the user's agent, removes their reads from the
+cache and tells its listeners. A call that needed a new delegation from an
+ended session is refused before it is sent, with `kind: "not_delivered"`,
+`mayHaveExecuted: false` and the auth's `SessionGoneError` as its `cause`. A
+copy of a delegation that was already issued stops working when it runs out,
+within 5 minutes.
+
+By default, Internet Identity lets a session last up to 30 days and ends it
+after 7 days unused. `maxTimeToLive` and `maxTimeToIdle` ask for less, as
+`EightHourSession` above does, which suits an app that moves funds.
+
+`AuthClient`'s `signOut()` ends the session at Internet Identity and signs
+this device out together. When it cannot end the session there, offline for
+example, it rejects once the device is signed out, and does not go to
+`returnTo`. The device is signed out all the same, and the client has removed
+the user's reads. The session itself lasts until it runs out or idles out, or
+until the user ends it from Internet Identity's settings: tell the user that,
+rather than that the sign-out failed.
 
 ### Redirect sign-in
 
@@ -672,7 +715,7 @@ one) as the user's, not `useAuth()`'s principal, which stays anonymous. A wallet
 `BrowserExtensionTransport` from `@icp-sdk/signer/extension` instead.
 `@icp-sdk/signer` peers only `@icp-sdk/core` 6, so it installs beside the
 client. NFID IdentityKit 2.0 does not: it peers `@icp-sdk/auth` 5, and npm
-refuses it beside the `@icp-sdk/auth` 10 the client uses.
+refuses it beside the `@icp-sdk/auth` 11 the client uses.
 
 ## AuthState
 
@@ -699,7 +742,7 @@ because the client does not expose its auth.
 `expiresAt` is when the session ends, in milliseconds since the epoch (as
 `Date.now()` counts; `new Date(expiresAt)` for a date), so you can show
 "signed in until". It is there only while `status` is `"signed-in"` through an
-auth whose `getStatus()` carries `expiresAtMs`, as `AuthClient` 10's does.
+auth whose `getStatus()` carries `expiresAtMs`, as `AuthClient` 11's does.
 When that time passes, the status turns `"expired"` and listeners are told.
 
 A client built with `identity` reports `"signed-in"` with that identity's
@@ -743,8 +786,9 @@ export function SessionButton() {
 
 - A component that calls it renders once for each change of `status`,
   `principal` or `expiresAt`, and never otherwise. A renewed delegation does
-  not render it. A session that ends by the clock renders it with
-  `"expired"` when it ends.
+  not render it. A session that runs out, or that Internet Identity ends,
+  renders it with `"expired"`, and a sign-out in another tab with
+  `"anonymous"`.
 - The object it returns is the same until one of them changes, so it is safe
   in a dependency array or as a prop of a memoized child.
 - It is `"anonymous"` on a server and during a hydrating render, even when the
@@ -763,7 +807,10 @@ export function SessionButton() {
 - with whatever the auth rejects with, never a `ReactorError`. `AuthClient`
   rejects when the user closes Internet Identity's window or the browser
   blocks it, and rejects a sign-in that a later sign-in or sign-out took over
-  from with a `SupersededError`, which you can usually ignore.
+  from with a `SupersededError`, which you can usually ignore. Its
+  `signOut()` rejects, once it has signed the device out, when it could not
+  end the session at Internet Identity (see
+  [Sessions that end early](#sessions-that-end-early)).
 
 Always catch them, as the examples do.
 

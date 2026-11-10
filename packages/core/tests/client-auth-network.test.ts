@@ -81,7 +81,7 @@ const cookieWithProvider = (
 ) => icEnvCookie({ ...extra, INTERNET_IDENTITY_PROVIDER: provider })
 
 /**
- * The provider `@icp-sdk/auth` 10's `AuthClient` constructor signs in with:
+ * The provider `@icp-sdk/auth` 11's `AuthClient` constructor signs in with:
  * `options.identityProvider`, read as it reads it, or mainnet's.
  */
 const providerOf = (options: AuthNetwork) =>

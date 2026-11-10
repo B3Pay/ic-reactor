@@ -77,7 +77,7 @@
   },
   "devDependencies": {
     "@meantjs/schema": "0.6.0",
-    "@icp-sdk/auth": "^10.0.1",
+    "@icp-sdk/auth": "^11.2.0",
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
     "@size-limit/preset-small-lib": "^13.0.3",

@@ -2,7 +2,7 @@ name: Auth on the latest @icp-sdk/auth
 
 # `auth: (network) => new AuthClient(network)` compiles only while
 # @icp-sdk/auth's AuthClient is an AuthLike. Core's dev dependency and the
-# examples pin @icp-sdk/auth ^10, so CI never sees a release outside that
+# examples pin @icp-sdk/auth ^11, so CI never sees a release outside that
 # range. This installs the newest release npm calls `latest`, type-checks core
 # (whose client.test-d.ts asserts AuthClient extends AuthLike) and runs the
 # core and react tests against it. Weekly, because @icp-sdk/auth releases with

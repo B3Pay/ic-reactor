@@ -36,7 +36,7 @@ security fixes only, from the `v3` branch, until 90 days after the 4.0 release.
 - **One error type.** Every rejection is a `ReactorError` with a `kind` and a
   `mayHaveExecuted` flag. See [Errors](/v4/guides/errors/).
 - **Auth is an interface.** The client accepts any `AuthLike`, and
-  `@icp-sdk/auth` 10's `AuthClient` is one as it is. See [Auth](/v4/guides/auth/).
+  `@icp-sdk/auth` 11's `AuthClient` is one as it is. See [Auth](/v4/guides/auth/).
 - **Fewer packages.** `@ic-reactor/parser`, `@ic-reactor/codegen` and
   `@ic-reactor/cli` are replaced by `meant gen`. `@ic-reactor/candid`
   stays at 3.x. The Vite plugin, `icReactor` in `@ic-reactor/vite-plugin`, is
@@ -76,7 +76,7 @@ the common ones as before and after.
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ClientManager`                      | `createClient({ network, identity \| auth })`                                                                                                                                                                                                                       |
 | `formatTokenAmount`                  | `formatUnits(value, decimals, { maxFractionDigits })`                                                                                                                                                                                                               |
-| `AuthenticationManager`              | `auth: (network) => new AuthClient(network)`, with `AuthClient` from `@icp-sdk/auth/client` (version 10), and `useAuth()` to read it                                                                                                                                |
+| `AuthenticationManager`              | `auth: (network) => new AuthClient(network)`, with `AuthClient` from `@icp-sdk/auth/client` (version 11), and `useAuth()` to read it                                                                                                                                |
 | `createAuthHooks`                    | `useAuth()`                                                                                                                                                                                                                                                         |
 | `createMutation`                     | `useMutation(client.mutationOptions(canister, method))`                                                                                                                                                                                                             |
 | `createQuery`                        | `useQuery(client.queryOptions(canister, method, vars))`; outside React, `client.queryClient.fetchQuery(client.queryOptions(...))`                                                                                                                                   |
@@ -276,7 +276,7 @@ signed-in user reloads. See [SSR and hydration](/v4/guides/ssr/).
 3.x built an `AuthenticationManager` and turned it into hooks, or got them from
 `defineReactor`. In 4, pass an `auth` factory to `createClient`. The client
 calls it once, in a browser, the first time something needs it. `AuthClient`
-from `@icp-sdk/auth` 10 fits as it is, with no adapter. Read the session with
+from `@icp-sdk/auth` 11 fits as it is, with no adapter. Read the session with
 `useAuth`.
 
 ```tsx nocheck
@@ -453,7 +453,7 @@ to do about each.
 ### Recipe: identity attributes
 
 3.x had `identityAttributeKeys`, a manager and hooks around signed identity
-attributes. In 4 you use `@icp-sdk/auth` 10 and `@icp-sdk/core` directly:
+attributes. In 4 you use `@icp-sdk/auth` 11 and `@icp-sdk/core` directly:
 
 - keep your own reference to the `AuthClient` the client's factory builds;
 - start `signIn()` and `requestAttributes({ keys, nonce })` together, with a
