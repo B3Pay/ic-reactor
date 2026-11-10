@@ -29,6 +29,8 @@ afterEach(() => {
 
 /** 2001-09-09T01:46:40.123456789Z: years from the host's clock, with nanoseconds. */
 const IC_TIME = 1_000_000_000_123_456_789n
+/** Five minutes in nanoseconds: how far back a later time may be. */
+const FIVE_MINUTES = 300_000_000_000n
 
 const replicaAt = (now: bigint = IC_TIME) =>
   createFakeReplica({
@@ -72,6 +74,54 @@ describe("client.time()", () => {
       method: "read_state",
       canisterId: SHAPES,
     })
+  })
+
+  it("rejects not_delivered for a time more than five minutes before one it read already", async () => {
+    // A node can answer with an old certificate, which verifies like a new
+    // one. The fake replica's clock goes back here, as a replayed
+    // certificate's time does.
+    let now = IC_TIME
+    const replica = createFakeReplica({
+      canisters: {
+        [SHAPES]: serve<shapes.Actor>(shapes.actor, { one: ([n]) => n + 1n }),
+      },
+      now: () => now,
+    })
+    const client = clientAs(replica, "anonymous")
+    const canister = shapesOf(client)
+    await expect(client.time(canister)).resolves.toBe(IC_TIME)
+
+    now = IC_TIME - FIVE_MINUTES - 1n
+    await expect(client.time(canister)).rejects.toMatchObject({
+      kind: "not_delivered",
+      mayHaveExecuted: false,
+      method: "read_state",
+      canisterId: SHAPES,
+      message: expect.stringContaining(
+        "more than five minutes before one this client read already"
+      ),
+    })
+    // Up to five minutes back is a time: two subnets, or two nodes of one,
+    // are seconds apart. Nor did the refused time lower the bound, and an
+    // earlier time accepted does not lower it either.
+    now = IC_TIME - 60_000_000_000n
+    await expect(client.time(canister)).resolves.toBe(now)
+    now = IC_TIME - FIVE_MINUTES
+    await expect(client.time(canister)).resolves.toBe(now)
+    now = IC_TIME - FIVE_MINUTES - 1n
+    await expect(client.time(canister)).rejects.toMatchObject({
+      kind: "not_delivered",
+    })
+    // The bound follows the latest time read.
+    now = IC_TIME + 2n * FIVE_MINUTES
+    await expect(client.time(canister)).resolves.toBe(now)
+    now = IC_TIME + FIVE_MINUTES - 1n
+    await expect(client.time(canister)).rejects.toMatchObject({
+      kind: "not_delivered",
+    })
+    // Each client has its own: a new one has read no time yet.
+    const fresh = clientAs(replica, "anonymous")
+    await expect(fresh.time(shapesOf(fresh))).resolves.toBe(now)
   })
 
   it("routes by a { name } the cookie resolves, and refuses one it does not, sending nothing", async () => {

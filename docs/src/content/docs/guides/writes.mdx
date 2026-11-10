@@ -222,8 +222,11 @@ sender at most once. The ICRC-1 ledger does, for a transfer with
 `created_at_time` set: the second one is answered `Duplicate`, which means the
 first went through. Stamp `created_at_time` with `await client.time(ledger)`:
 the IC's time in nanoseconds, from a certificate verified against the
-network's root key, rather than the host's clock. Its request is signed with
-an ingress expiry taken from the host's clock, as every request is: a host
+network's root key, rather than the host's clock. A node can answer with an
+old certificate, which still verifies, so a time more than five minutes
+before one the client read already rejects `not_delivered`, as a certificate
+that does not verify does. Its request is signed with an ingress expiry
+taken from the host's clock, as every request is: a host
 clock so far off that the IC refuses its requests cannot read the time
 either, and no call works until that clock is fixed. That time moves about once a second, so
 two transfers stamped in the same second need their own `memo` each, or the
