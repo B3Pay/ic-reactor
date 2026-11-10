@@ -211,9 +211,10 @@ at once, and one on a sibling subdomain that shares the sign-in when the page
 is next shown or focused; Internet Identity ending it (after `maxTimeToIdle`
 unused, or the user signing the device out) reads `"expired"` once the auth
 next asks for a delegation, and a call that needed one rejects
-`not_delivered`. A copy of a delegation already issued stops working within 5
-minutes of the end. By default a session lasts up to 30 days and ends after 7
-idle days; `maxTimeToLive` and `maxTimeToIdle` shorten it.
+`not_delivered` (an update already sent whose answer needed one:
+`outcome_unknown`). A copy of a delegation already issued stops working
+within 5 minutes of the end. By default a session lasts up to 30 days and
+ends after 7 idle days; `maxTimeToLive` and `maxTimeToIdle` shorten it.
 
 The client keeps one agent per principal: a call goes out as the principal
 current when it was made, or not at all.

@@ -245,9 +245,12 @@ age. So a session can end before `expiresAtMs`:
 Either way, the client drops the user's agent, removes their reads from the
 cache and tells its listeners. A call that needed a new delegation from an
 ended session is refused before it is sent, with `kind: "not_delivered"`,
-`mayHaveExecuted: false` and the auth's `SessionGoneError` as its `cause`. A
-copy of a delegation that was already issued stops working when it runs out,
-within 5 minutes.
+`mayHaveExecuted: false` and the auth's `SessionGoneError` as its `cause`. An
+update the IC had already taken, whose answer needed a new delegation to read,
+rejects `outcome_unknown` with `mayHaveExecuted: true` instead (see
+[A write with an unknown outcome](/v4/guides/errors/#a-write-with-an-unknown-outcome)).
+A copy of a delegation that was already issued stops working when it runs
+out, within 5 minutes.
 
 By default, Internet Identity lets a session last up to 30 days and ends it
 after 7 days unused. `maxTimeToLive` and `maxTimeToIdle` ask for less, as

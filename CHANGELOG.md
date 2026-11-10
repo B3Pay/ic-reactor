@@ -48,7 +48,8 @@ release does only in a minor.
   asks for a delegation, and `useAuth()` renders `"expired"`. Either way the
   client drops the user's agent and reads, and a call that needed a new
   delegation is refused before it is sent, as `not_delivered` with
-  `mayHaveExecuted: false`. The section gives Internet Identity's defaults (a
+  `mayHaveExecuted: false` (an update already sent whose answer needed one
+  reads `outcome_unknown`). The section gives Internet Identity's defaults (a
   session lasts up to 30 days and ends after 7 days unused), and says that a
   copy of a delegation stops working within 5 minutes. The consumer guide
   (`packages/core/llms.txt`) and the react README say the same.
