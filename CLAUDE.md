@@ -28,10 +28,10 @@ exactly to published stable releases.
 
 | Package                   | Directory              | State on `main`                                                                                                                |
 | ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `@ic-reactor/core`        | `packages/core`        | `4.2.0`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient` |
-| `@ic-reactor/react`       | `packages/react`       | `4.2.0`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                              |
-| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.2.0`; generates the module with `@meantjs/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy            |
-| `@ic-reactor/mcp`         | `packages/mcp`         | `4.2.0`; the `ic-reactor-mcp` command, an MCP server for any canister that sends an update only after the person approves it   |
+| `@ic-reactor/core`        | `packages/core`        | `4.3.0`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient` |
+| `@ic-reactor/react`       | `packages/react`       | `4.3.0`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                              |
+| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.3.0`; generates the module with `@meantjs/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy            |
+| `@ic-reactor/mcp`         | `packages/mcp`         | `4.3.0`; the `ic-reactor-mcp` command, an MCP server for any canister that sends an update only after the person approves it   |
 
 Not in this tree: `@ic-reactor/parser`, `@ic-reactor/codegen` and
 `@ic-reactor/cli` (replaced by `meant gen`), and `@ic-reactor/candid` (frozen at

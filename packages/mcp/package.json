@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/mcp",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "description": "An MCP server that gives an AI agent any Internet Computer canister's methods as tools: queries run at once, and an update is sent only after a person approves the exact call in the MCP client",
   "type": "module",
   "engines": {
