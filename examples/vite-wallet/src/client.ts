@@ -12,7 +12,7 @@
 // from `ReactorProvider`'s factory, so the provider owns the client: one per
 // mounted tree, which is one per tab.
 //
-// Scenario 2: Internet Identity, through `@icp-sdk/auth` 10's `AuthClient`,
+// Scenario 2: Internet Identity, through `@icp-sdk/auth` 11's `AuthClient`,
 // an `AuthLike` as it is. The factory is handed the client's network under
 // AuthClient's own option names, so `new AuthClient(network)` is all it takes:
 //

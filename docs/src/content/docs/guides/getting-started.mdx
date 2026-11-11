@@ -57,7 +57,7 @@ Identity sign-in, add `@icp-sdk/auth`:
 
 ```sh
 npm install @ic-reactor/react @tanstack/react-query
-npm install @icp-sdk/auth
+npm install @icp-sdk/auth@^11.2.0
 ```
 
 Install `@tanstack/query-core` at the exact version your
@@ -571,7 +571,7 @@ loaded yet". With the pattern above:
   not redirect on sign-in: it cannot know.
 - **On the first render inside `App`**, the provider builds the client, and
   the first `useAuth()` or `useClient()` builds the auth and reads its state.
-  `AuthClient` of `@icp-sdk/auth` 10 reads its stored session synchronously
+  `AuthClient` of `@icp-sdk/auth` 11 reads its stored session synchronously
   when it is built, so a returning user is `"signed-in"` on that first render,
   never `"anonymous"` first. The status falls to `"anonymous"` later only if
   the stored session turns out unusable, as on any sign-out.

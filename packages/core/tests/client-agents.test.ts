@@ -216,7 +216,7 @@ describe("the agent of a principal", () => {
     const oldQuery = vi.spyOn(old, "query")
     const oldCall = vi.spyOn(old, "call")
 
-    // An `@icp-sdk/auth` 10 AuthClient rotates its delegation without a
+    // An `@icp-sdk/auth` 11 AuthClient rotates its delegation without a
     // notification: only the identity object it hands out changes.
     held = second
     const renewed = await agentFor(client, principal)

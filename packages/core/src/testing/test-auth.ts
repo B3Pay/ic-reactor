@@ -1,5 +1,5 @@
 /**
- * A sign-in a test controls: the same surface an `@icp-sdk/auth` 10
+ * A sign-in a test controls: the same surface an `@icp-sdk/auth` 11
  * `AuthClient` has, driven by calls instead of an identity provider.
  */
 import { AnonymousIdentity, type Identity } from "@icp-sdk/core/agent"
@@ -8,7 +8,7 @@ import type { Principal } from "@icp-sdk/core/principal"
 
 /**
  * Who is signed in, as `AuthClient.getStatus()` reports it: the four states
- * of `@icp-sdk/auth` 10's `SessionStatus`.
+ * of `@icp-sdk/auth` 11's `SessionStatus`.
  *
  * - `signed-in`: calls as `principal` are accepted.
  * - `expired`: `principal`'s session has ended.
@@ -204,7 +204,7 @@ const signedInAs = (account: Identity): TestAuthStatus => ({
 })
 
 /**
- * Creates a sign-in a test controls, shaped like `@icp-sdk/auth` 10's
+ * Creates a sign-in a test controls, shaped like `@icp-sdk/auth` 11's
  * `AuthClient`: `getPrincipal()`, `getStatus()` (all four states),
  * `getIdentity()`, `subscribe()`, `signIn()`, `signOut()` and `dispose()`. It
  * can be handed to anything that takes one, with no adapter.
