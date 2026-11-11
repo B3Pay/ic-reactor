@@ -547,8 +547,8 @@
     "testName": "gives up as outcome_unknown when polls are answered HTTP 429",
     "why": "an update answered 202 is not recorded as accepted, so polls answered 429 classify it not_delivered and the update is sent again, running it up to three times",
     "file": "src/call.ts",
-    "search": "    accepted = true\n",
-    "replace": ""
+    "search": "      throw error\n    }\n    accepted = true\n",
+    "replace": "      throw error\n    }\n"
   },
   {
     "id": "ir2t-cancelled-read-keeps-polling",
@@ -584,8 +584,8 @@
       },
       {
         "file": "src/call.ts",
-        "search": "    const submitted = await untilAborted(",
-        "replace": "    const submitted = await ((sent: Promise<SubmitResponse>, _signal: unknown) => sent)("
+        "search": "      submitted = await untilAborted(\n        agent.call(call.canisterId, options),",
+        "replace": "      submitted = await ((sent: Promise<SubmitResponse>, _signal: unknown) => sent)(\n        agent.call(call.canisterId, options),"
       }
     ]
   },
@@ -1069,6 +1069,16 @@
         "replace": "    isRetryable(error)"
       }
     ]
+  },
+  {
+    "id": "1036-lost-call-sent-again-signed-anew",
+    "package": "core",
+    "test": "tests/traps/update-not-resent.test.ts",
+    "testName": "is never re-sent after its reply was lost",
+    "why": "an update whose call got no answer sent again as a request signed anew (#1036): a new request id, which the IC runs as a second update, so the ledger books the transfer twice",
+    "file": "src/call.ts",
+    "search": "agent.call(call.canisterId, options, same)",
+    "replace": "agent.call(call.canisterId, options)"
   },
   {
     "id": "ir9-gateway-error-resent",
@@ -5068,8 +5078,8 @@
     "testName": "a read whose request gets no HTTP answer",
     "why": "a replicated call's request awaited without its signal (a certified read, or an update read with { update: \"idempotent\" }), so one whose request gets no HTTP answer keeps waiting after TanStack cancels it",
     "file": "src/call.ts",
-    "search": "        ...(send === \"oneway\" ? { callSync: false } : {}),\n      }),\n      call.signal\n    )",
-    "replace": "        ...(send === \"oneway\" ? { callSync: false } : {}),\n      }),\n      undefined\n    )"
+    "search": "        agent.call(call.canisterId, options),\n        call.signal\n      )",
+    "replace": "        agent.call(call.canisterId, options),\n        undefined\n      )"
   },
   {
     "id": "875-query-waits-for-http-answer",
@@ -5088,8 +5098,8 @@
     "testName": "ends the wait for a certified read's poll once its signal aborts",
     "why": "a poll's read_state awaited without the signal, so a read whose poll gets no HTTP answer keeps waiting after TanStack cancels it",
     "file": "src/call.ts",
-    "search": "          strategy,\n        }),\n        signal\n      )",
-    "replace": "          strategy,\n        }),\n        undefined\n      )"
+    "search": "{ canisterId: effective }, requestId, {\n          strategy,\n        }),\n        signal\n      )",
+    "replace": "{ canisterId: effective }, requestId, {\n          strategy,\n        }),\n        undefined\n      )"
   },
   {
     "id": "899-mock-reply-unbudgeted",

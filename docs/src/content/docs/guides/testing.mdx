@@ -185,8 +185,11 @@ loses the reply of whatever call request comes next, so a certified read made
 before the write takes it: aim it at the write when reads go first.
 
 `dropNextReply` keeps its reply lost whenever the same request is asked again,
-so a test cannot run the update twice by accident. The client does not re-send
-after it: it cannot know that is safe.
+so a test cannot run the update twice by accident. The client reads that
+request's status and sends the same signed request again, up to three times,
+before it rejects `outcome_unknown`: the log shows those sends, each with the
+first one's `requestId`, and the canister ran once. Like a replica, the fake
+runs a request id at most once.
 
 ```ts
 import { principal } from "@meantjs/schema"
@@ -318,9 +321,11 @@ grows, so copy it (`[...requests]`) to keep one moment of it. An entry has:
 | `caller`              | the principal the request came from, after the replica checked its signature                                                  |
 | `refused`             | why the replica answered before any canister saw the request: a bad signature, delegation or target, or a `refuseNext` status |
 | `dropped`             | `true` when `dropNextReply()` lost the reply                                                                                  |
+| `requestId`           | a call's request id, as hex: the same for each send of the same signed request                                                |
 
-Use it to count sends (an update must not run twice), to check that a write was
-refused before sending (no `"call"` entry), and to check who signed.
+Use it to count writes (an update must not run twice: count the distinct
+`requestId`s of a method's calls), to check that a write was refused before
+sending (no `"call"` entry), and to check who signed.
 
 ## Testing React
 

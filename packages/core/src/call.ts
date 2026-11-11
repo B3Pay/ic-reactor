@@ -50,6 +50,17 @@
  * classifier exactly when the request may have got in (`accepted`): only after
  * `agent.call()` returned.
  *
+ * ## A call request that got no answer (#1036)
+ *
+ * When the `call` request of an update fails in a way that does not prove it
+ * stayed out of the IC (a lost connection, HTTP 408 or 5xx), the call path
+ * does not reject `outcome_unknown` at once: {@link reconcile} reads the
+ * request's status and, while the IC does not know it, sends the same signed
+ * request again, byte for byte. The IC runs one request id at most once, so
+ * that can never run the update twice; a request signed anew would be a second
+ * update, and is never sent for this. Only after {@link RECONCILE_DELAYS_MS}
+ * rounds with no status does the call reject, with the first failure.
+ *
  * Internal: not exported from the package entry.
  *
  * @module
@@ -80,8 +91,12 @@ import {
   isV2ResponseBody,
   isV4ResponseBody,
   lookupResultToBuffer,
+  RequestStatusResponseStatus,
   pollForResponse,
+  requestIdOf,
   type HttpAgent,
+  type HttpAgentRequest,
+  type Identity,
   type PollStrategy,
   type ReplicaRejectCode,
   type RequestId,
@@ -120,6 +135,13 @@ import {
  * the whole wait.
  */
 export const REPOLL_DELAYS_MS: readonly number[] = [500, 1_000, 2_000]
+
+/**
+ * How long to wait before each round of {@link reconcile}: reading the status
+ * of an update whose call request got no answer, and sending that same signed
+ * request again. Its length is the most rounds one call gets.
+ */
+export const RECONCILE_DELAYS_MS: readonly number[] = [0, 250, 500]
 
 /** A method of a service or a func reference, read once. */
 export interface PreparedMethod {
@@ -625,6 +647,29 @@ function watchSends(agent: HttpAgent): void {
 }
 
 /**
+ * The signed call request of a write's current attempt, by the encoded
+ * argument the agent put into it (as {@link signing}): what {@link reconcile}
+ * sends again, so the IC sees the same request id.
+ */
+const SIGNED = new WeakMap<Uint8Array, HttpAgentRequest>()
+
+/**
+ * Keeps `signed`, a write's call request as its caller's identity signed it,
+ * for {@link reconcile}. `ClientInternals.agentFor` calls it from the identity
+ * it builds every agent with; any other request is not kept.
+ */
+export function keepSigned(request: HttpAgentRequest, signed: unknown): void {
+  const arg = (request.body as { arg?: unknown }).arg
+  if (
+    (request.endpoint as string) === "call" &&
+    arg instanceof Uint8Array &&
+    signing.has(arg)
+  ) {
+    SIGNED.set(arg, signed as HttpAgentRequest)
+  }
+}
+
+/**
  * Sends one attempt and returns the reply bytes (`undefined` for a oneway).
  * Rejects with the classified failure. The ingress expiry of a call request
  * is recorded in `sent` as the agent builds it ({@link watchSends}).
@@ -670,17 +715,42 @@ async function dispatch(
     }
     watchSends(agent)
     signing.set(call.arg, { sent, signal: call.signal })
-    const submitted = await untilAborted(
-      agent.call(call.canisterId, {
-        methodName: call.methodName,
-        arg: call.arg,
-        effectiveTarget,
-        // A oneway expects no reply, so it is sent asynchronously and settles
-        // once the IC has accepted it.
-        ...(send === "oneway" ? { callSync: false } : {}),
-      }),
-      call.signal
-    )
+    // Only a request signed for this attempt is ever sent again: one an
+    // earlier attempt signed was refused, or its signer has since declined.
+    SIGNED.delete(call.arg)
+    const options = {
+      methodName: call.methodName,
+      arg: call.arg,
+      effectiveTarget,
+      // A oneway expects no reply, so it is sent asynchronously and settles
+      // once the IC has accepted it.
+      ...(send === "oneway" ? { callSync: false } : {}),
+    }
+    let submitted: SubmitResponse
+    try {
+      submitted = await untilAborted(
+        agent.call(call.canisterId, options),
+        call.signal
+      )
+    } catch (error) {
+      const signed = SIGNED.get(call.arg)
+      if (
+        send !== "replicated" ||
+        call.mode !== "update" ||
+        signed === undefined ||
+        call.signal?.aborted === true ||
+        !classifyError(error, { ...whereOf(call), accepted: false })
+          .mayHaveExecuted
+      ) {
+        throw error
+      }
+      // From here the request may be in the IC, whatever a later failure says.
+      accepted = true
+      const reply = await reconcile(agent, signed, call, options)
+      if (reply !== undefined) return reply
+      accepted = false
+      throw error
+    }
     accepted = true
     const { body } = submitted.response
     if (isV2ResponseBody(body)) {
@@ -699,14 +769,7 @@ async function dispatch(
     throw classifyError(
       error,
       call.mode === "update"
-        ? {
-            method: call.methodName,
-            canisterId: call.canisterId,
-            mode: "update",
-            accepted,
-            again: call.again,
-            signal: call.signal,
-          }
+        ? { ...whereOf(call), accepted }
         : {
             method: call.methodName,
             canisterId: call.canisterId,
@@ -715,6 +778,85 @@ async function dispatch(
           }
     )
   }
+}
+
+/** How a write's failure is classified, but for `accepted`. */
+const whereOf = (call: Outgoing) => ({
+  method: call.methodName,
+  canisterId: call.canisterId,
+  mode: "update" as const,
+  again: call.again,
+  signal: call.signal,
+})
+
+/** Thrown by {@link reconcile}'s polling strategy: the IC does not know the request. */
+const NOT_KNOWN = Symbol("not known")
+
+/**
+ * The reply of an update whose call request, `signed`, got no answer, or
+ * `undefined` when none could be had within {@link RECONCILE_DELAYS_MS}
+ * rounds. Each round reads the request's status, waiting while the IC
+ * processes it, and, while the IC does not know it, sends `signed` again
+ * unchanged: the same request id, which the IC runs at most once. A certified
+ * reject, and the signal's abort, are thrown; any other failure starts the next
+ * round.
+ */
+async function reconcile(
+  agent: HttpAgent,
+  signed: HttpAgentRequest,
+  call: Outgoing,
+  options: Parameters<HttpAgent["call"]>[1]
+): Promise<Uint8Array | undefined> {
+  const signal = call.signal
+  const requestId = requestIdOf(
+    (signed.body as unknown as { content: Record<string, unknown> }).content
+  )
+  // Hands the agent the request already signed, instead of signing anew.
+  const same: Identity = {
+    getPrincipal: () =>
+      (signed.body as unknown as { content: { sender: Principal } }).content
+        .sender,
+    transformRequest: () => Promise.resolve(signed),
+  }
+  // One strategy for every round, so its five-minute bound covers them all.
+  const waits = defaultStrategy()
+  const strategy: PollStrategy = (canisterId, id, status) =>
+    status === RequestStatusResponseStatus.Unknown
+      ? Promise.reject(NOT_KNOWN)
+      : untilAborted(waits(canisterId, id, status), signal)
+  // A re-send carries the expiry it was signed with, which `sent` already
+  // holds: the agent's fresh one, which is never sent, is not recorded.
+  signing.set(call.arg, { sent: {}, signal })
+  const definite = (error: unknown) =>
+    signal?.aborted === true ||
+    (error instanceof RejectError &&
+      error.code instanceof CertifiedRejectErrorCode)
+  for (const delay of RECONCILE_DELAYS_MS) {
+    await untilAborted(sleep(delay), signal)
+    try {
+      const { reply } = await untilAborted(
+        pollForResponse(agent, { canisterId: call.effective }, requestId, {
+          strategy,
+        }),
+        signal
+      )
+      return reply
+    } catch (error) {
+      if (definite(error)) throw error
+    }
+    try {
+      const submitted = await untilAborted(
+        agent.call(call.canisterId, options, same),
+        signal
+      )
+      if (!isV2ResponseBody(submitted.response.body)) {
+        return await settle(agent, submitted, call)
+      }
+    } catch (error) {
+      if (definite(error)) throw error
+    }
+  }
+  return undefined
 }
 
 const utf8 = new TextEncoder()

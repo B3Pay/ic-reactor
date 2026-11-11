@@ -7,9 +7,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { c, principal, serviceMethods, type Principal } from "@meantjs/schema"
 import { encodeArgs } from "@meantjs/schema/codec"
-import { AnonymousIdentity, Cbor, type Identity } from "@icp-sdk/core/agent"
+import {
+  AnonymousIdentity,
+  Cbor,
+  requestIdOf,
+  type Identity,
+} from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import type { QueryFunctionContext } from "@tanstack/query-core"
+import { RECONCILE_DELAYS_MS } from "../src/call.js"
 import { isRetryable } from "../src/errors.js"
 import { isReactorError } from "../src/index.js"
 import { toHex } from "../src/keys.js"
@@ -26,6 +32,7 @@ import {
   clientWithAuth,
   deferred,
   ledgerCanister,
+  requestIdsFor,
   replicaWith,
   requestsFor,
   serve,
@@ -440,7 +447,7 @@ describe("what is sent again", () => {
     }
   )
 
-  it("never re-sends an update whose reply was lost", async () => {
+  it("sends an update whose reply was lost only as the same request again", async () => {
     const { canister, replica } = shapesSetup()
     replica.dropNextReply()
     await expect(canister.bump(1n)).rejects.toMatchObject({
@@ -448,21 +455,25 @@ describe("what is sent again", () => {
       mayHaveExecuted: true,
     })
     await pastResendDelays()
-    expect(requestsFor(replica, "bump")).toMatchObject([{ dropped: true }])
+    // The first send and each of the same request again (#1036): all lost.
+    const sends = requestsFor(replica, "bump")
+    expect(sends).toHaveLength(1 + RECONCILE_DELAYS_MS.length)
+    expect(sends.every((send) => send.dropped)).toBe(true)
+    expect(requestIdsFor(replica, "bump")).toHaveLength(1)
   })
 
   it.each([408, 500, 503])(
-    "never re-sends an update answered with HTTP %i",
+    "sends an update answered with HTTP %i again only as the same request, and resolves",
     async (status) => {
       const { canister, replica } = shapesSetup()
       replica.refuseNext(status)
-      await expect(canister.bump(1n)).rejects.toMatchObject({
-        kind: "outcome_unknown",
-        httpStatus: status,
-        mayHaveExecuted: true,
-      })
+      await expect(canister.bump(1n)).resolves.toBe(2n)
       await pastResendDelays()
-      expect(requestsFor(replica, "bump")).toHaveLength(1)
+      expect(requestsFor(replica, "bump")).toMatchObject([
+        { refused: expect.any(String) },
+        { requestId: expect.any(String) },
+      ])
+      expect(requestIdsFor(replica, "bump")).toHaveLength(1)
     }
   )
 
@@ -695,6 +706,113 @@ function refuseCalls(
   }
   return { fetch: wrapped, calls: () => calls }
 }
+
+/**
+ * Wraps `fetch` so that the answers to the first `times` call requests are
+ * lost: after the replica got the request (`after`), or before (`before`), as
+ * a reset connection, or replaced by an HTTP `status`. Keeps the bytes of
+ * every call request sent.
+ */
+function loseCallAnswers(
+  fetch: typeof globalThis.fetch,
+  {
+    when,
+    times = 1,
+    status,
+  }: { when: "after" | "before"; times?: number; status?: number }
+) {
+  const bodies: string[] = []
+  const wrapped = async (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): Promise<Response> => {
+    if (!urlOf(input).endsWith("/call")) return fetch(input, init)
+    bodies.push(toHex(new Uint8Array(init?.body as Uint8Array)))
+    if (bodies.length > times) return fetch(input, init)
+    if (when === "after") await fetch(input, init)
+    if (status !== undefined) return new Response("lost", { status })
+    throw new TypeError("the connection was reset")
+  }
+  return { fetch: wrapped, bodies }
+}
+
+describe("an update whose call request got no answer (#1036)", () => {
+  /** The shapes canister on a replica reached through `lose`, counting its bumps. */
+  const setupLosing = (
+    lose: Parameters<typeof loseCallAnswers>[1],
+    bump?: NonNullable<Parameters<typeof shapesCanister>[0]>["bump"]
+  ) => {
+    const ran = { bumps: 0 }
+    const replica: FakeReplica = replicaWith({
+      [SHAPES]: shapesCanister({
+        bump: (args, context) => {
+          ran.bumps += 1
+          return bump ? bump(args, context) : { tag: "ok", value: args[0] + 1n }
+        },
+      }),
+    })
+    const lost = loseCallAnswers(replica.fetch, lose)
+    const canister = clientAs(
+      { ...replica, fetch: lost.fetch },
+      alice
+    ).canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    return { replica, canister, ran, bodies: lost.bodies }
+  }
+
+  it.each([
+    ["reset after delivery", { when: "after" } as const, 1],
+    [
+      "answered HTTP 503 after delivery",
+      { when: "after", status: 503 } as const,
+      1,
+    ],
+    ["reset before delivery", { when: "before" } as const, 2],
+    [
+      "answered HTTP 502 before delivery",
+      { when: "before", status: 502 } as const,
+      2,
+    ],
+  ])(
+    "resolves with the reply when the answer was %s, and runs it once",
+    async (_name, lose, sends) => {
+      const { canister, ran, bodies } = setupLosing(lose)
+      await expect(canister.bump(4n)).resolves.toBe(5n)
+      expect(ran.bumps).toBe(1)
+      // A request the IC knows is read back, not sent again; one it does not
+      // know is sent again byte for byte, never signed anew.
+      expect(bodies).toHaveLength(sends)
+      expect(new Set(bodies).size).toBe(1)
+    }
+  )
+
+  it("rejects with the certified reject the IC reports for it", async () => {
+    const on: { replica?: FakeReplica } = {}
+    const { canister, ran, replica } = setupLosing({ when: "after" }, () =>
+      (on.replica as FakeReplica).reject(4, "no")
+    )
+    on.replica = replica
+    await expect(canister.bump(4n)).rejects.toMatchObject({
+      kind: "rejected",
+      rejectCode: 4,
+      mayHaveExecuted: true,
+    })
+    expect(ran.bumps).toBe(1)
+  })
+
+  it("stays outcome_unknown with the first failure when no send is answered", async () => {
+    const { canister, ran, bodies } = setupLosing({
+      when: "before",
+      times: Infinity,
+    })
+    await expect(canister.bump(4n)).rejects.toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+    })
+    expect(ran.bumps).toBe(0)
+    expect(bodies).toHaveLength(1 + RECONCILE_DELAYS_MS.length)
+    expect(new Set(bodies).size).toBe(1)
+  })
+})
 
 describe("an update the replica answers later", () => {
   /** A client on `replica` whose requests go through `fetch`, calling the shapes canister. */
@@ -1660,6 +1778,7 @@ describe("expiresAt on a write that got no answer", () => {
   /** Wraps `fetch`, keeping the ingress expiry of every call request it sees. */
   const expiries = (fetch: typeof globalThis.fetch) => {
     const seen: bigint[] = []
+    const ids = new Set<string>()
     const wrapped = async (
       input: RequestInfo | URL,
       init?: RequestInit
@@ -1668,7 +1787,12 @@ describe("expiresAt on a write that got no answer", () => {
         const envelope = (await cborOf(init?.body)) as {
           content: { ingress_expiry: bigint | number }
         }
-        seen.push(BigInt(envelope.content.ingress_expiry))
+        // A request sent again unchanged (#1036) is the same send.
+        const id = toHex(requestIdOf(envelope.content))
+        if (!ids.has(id)) {
+          ids.add(id)
+          seen.push(BigInt(envelope.content.ingress_expiry))
+        }
       }
       return fetch(input, init)
     }

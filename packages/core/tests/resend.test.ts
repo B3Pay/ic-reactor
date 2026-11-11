@@ -93,11 +93,17 @@ function setup(options: Parameters<typeof createTestClient>[0] = {}) {
   const ledger = test.client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
   /** How many transfers a ledger ran, duplicates left out. */
   const ran = (id = LEDGER) => blocks.get(id) ?? 0n
-  /** The canister id of every transfer the replica was sent. */
-  const transfers = () =>
-    test.requests
-      .filter((r) => r.methodName === "icrc1_transfer")
-      .map((r) => r.canisterId)
+  /**
+   * The canister id of every transfer request the replica was sent: a request
+   * sent again unchanged, to learn its outcome, counts once.
+   */
+  const transfers = () => [
+    ...new Map(
+      test.requests
+        .filter((r) => r.methodName === "icrc1_transfer")
+        .map((r) => [r.requestId, r.canisterId])
+    ).values(),
+  ]
   const sent = () => transfers().length
   return { ...test, ledger, ran, sent, transfers }
 }
@@ -527,8 +533,12 @@ describe("client.resendOf", () => {
     // The bytes still name SHAPES, so the call must still be routed by it.
     rewrite(arg, { canister_id: principal(LEDGER) })
     await expect(again?.send()).resolves.toBeUndefined()
-    const stops = t.requests.filter((r) => r.methodName === "stop_canister")
-    expect(stops.map((r) => r.effectiveCanisterId)).toEqual([SHAPES, SHAPES])
+    const stops = new Map(
+      t.requests
+        .filter((r) => r.methodName === "stop_canister")
+        .map((r) => [r.requestId, r.effectiveCanisterId])
+    )
+    expect([...stops.values()]).toEqual([SHAPES, SHAPES])
   })
 })
 

@@ -125,6 +125,12 @@ export interface FakeReplicaRequest {
    * first send of a dropped call ran the canister; a re-send of it did not.
    */
   readonly dropped?: true
+  /**
+   * The request id of a call, as hex. Every send of the same signed request
+   * has the same one, and the fake, as a replica, runs a request id at most
+   * once: count the distinct ids of a method's calls to count its writes.
+   */
+  readonly requestId?: string
 }
 
 /** Options for {@link createFakeReplica}. */
@@ -704,6 +710,10 @@ export function createFakeReplica(
   const drops: Armed[] = []
   const refusals: Array<Armed & { readonly status: number }> = []
   const lostRequests = new Set<string>()
+  // The status of each call a canister ran, by request id: a replica runs a
+  // request id once, and answers a send of it again, and its `read_state`,
+  // with that status.
+  const statuses = new Map<string, Array<[string, TreeNode]>>()
 
   /**
    * The status to refuse a `query` or `call` with, from the first armed
@@ -908,8 +918,16 @@ export function createFakeReplica(
       methodName: method_name,
       caller: caller.toText(),
       ...(lose ? { dropped: true as const } : {}),
+      requestId,
     })
     if (resent) throw lostReply(method_name)
+    const ran = statuses.get(requestId)
+    if (ran !== undefined) {
+      const certificate = await certify([
+        ["request_status", [[requestIdOf(envelope.content), ran]]],
+      ])
+      return cborResponse({ status: "replied", certificate })
+    }
 
     const outcome = await execute(
       "update",
@@ -937,6 +955,7 @@ export function createFakeReplica(
                   [string, TreeNode]
                 >)),
           ]
+    statuses.set(requestId, status)
     const certificate = await certify([
       ["request_status", [[requestIdOf(envelope.content), status]]],
     ])
@@ -953,7 +972,19 @@ export function createFakeReplica(
         lostRequests.has(toHex(id))
     )
 
-  async function handleReadState(canisterId: string) {
+  async function handleReadState(canisterId: string, envelope: Envelope) {
+    // The status of each call the request asks about that a canister ran.
+    const known: Array<[Uint8Array, TreeNode]> = []
+    for (const [label, id] of envelope.content.paths ?? []) {
+      const status = id && statuses.get(toHex(id))
+      if (
+        label &&
+        status &&
+        new TextDecoder().decode(label) === "request_status"
+      ) {
+        known.push([id, status])
+      }
+    }
     requests.push({
       endpoint: "read_state",
       canisterId,
@@ -970,6 +1001,9 @@ export function createFakeReplica(
       .sort(compareBytes)
       .filter((id, i, ids) => i === 0 || compareBytes(ids[i - 1], id) !== 0)
     const certificate = await certify([
+      ...(known.length > 0
+        ? ([["request_status", known]] as Array<[string, TreeNode]>)
+        : []),
       [
         "subnet",
         [
@@ -1066,6 +1100,9 @@ export function createFakeReplica(
           effectiveCanisterId,
           methodName: envelope.content.method_name,
           refused,
+          ...(endpoint === "call"
+            ? { requestId: toHex(requestIdOf(envelope.content)) }
+            : {}),
         })
         return new Response(`fake replica: ${refused}`, { status })
       }
@@ -1107,7 +1144,7 @@ export function createFakeReplica(
         })
         throw lostReply()
       }
-      return await handleReadState(effectiveCanisterId)
+      return await handleReadState(effectiveCanisterId, envelope)
     } catch (error) {
       // A lost reply is the network failing, which the agent sees as the
       // fetch rejecting, not as an HTTP answer.

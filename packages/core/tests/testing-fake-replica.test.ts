@@ -21,6 +21,7 @@ import {
   HttpAgent,
   QueryResponseStatus,
   SignIdentity,
+  pollForResponse,
   type HttpAgentOptions,
   type PublicKey,
   type Signature,
@@ -978,6 +979,38 @@ describe("the fault hooks", () => {
     })
   })
 
+  describe("the same request sent again", () => {
+    it("runs it once, answers each send of it, and reads its status back", async () => {
+      const { replica, runs } = countingReplica()
+      const sent: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+      const agent = agentOn(replica, {
+        fetch: (input, init) => {
+          if (String(input).endsWith("/call")) sent.push([input, init])
+          return replica.fetch(input, init)
+        },
+      })
+      const { requestId } = await agent.call(CANISTER, {
+        methodName: "whoami",
+        arg: EMPTY_ARG,
+      })
+
+      // The same signed bytes, as a client sends them to learn the outcome.
+      const again = await replica.fetch(...sent[0])
+
+      expect(again.status).toBe(200)
+      expect(runs.update).toBe(1)
+      const calls = replica.requests.filter((r) => r.endpoint === "call")
+      expect(calls).toHaveLength(2)
+      expect(calls[1].requestId).toBe(calls[0].requestId)
+      const { reply } = await pollForResponse(
+        agent,
+        { canisterId: CANISTER },
+        requestId
+      )
+      expect(reply.byteLength).toBeGreaterThan(0)
+    })
+  })
+
   describe("refuseNext", () => {
     it.each([429, 503])(
       "answers the next update with HTTP %i before the canister sees it",
@@ -1001,6 +1034,7 @@ describe("the fault hooks", () => {
             effectiveCanisterId: CANISTER,
             methodName: "whoami",
             refused: `refuseNext(${status}) answered the request with HTTP ${status}`,
+            requestId: expect.stringMatching(/^[0-9a-f]{64}$/),
           },
         ])
       }

@@ -45,7 +45,7 @@ import {
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
-import { keptUnknown, type CallRequest } from "./call.js"
+import { keepSigned, keptUnknown, type CallRequest } from "./call.js"
 import { readTarget, recordOf } from "./canister.js"
 import { createBuilders } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
@@ -1753,11 +1753,14 @@ export function createClientWith(
       identity: {
         getPrincipal: () => identity.getPrincipal(),
         transformRequest: async (request) => {
+          let signed: unknown
           try {
-            return await identity.transformRequest(request)
+            signed = await identity.transformRequest(request)
           } catch (cause) {
             throw notSigned(cause)
           }
+          keepSigned(request, signed)
+          return signed
         },
       },
       fetch: agentFetch,
