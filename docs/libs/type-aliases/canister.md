@@ -7,7 +7,7 @@ prev: true
 
 > **Canister**\<`A`\> = `{ readonly [K in keyof A]: A[K] extends (args: infer P) => Promise<infer R> ? (args: P) => Promise<Unwrap<R>> : never }` & `object`
 
-Defined in: [core/src/types.ts:208](https://github.com/B3Pay/ic-reactor/blob/10080a65a897fe8d79f5a6185a21478c400ae2d7/packages/core/src/types.ts#L208)
+Defined in: [core/src/types.ts:208](https://github.com/B3Pay/ic-reactor/blob/58fad36b0128a89309eff3b179891bcb305b1747/packages/core/src/types.ts#L208)
 
 A canister, as `client.canister<Actor>(actor, target)` returns it: a frozen
 object with one plain async method per Candid method of the service, typed
