@@ -4838,8 +4838,8 @@
     "testName": "resolves the time the replica certifies",
     "why": "client.time() answers the host's clock instead of the certified time",
     "file": "src/options.ts",
-    "search": "      return readLeb128(raw)",
-    "replace": "      return BigInt(Date.now()) * 1_000_000n"
+    "search": "      const now = readLeb128(raw)",
+    "replace": "      const now = BigInt(Date.now()) * 1_000_000n"
   },
   {
     "id": "876-time-failure-unclassified",
@@ -6745,5 +6745,45 @@
     "file": "src/server/server.ts",
     "search": "      timeoutMs: write\n        ? (deps.writeTimeoutMs ?? WRITE_TIMEOUT_MS)\n        : (deps.readTimeoutMs ?? READ_TIMEOUT_MS),\n",
     "replace": ""
+  },
+  {
+    "id": "time-older-than-one-read-accepted",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "rejects not_delivered for a time more than five minutes before one it read already",
+    "why": "client.time() returns a certified time from long before one the client read already, as a node that answers with an old certificate makes it, so a transfer stamped with it is a duplicate of an earlier one or too old for the ledger",
+    "file": "src/options.ts",
+    "search": "      if (now < latestTime - TIME_SLACK) {\n",
+    "replace": "      if (false) {\n"
+  },
+  {
+    "id": "time-latest-not-kept",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "rejects not_delivered for a time more than five minutes before one it read already",
+    "why": "client.time() never keeps the latest time it read, so an old certificate's time is returned however far back it is",
+    "file": "src/options.ts",
+    "search": "      if (now > latestTime) latestTime = now\n",
+    "replace": ""
+  },
+  {
+    "id": "time-latest-lowered",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "rejects not_delivered for a time more than five minutes before one it read already",
+    "why": "an earlier time client.time() accepted lowers the bound, so each read can go five minutes further back than the last",
+    "file": "src/options.ts",
+    "search": "      if (now > latestTime) latestTime = now\n",
+    "replace": "      latestTime = now\n"
+  },
+  {
+    "id": "time-no-slack",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "rejects not_delivered for a time more than five minutes before one it read already",
+    "why": "client.time() refuses any time before one it read already, though two subnets, or two nodes of one, are seconds apart, so a genuine time is refused",
+    "file": "src/options.ts",
+    "search": "const TIME_SLACK = 300_000_000_000n\n",
+    "replace": "const TIME_SLACK = 0n\n"
   }
 ]

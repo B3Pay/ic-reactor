@@ -810,11 +810,15 @@ export interface Client {
    * reply is; its age is not compared with the host's clock, which may be the
    * clock that is wrong. A certificate that does not verify rejects
    * `not_delivered` with `mayHaveExecuted: false`, and its time is never
-   * returned. It needs no signed-in caller, and is sent by the caller's
-   * agent, as a read does. A `{ name }` the `ic_env` cookie
-   * does not resolve rejects `invalid_args` (`canister_id_unresolved`), as
-   * does the management canister `aaaaa-aa` (`management_canister`), which no
-   * `read_state` is routed by, and a disposed client rejects `cancelled`
+   * returned. So does a time more than five minutes before one this client
+   * read already: a node can answer with an old certificate, which still
+   * verifies. Subnets, and the nodes of one, are seconds apart, so a time
+   * from another subnet is not refused for that; a client that has read no
+   * time yet has nothing to compare with. It needs no signed-in caller, and
+   * is sent by the caller's agent, as a read does. A `{ name }` the `ic_env`
+   * cookie does not resolve rejects `invalid_args` (`canister_id_unresolved`),
+   * as does the management canister `aaaaa-aa` (`management_canister`), which
+   * no `read_state` is routed by, and a disposed client rejects `cancelled`
    * (`client_disposed`); nothing is sent then.
    *
    * A canister object made with `timeoutMs` bounds the wait, counted from the

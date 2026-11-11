@@ -38,6 +38,19 @@ The [support table](docs/src/content/docs/versioning.mdx#support-table) names
 the one core's tests and the examples run. That raises a floor, which a
 release does only in a minor.
 
+### @ic-reactor/core
+
+#### Changed
+
+- `client.time()` rejects `not_delivered`, with `mayHaveExecuted: false`, a
+  certified time more than five minutes before one the client read already,
+  as it rejects a certificate that does not verify. A node can answer with an
+  old certificate, which still verifies, and a transfer stamped with its time
+  is a duplicate of an earlier transfer or too old for the ledger. Subnets,
+  and the nodes of one, are seconds apart, so a genuine time is not refused.
+  Migration: none. A refused time is worth one more read, which usually
+  reaches another node.
+
 ### @ic-reactor/vite-plugin
 
 #### Changed

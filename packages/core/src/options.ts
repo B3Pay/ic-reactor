@@ -122,6 +122,14 @@ function readQueryOptionsArg(options: unknown): boolean {
  */
 const TIME_PATH = [Uint8Array.from(new TextEncoder().encode("time"))]
 
+/**
+ * How far, in nanoseconds, a time `client.time()` reads may be before one the
+ * client read already: five minutes, the agent's own bound on a certificate's
+ * age. Subnets, and the nodes of one, are seconds apart; an old certificate
+ * a node answers with is further back.
+ */
+const TIME_SLACK = 300_000_000_000n
+
 /** An unsigned LEB128 number, as the state tree writes `time`. */
 function readLeb128(bytes: Uint8Array): bigint {
   let value = 0n
@@ -895,12 +903,16 @@ export function createBuilders(
       })
   }
 
+  /** The latest IC time `time()` returned, which a later time may not undercut. */
+  let latestTime = 0n
+
   /**
    * The IC's time, from a certified `read_state` of the `time` path routed by
    * the canister's subnet, sent by the caller's agent. The certificate's
    * signature is verified against the network's root key; its freshness is
    * not compared with the host clock, which may be the clock that is wrong
-   * (as `HttpAgent.syncTime()` reads it).
+   * (as `HttpAgent.syncTime()` reads it), but with the IC times this client
+   * read before: see `TIME_SLACK`.
    */
   const time = async (canister: unknown): Promise<bigint> => {
     const record = recordOf(canister, internals, "client.time()")
@@ -981,7 +993,17 @@ export function createBuilders(
       if (raw === undefined) {
         throw new Error("the certificate holds no time")
       }
-      return readLeb128(raw)
+      // A node can answer with an old certificate, which still verifies:
+      // stamped with its time, a transfer is a duplicate of an earlier one,
+      // or too old for the ledger.
+      const now = readLeb128(raw)
+      if (now < latestTime - TIME_SLACK) {
+        throw new Error(
+          "the certificate's time is more than five minutes before one this client read already"
+        )
+      }
+      if (now > latestTime) latestTime = now
+      return now
     } catch (error) {
       throw classifyError(error, { ...where, mode: "query" })
     }
