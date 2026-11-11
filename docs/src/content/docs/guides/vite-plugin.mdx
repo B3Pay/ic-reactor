@@ -30,9 +30,13 @@ npm install --save-dev @ic-reactor/vite-plugin
 ```
 
 The plugin imports neither package, and no `@ic-reactor` runtime. Its peers are
-the CLI, Vite 4.2 up to 8, and `@icp-sdk/core` 6.1 or later, which is optional:
-the plugin loads it only to [fetch a `.did`](#fetch-a-did-from-a-live-canister),
-and an app on `@ic-reactor/core` has it installed already. See
+the CLI, Vite, and `@icp-sdk/core` 6.1 or later, which is optional: the plugin
+loads it only to [fetch a `.did`](#fetch-a-did-from-a-live-canister), and an
+app on `@ic-reactor/core` has it installed already. Vite can be any 7 or 8, or
+a 4, 5 or 6 from the release that fixed CVE-2025-24010 on (4.5.6, 5.4.12 and
+6.0.9). Earlier ones let any website you visit send requests to the dev server
+and read the answers, and through the plugin's `/api` proxy those requests
+reach the canisters of your local network. See
 [@ic-reactor/vite-plugin](/v4/packages/vite-plugin/).
 
 ## Quick start

@@ -51,6 +51,21 @@ release does only in a minor.
   Migration: none. A refused time is worth one more read, which usually
   reaches another node.
 
+### @ic-reactor/vite-plugin
+
+#### Changed
+
+- Peer `vite` at `^4.5.6 || ^5.4.12 || ^6.0.9 || ^7.0.0 || ^8.0.0`, where it
+  was `^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0`. The releases it no
+  longer accepts lack the fix for CVE-2025-24010: any website open in the
+  developer's browser could send requests to the dev server and read the
+  answers, and the plugin's `/api` proxy passes them on to the local network's
+  canisters. Migration: an app on Vite 4.5.5, 5.4.11, 6.0.8 or older updates
+  Vite within its major, to 4.5.6, 5.4.12 or 6.0.9 or later. Installing the
+  plugin, npm updates such a Vite where the app's range allows it and stops
+  with `ERESOLVE` where the app pins it; pnpm and yarn warn. A floor rises
+  only in a minor, so this ships in one.
+
 ### Docs
 
 - The auth guide has a "Sessions that end early" section. A sign-out ends the
