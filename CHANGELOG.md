@@ -18,6 +18,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+Nothing yet.
+
+## core, react, vite-plugin, mcp 4.3.0
+
+Prepared on 2026-11-11. 4.3.0 is a minor because it raises two floors: the
+Vite plugin's `vite` peer now starts at the releases with the fix for
+CVE-2025-24010, and the support table names `@icp-sdk/auth` 11.2.0. It also
+adds an age check to `client.time()`. `@ic-reactor/react` and
+`@ic-reactor/mcp` change only their version. The release adds or removes no
+`@ic-reactor/*` export (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2; mcp has nothing to import), the Meant peers stay
+`@meantjs/schema` 0.6.0 and `@meantjs/cli` 0.5.1, and committed modules do
+not change. What an app on 4.2.0 does about each change is in its entry
+below.
+
 The docs and examples move to `@icp-sdk/auth` 11, the version Internet
 Identity's revocable sessions ask apps to upgrade to: a sign-out ends the
 session at Internet Identity, and Internet Identity can end a session before
