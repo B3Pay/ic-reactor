@@ -70,6 +70,10 @@ release does only in a minor.
 
 - `vite-wallet`, `next-ssr` and `canister-studio` depend on `@icp-sdk/auth`
   `^11.2.0`, where they had `^10.0.1`. Their code does not change.
+- `next-ssr` requires `react`, `react-dom` and `react-server-dom-turbopack`
+  `^19.3.1`, past the critical advisory GHSA-xqc2-xf4c-x3h3 against React
+  Server Components 19.3.0, and resolves 19.3.1. Its tests render Server
+  Components with `react-server-dom-turbopack`; its code does not change.
 
 ### CI (not published)
 
@@ -77,6 +81,9 @@ release does only in a minor.
   `^10.0.1`, so core's tests, and its type test that `AuthClient` is an
   `AuthLike`, run against 11.2.0. The weekly job against npm's newest
   `@icp-sdk/auth` is unchanged.
+- The Audit check passes again. The other packages and examples resolve
+  React 19.3.1 too, with their ranges unchanged, so `next-ssr` and the
+  packages it links share one React.
 
 ## core, react, vite-plugin, mcp 4.2.0
 
