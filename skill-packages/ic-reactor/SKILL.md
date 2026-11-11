@@ -36,8 +36,8 @@ This skill describes these versions:
    `@tanstack/query-core`; for React, `@ic-reactor/react` (at exactly core's
    version), `@tanstack/react-query` and `react`, with `@tanstack/query-core`
    at the exact version `@tanstack/react-query` depends on, so that
-   `npm ls @tanstack/query-core` shows one copy; `@icp-sdk/auth` for Internet
-   Identity sign-in. `@meantjs/schema` must be the exact version
+   `npm ls @tanstack/query-core` shows one copy; `@icp-sdk/auth@^11` for
+   Internet Identity sign-in. `@meantjs/schema` must be the exact version
    `@ic-reactor/core` lists in its `peerDependencies`, and the generator
    `@meantjs/cli` the exact version `@ic-reactor/vite-plugin` lists:
    install both with `--save-exact`. The `@ic-reactor/*` packages are on npm's

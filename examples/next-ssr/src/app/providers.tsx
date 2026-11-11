@@ -11,7 +11,7 @@
 //   the server render, and once in the browser tab, where it lives across
 //   client-side navigations (the layout stays mounted) and is disposed if the
 //   tree ever unmounts.
-// - `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth` 10) is
+// - `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth` 11) is
 //   called only in a browser, on first use, with the client's network (on
 //   "ic", mainnet's agent options and no identity provider, so mainnet's
 //   Internet Identity). In the server render the client never builds it

@@ -18,14 +18,71 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+The docs and examples move to `@icp-sdk/auth` 11, the version Internet
+Identity's revocable sessions ask apps to upgrade to: a sign-out ends the
+session at Internet Identity, and Internet Identity can end a session before
+it expires. The client already handles both, since these sessions came with
+`@icp-sdk/auth` 9 and 10 and 11 run them the same way. No package changes
+what it does, and no `@ic-reactor/*` export is added or removed; in the
+published packages only the consumer guide, core's doc comments and the react
+README change. An app on `@icp-sdk/auth` 10 has nothing to change for
+ic-reactor. To move it to 11, install it, and read an `ssoDomain`'s check
+from `getSsoStatus()`, which replaces `isValidSsoDomain`:
+
+```sh
+npm install @icp-sdk/auth@^11.2.0
+```
+
+The [support table](docs/src/content/docs/versioning.mdx#support-table) names
+`@icp-sdk/auth` 11.2.0 where it named 10: the version the docs install, and
+the one core's tests and the examples run. That raises a floor, which a
+release does only in a minor.
+
+### Docs
+
+- The auth guide has a "Sessions that end early" section. A sign-out ends the
+  session at Internet Identity and in every tab and sibling subdomain that
+  shares the sign-in, where `useAuth()` renders `"anonymous"`. Internet
+  Identity ends a session after `maxTimeToIdle` unused, or when the user signs
+  the device out from its settings; `AuthClient` finds out the next time it
+  asks for a delegation, and `useAuth()` renders `"expired"`. Either way the
+  client drops the user's agent and reads, and a call that needed a new
+  delegation is refused before it is sent, as `not_delivered` with
+  `mayHaveExecuted: false` (an update already sent whose answer needed one
+  reads `outcome_unknown`). The section gives Internet Identity's defaults (a
+  session lasts up to 30 days and ends after 7 days unused), and says that a
+  copy of a delegation stops working within 5 minutes. The consumer guide
+  (`packages/core/llms.txt`) and the react README say the same.
+- The auth guide and the consumer guide say that `AuthClient`'s `signOut()`
+  rejects when Internet Identity could not end the session, once the device
+  is signed out and the client has removed the user's reads, and that the
+  user should hear that the session lasts until it expires, not that the
+  sign-out failed.
+- The pages, the react README and core's doc comments name `@icp-sdk/auth` 11
+  where they named 10, and the pages install it with
+  `npm install @icp-sdk/auth@^11.2.0`. The consumer guide and the
+  `ic-reactor` skill name the major too, so that an agent does not install a
+  later one. The auth guide says that an app on 10 moves to 11 with no change
+  to its ic-reactor code, and that a dfx project's Internet Identity must be
+  release-2026-09-11 or later.
+
 ### Examples (not published)
 
+- `vite-wallet`, `next-ssr` and `canister-studio` depend on `@icp-sdk/auth`
+  `^11.2.0`, where they had `^10.0.1`. Their code does not change.
 - The Next.js SSR example's balance route reads only the ledgers of its
   `src/ledgers.ts`, named by label or canister id. Any other canister is a 400
   before a client is built. It read whatever canister the URL named, so anyone
   could use the server to call any canister's `icrc1_balance_of`,
   `icrc1_decimals` and `icrc1_symbol`. An app that copied the route keeps its
   own list of ledgers next to it.
+
+### CI (not published)
+
+- Core's dev dependency on `@icp-sdk/auth` is `^11.2.0`, where it was
+  `^10.0.1`, so core's tests, and its type test that `AuthClient` is an
+  `AuthLike`, run against 11.2.0. The weekly job against npm's newest
+  `@icp-sdk/auth` is unchanged.
 
 ## core, react, vite-plugin, mcp 4.2.0
 
