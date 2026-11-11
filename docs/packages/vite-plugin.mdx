@@ -44,13 +44,18 @@ export default defineConfig({ plugins: [icReactor(options)] })
 
 ## Peers
 
-| Peer            | Range                                              |
-| --------------- | -------------------------------------------------- |
-| `@meantjs/cli`  | exactly `0.5.1`                                    |
-| `@icp-sdk/core` | `^6.1.0`, optional                                 |
-| `vite`          | `^4.2.0`, `^5.0.0`, `^6.0.0`, `^7.0.0` or `^8.0.0` |
+| Peer            | Range                                               |
+| --------------- | --------------------------------------------------- |
+| `@meantjs/cli`  | exactly `0.5.1`                                     |
+| `@icp-sdk/core` | `^6.1.0`, optional                                  |
+| `vite`          | `^4.5.6`, `^5.4.12`, `^6.0.9`, `^7.0.0` or `^8.0.0` |
 
 Node `>=22.12.0`, as core and react.
+
+The `vite` floors are the first release of each major with the fix for
+CVE-2025-24010. Before it, any website open in the developer's browser could
+send requests to the dev server and read the answers, and the plugin's `/api`
+proxy passes those requests on to the local network's canisters.
 
 The CLI is pinned exactly because the plugin runs the CLI your app installs,
 and that CLI has to pair with the `@meantjs/schema` runtime the generated
