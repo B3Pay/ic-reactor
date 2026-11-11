@@ -74,7 +74,7 @@ const ANONYMOUS = SdkPrincipal.anonymous().toText()
 // ---------------------------------------------------------------------------
 
 /**
- * A sign-in the client can own: what `@icp-sdk/auth` 10's `AuthClient` and the
+ * A sign-in the client can own: what `@icp-sdk/auth` 11's `AuthClient` and the
  * `auth` of `createTestClient()` from `@ic-reactor/core/testing` both are, with
  * no adapter.
  *
@@ -101,7 +101,7 @@ export interface AuthLike {
   /**
    * Who is signed in. Only `"signed-in"` makes the client call as
    * {@link AuthLike.getPrincipal}; every other state calls anonymously. The
-   * four named states are `@icp-sdk/auth` 10's; any other string, such as a
+   * four named states are `@icp-sdk/auth` 11's; any other string, such as a
    * state a later `@icp-sdk/auth` adds, is accepted and reads as
    * `"anonymous"` in {@link AuthState}, so an upgrade of the auth library
    * does not stop an app compiling.
@@ -115,7 +115,7 @@ export interface AuthLike {
       | (string & {})
     /**
      * When the session ends, in milliseconds since the epoch (`Date.now()`'s
-     * scale), as `AuthClient` 10 reports it. While the status is
+     * scale), as `AuthClient` 11 reports it. While the status is
      * `"signed-in"` or `"signed-in-elsewhere"`, the client sets a timer for it
      * and tells its listeners when the session ends: an auth whose status
      * turns `"expired"` by the clock, as `AuthClient`'s does, need not notify
@@ -167,7 +167,7 @@ export interface AuthState {
    * When the session ends, in milliseconds since the epoch (`Date.now()`'s
    * scale; `new Date(expiresAt)` for a date), so an app can show "signed in
    * until". Present only while `status` is `"signed-in"` through an auth whose
-   * `getStatus()` carries `expiresAtMs`, as `AuthClient` 10's does; absent for
+   * `getStatus()` carries `expiresAtMs`, as `AuthClient` 11's does; absent for
    * a client built with `identity`. The client tells its listeners when that
    * time passes, and the status turns `"expired"`.
    *
@@ -242,7 +242,7 @@ export type ClientOptions = {
        * `@icp-sdk/auth` 5 and earlier): the error is then a `TypeError`
        * naming what the result lacks.
        *
-       * `network` is the client's network under `@icp-sdk/auth` 10's own
+       * `network` is the client's network under `@icp-sdk/auth` 11's own
        * option names, so `new AuthClient(network)` signs in where the client
        * calls:
        *

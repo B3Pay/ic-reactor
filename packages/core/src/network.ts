@@ -842,14 +842,14 @@ export const resolveCanisterId = (
  */
 const INTERNET_IDENTITY = "rdmx6-jaaaa-aaaaa-aaadq-cai"
 
-/** Where a sign-in ceremony runs and which canister mints its delegations: `@icp-sdk/auth` 10's `identityProvider`. */
+/** Where a sign-in ceremony runs and which canister mints its delegations: `@icp-sdk/auth` 11's `identityProvider`. */
 export interface IdentityProvider {
   readonly authorizeUrl: string
   readonly canisterId: string
 }
 
 /**
- * What the client hands its `auth` factory, under `@icp-sdk/auth` 10's own
+ * What the client hands its `auth` factory, under `@icp-sdk/auth` 11's own
  * option names, so that `(network) => new AuthClient(network)` signs in on
  * the client's network.
  */

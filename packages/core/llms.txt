@@ -132,11 +132,11 @@ Who calls (exactly one):
   read-only: every update is refused before sending. A
   `new AnonymousIdentity()` signs writes, so map one you are handed:
   `identity: id && !id.getPrincipal().isAnonymous() ? id : "anonymous"`.
-- `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth/client`):
-  users sign in and out. The factory runs once, in a browser only; if it
-  throws (blocked `localStorage`) or returns no auth (a Promise, from an
-  `async` factory), the client stays anonymous, public reads still work, and
-  `signIn()` rejects with the error. `network`
+- `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth/client`, from
+  `@icp-sdk/auth` 11): users sign in and out. The factory runs once, in a
+  browser only; if it throws (blocked `localStorage`) or returns no auth (a
+  Promise, from an `async` factory), the client stays anonymous, public reads
+  still work, and `signIn()` rejects with the error. `network`
   is `{ agentOptions, identityProvider? }`: the client's host and root key
   (and its `fetch`, when you gave one), and the Internet Identity to sign in
   with (that of an `ic_env` cookie believed in full, on a local page or with
@@ -173,7 +173,10 @@ factory beside `...network` (`openIdProvider`, `ssoDomain`,
 `signIn()` called on the page's load, not from a click), or to
 `signIn()` (`maxTimeToLive`, `maxTimeToIdle`, `returnTo`). `signIn()` rejects
 with the auth's own errors (its window closed or blocked, a
-`SupersededError`), never a `ReactorError`: always catch it.
+`SupersededError`), never a `ReactorError`: always catch it. `signOut()`
+rejects when Internet Identity could not end the session, after the device is
+signed out and the user's reads are removed: tell the user the session lasts
+until it expires, not that the sign-out failed.
 
 Identity attributes reach a canister as a call's `sender_info`, never as
 arguments. With DFINITY's `identity-attributes` library on the canister: keep
@@ -203,7 +206,15 @@ Who is calling, and may they write:
 queries, and the network refuses its updates); nothing tells the two apart
 yet. A session ends by the clock: `useAuth()` re-renders with `"expired"` at
 `expiresAt` (ms since the epoch, present while signed in), with no user
-activity.
+activity. It can end earlier: a sign-out in another tab reads `"anonymous"`
+at once, and one on a sibling subdomain that shares the sign-in when the page
+is next shown or focused; Internet Identity ending it (after `maxTimeToIdle`
+unused, or the user signing the device out) reads `"expired"` once the auth
+next asks for a delegation, and a call that needed one rejects
+`not_delivered` (an update already sent whose answer needed one:
+`outcome_unknown`). A copy of a delegation already issued stops working
+within 5 minutes of the end. By default a session lasts up to 30 days and
+ends after 7 idle days; `maxTimeToLive` and `maxTimeToIdle` shorten it.
 
 The client keeps one agent per principal: a call goes out as the principal
 current when it was made, or not at all.

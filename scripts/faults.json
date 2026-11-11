@@ -2468,7 +2468,7 @@
     "package": "core",
     "test": "tests/client-auth-network.test.ts",
     "testName": "is given by a real AuthClient built with new AuthClient(network)",
-    "why": "the identityProvider getter returns undefined without a word, so @icp-sdk/auth 10's own AuthClient, which reads it in its constructor, falls back to mainnet silently",
+    "why": "the identityProvider getter returns undefined without a word, so @icp-sdk/auth 11's own AuthClient, which reads it in its constructor, falls back to mainnet silently",
     "file": "src/client.ts",
     "search": "      get: (): undefined => {\n        warnNoProvider(gap)\n        return undefined\n      },",
     "replace": "      get: (): undefined => undefined,"
