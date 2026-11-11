@@ -21,6 +21,7 @@ import {
   HttpAgent,
   QueryResponseStatus,
   SignIdentity,
+  pollForResponse,
   type HttpAgentOptions,
   type PublicKey,
   type Signature,
@@ -903,7 +904,7 @@ describe("the fault hooks", () => {
 
     it("runs the update once however often the agent re-sends it", async () => {
       // The re-sends carry the same request id, which the fake remembers as
-      // lost: they fail the same way and run nothing.
+      // lost: they fail the same way before they arrive, and run nothing.
       const { replica, runs } = countingReplica()
       const agent = agentOn(replica, retriesAtOnce(3))
       replica.dropNextReply()
@@ -912,9 +913,9 @@ describe("the fault hooks", () => {
 
       expect(shapeOf(error).kind).toBe(ErrorKindEnum.Transport)
       expect(runs.update).toBe(1)
-      const calls = replica.requests.filter((r) => r.endpoint === "call")
-      expect(calls).toHaveLength(4)
-      expect(calls.every((call) => call.dropped)).toBe(true)
+      expect(replica.requests.filter((r) => r.endpoint === "call")).toEqual([
+        expect.objectContaining({ methodName: "whoami", dropped: true }),
+      ])
     })
 
     it("fails a read of the lost call's status the same way", async () => {
@@ -941,8 +942,9 @@ describe("the fault hooks", () => {
         kind: ErrorKindEnum.Transport,
         code: "HttpFetchErrorCode",
       })
+      // Lost before it arrived: the lost call is the last the fake received.
       expect(replica.requests[replica.requests.length - 1]).toMatchObject({
-        endpoint: "read_state",
+        endpoint: "call",
         dropped: true,
       })
     })
@@ -978,6 +980,68 @@ describe("the fault hooks", () => {
     })
   })
 
+  describe("the same request sent again", () => {
+    it("runs it once, answers each send of it, and reads its status back", async () => {
+      const { replica, runs } = countingReplica()
+      const sent: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+      const agent = agentOn(replica, {
+        fetch: (input, init) => {
+          if (String(input).endsWith("/call")) sent.push([input, init])
+          return replica.fetch(input, init)
+        },
+      })
+      const { requestId } = await agent.call(CANISTER, {
+        methodName: "whoami",
+        arg: EMPTY_ARG,
+      })
+
+      // The same signed bytes, as a client sends them to learn the outcome.
+      const again = await replica.fetch(...sent[0])
+
+      expect(again.status).toBe(200)
+      expect(runs.update).toBe(1)
+      const calls = replica.requests.filter((r) => r.endpoint === "call")
+      expect(calls).toHaveLength(2)
+      expect(calls[1].requestId).toBe(calls[0].requestId)
+      const { reply } = await pollForResponse(
+        agent,
+        { canisterId: CANISTER },
+        requestId
+      )
+      expect(reply.byteLength).toBeGreaterThan(0)
+    })
+
+    it("runs it once when it is sent again while the canister is still at work", async () => {
+      let finish = (): void => undefined
+      const working = new Promise<void>((resolve) => (finish = resolve))
+      const { replica, runs } = countingReplica({
+        update: async (...args) => {
+          await working
+          return answerWithCaller(...args)
+        },
+      })
+      const sent: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+      const agent = agentOn(replica, {
+        fetch: (input, init) => {
+          if (String(input).endsWith("/call")) sent.push([input, init])
+          return replica.fetch(input, init)
+        },
+      })
+      const first = agent.call(CANISTER, {
+        methodName: "whoami",
+        arg: EMPTY_ARG,
+      })
+      await vi.waitFor(() => expect(runs.update).toBe(1))
+
+      const again = replica.fetch(...sent[0])
+      finish()
+
+      expect((await again).status).toBe(200)
+      expect((await first).response.status).toBe(200)
+      expect(runs.update).toBe(1)
+    })
+  })
+
   describe("refuseNext", () => {
     it.each([429, 503])(
       "answers the next update with HTTP %i before the canister sees it",
@@ -1001,6 +1065,7 @@ describe("the fault hooks", () => {
             effectiveCanisterId: CANISTER,
             methodName: "whoami",
             refused: `refuseNext(${status}) answered the request with HTTP ${status}`,
+            requestId: expect.stringMatching(/^[0-9a-f]{64}$/),
           },
         ])
       }

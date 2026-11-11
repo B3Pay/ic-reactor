@@ -18,7 +18,33 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Changed
+
+- An update whose `call` request got no answer (a lost connection, HTTP 408
+  or a 5xx) no longer rejects `outcome_unknown` at once (#1036). The client
+  reads the request's status from the IC and, while the IC does not know the
+  request, sends the same signed request again, byte for byte, up to three
+  times (after 0, 250 and 500 ms, within `timeoutMs`). The IC runs one request
+  id at most once, so this cannot run a write twice; a request signed anew is
+  never sent for it. The call then resolves with the reply, or rejects with
+  the reject the IC reports, where 4.3.0 reported `outcome_unknown`. Only when
+  no status comes back does it reject `outcome_unknown`, with the first
+  failure, as before. A caller who is no longer the current one, or a
+  disposed client, sends nothing again. An app has nothing to change; a write
+  that ends `outcome_unknown` after a lost answer now takes about a second
+  longer to say so (a test on fake timers has to advance them past it).
+- `@ic-reactor/core/testing`: the fake replica runs a request id at most
+  once, as a replica does: the same signed request sent again, also while its
+  handler is still running, is answered with the first send's status, and
+  `read_state` reports that status. Each `call` entry of `requests` has a
+  `requestId` (hex). `dropNextReply()` is unchanged for a test: the call ends
+  `outcome_unknown` and `requests` shows the one call that ran, because the
+  client's sends of the same request are lost before they arrive.
+  `refuseNext(408)` or a 5xx on a write is now followed by the same request,
+  which the canister runs, so the write resolves: refuse four sends
+  (`refuseNext(503, 4)`) to keep the outcome unknown.
 
 ## core, react, vite-plugin, mcp 4.3.0
 

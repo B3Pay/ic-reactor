@@ -420,7 +420,10 @@ export function Send({ arg }: { arg: TransferArg }) {
   out is `outcome_unknown`: never send it again blindly.
 - Do not retry a write. `retry` is `false`; keep it. The client itself
   re-sends an update, at most twice, only after a failure proving the canister
-  never got it (reject code 2, status 429); any other failure is final.
+  never got it (reject code 2, status 429). After a lost connection, HTTP 408
+  or 5xx it reads the request's status and sends that same signed request
+  again, never a new one (the IC runs one request at most once), up to three
+  times, before it rejects `outcome_unknown`. Any other failure is final.
 - A write is sent as the caller current when `mutate()` was called, or not at
   all. Held back by TanStack Query (offline, queued behind its `scope`, or
   retried) while the account changes, it is refused (`cancelled`,
@@ -485,7 +488,7 @@ have executed:
 | the identity did not sign it (a declined passkey or hardware-wallet prompt: the signer's error is the `cause`), or the request could not be built | `not_delivered` | no |
 | reject code 1, 2 (transient) or 3: rejected before any canister code ran         | `rejected` (2: `not_delivered`)   | no                |
 | reject code 4 or 5: the canister rejected or trapped, maybe after changing state | `rejected`                        | yes (a write)     |
-| a sent write got no trustworthy answer: network drop, timeout, 5xx, 408          | `outcome_unknown`                 | yes               |
+| a sent write got no trustworthy answer (network drop, timeout, 5xx, 408), and none came when the client asked for its status and sent the same request again | `outcome_unknown` | yes |
 | a reply that did not decode                                                      | `invalid_reply`                   | yes (a write)     |
 | the canister returned `Err`                                                      | `canister_err`                    | no                |
 | the caller changed, the call was aborted, or a read's `timeoutMs` passed (`code: "timeout"`) | `cancelled` | no (an aborted write: yes) |

@@ -13,9 +13,13 @@
  * The guarantee: after reject code 4, reject code 5, a lost reply, HTTP 408
  * and HTTP 5xx, exactly one request was sent, however long the client waits
  * (it waits past both of its re-send delays, 300 ms and 600 ms, before it
- * looks), and the failure says `mayHaveExecuted: true` so the app reads the
- * balance back before it offers to try again. The cases where a re-send is
- * safe, and made, are in `update-resent-when-never-delivered.test.ts`.
+ * looks), and the ledger debits once. After a lost reply, HTTP 408 or 5xx the
+ * client may send that same signed request again, to learn its outcome
+ * (#1036): the same request id, which the IC runs at most once, never a
+ * request signed anew. A failure that stays without an answer says
+ * `mayHaveExecuted: true`, so the app reads the balance back before it offers
+ * to try again. The cases where a new request is safe, and made, are in
+ * `update-resent-when-never-delivered.test.ts`.
  */
 import { MutationObserver } from "@tanstack/query-core"
 import { afterAll, describe, expect, it, vi } from "vitest"
@@ -108,19 +112,19 @@ describe.concurrent("an update that may have run", () => {
       const l = setupLedger()
       l.refuseNext(status)
 
-      const failure = await rejection(
-        l.ledger.icrc1_transfer(transferArg(500n))
-      )
+      // The client cannot tell whether a timeout or a gateway error came
+      // before or after the call reached a canister. The IC does not know
+      // the request, so the client sends that same request again, which
+      // books the transfer once.
+      await expect(l.ledger.icrc1_transfer(transferArg(500n))).resolves.toBe(1n)
       await pastResendDelays()
 
-      // The client cannot tell whether a timeout or a gateway error came
-      // before or after the call reached a canister, so it says "may have".
-      expect(failure).toMatchObject({
-        kind: "outcome_unknown",
-        httpStatus: status,
-        mayHaveExecuted: true,
-      })
-      expect(l.calls()).toHaveLength(1)
+      const calls = l.calls()
+      expect(calls).toMatchObject([
+        { refused: expect.any(String) },
+        { requestId: calls[0].requestId },
+      ])
+      expect(l.executed()).toBe(1)
     }
   )
 })

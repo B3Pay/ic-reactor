@@ -45,7 +45,7 @@ import {
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
-import { keptUnknown, type CallRequest } from "./call.js"
+import { keepSigned, keptUnknown, type CallRequest } from "./call.js"
 import { readTarget, recordOf } from "./canister.js"
 import { createBuilders } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
@@ -916,7 +916,9 @@ export interface ClientInternals {
    * the same principal (a renewed delegation) builds a new agent and replaces
    * the old one, which is never handed out again. Every agent is built with
    * `retryTimes: 0`, so it never re-sends a request on its own: the call path
-   * decides every re-send from the classified failure.
+   * decides every re-send from the classified failure. Its identity hands
+   * each call request it signs for a write to `keepSigned`, so the call path
+   * can send that same request again when its answer is lost (#1036).
    *
    * `retryTimes` also governs the agent's other requests, and setting it to 0
    * costs two recoveries the call path (`call.ts`) has to make up for
@@ -1753,11 +1755,14 @@ export function createClientWith(
       identity: {
         getPrincipal: () => identity.getPrincipal(),
         transformRequest: async (request) => {
+          let signed: unknown
           try {
-            return await identity.transformRequest(request)
+            signed = await identity.transformRequest(request)
           } catch (cause) {
             throw notSigned(cause)
           }
+          keepSigned(request, signed)
+          return signed
         },
       },
       fetch: agentFetch,

@@ -84,9 +84,11 @@ describe("a write that may have run", () => {
       books: true,
     },
     {
-      // The ledger never saw it, but a gateway error cannot say so.
+      // The ledger never saw it, but a gateway error cannot say so. Every
+      // send is refused: the first, and the same request three times again
+      // (#1036), which would otherwise book it.
       name: "the gateway answered HTTP 503",
-      arrange: (l: Ledger) => l.refuseNext(503),
+      arrange: (l: Ledger) => l.refuseNext(503, 4),
       books: false,
     },
   ])(

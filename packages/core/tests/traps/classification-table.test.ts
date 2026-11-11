@@ -144,8 +144,10 @@ const booksTransfer = (failure: Failure): boolean =>
 function arrange(l: Ledger, failure: Failure, call: "update" | "query"): void {
   if (failure === "a lost reply") return l.dropNextReply()
   if (typeof failure !== "object") return
-  // Three refusals: a read is sent again twice, and must see it through.
-  if ("http" in failure) return l.refuseNext(failure.http, 3)
+  // Four refusals: a read is sent again twice, and an update that may have
+  // got in is sent again as the same request three times (#1036); each must
+  // see it through.
+  if ("http" in failure) return l.refuseNext(failure.http, 4)
   const { reject } = failure
   const message = `rejected with code ${reject}`
   if (call === "query") return l.beforeRead(() => l.reject(reject, message))
