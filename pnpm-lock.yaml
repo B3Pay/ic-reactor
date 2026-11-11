@@ -174,10 +174,10 @@ importers:
   examples/canister-studio:
     dependencies:
       '@ic-reactor/core':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/core
       '@ic-reactor/react':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^11.2.0
@@ -217,7 +217,7 @@ importers:
         version: 4.6.7
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/vite-plugin
       '@testing-library/dom':
         specifier: ^10.4.1
@@ -253,10 +253,10 @@ importers:
   examples/icrc-ledger:
     dependencies:
       '@ic-reactor/core':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/core
       '@ic-reactor/react':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -278,7 +278,7 @@ importers:
         version: 19.3.1(react@19.3.1)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/vite-plugin
       '@meantjs/cli':
         specifier: 0.5.1
@@ -317,10 +317,10 @@ importers:
   examples/next-ssr:
     dependencies:
       '@ic-reactor/core':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/core
       '@ic-reactor/react':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^11.2.0
@@ -384,7 +384,7 @@ importers:
   examples/node-agent-tool:
     dependencies:
       '@ic-reactor/core':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -418,10 +418,10 @@ importers:
   examples/vite-wallet:
     dependencies:
       '@ic-reactor/core':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/core
       '@ic-reactor/react':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^11.2.0
@@ -443,7 +443,7 @@ importers:
         version: 19.3.1(react@19.3.1)
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: link:../../packages/vite-plugin
       '@icp-sdk/icp-cli':
         specifier: 1.2.0
