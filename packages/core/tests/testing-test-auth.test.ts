@@ -1,7 +1,7 @@
 /**
  * `createTestAuth`, the sign-in behind `createTestClient`'s `auth` (internal:
  * the testing entry exports only `createTestClient`): a sign-in a test
- * controls, shaped like `@icp-sdk/auth` 10's `AuthClient`.
+ * controls, shaped like `@icp-sdk/auth` 11's `AuthClient`.
  *
  * What a client built over it relies on is that it is synchronous and
  * consistent: `getStatus()` and `getPrincipal()` are read by a page while it

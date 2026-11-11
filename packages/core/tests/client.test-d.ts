@@ -45,7 +45,7 @@ createClient({
 // @ts-expect-error maxDepth is a number
 createClient({ network: "ic", identity: "anonymous", maxDepth: "1024" })
 
-// Both @icp-sdk/auth 10's AuthClient and the test auth are an AuthLike as
+// Both @icp-sdk/auth 11's AuthClient and the test auth are an AuthLike as
 // they are, with no adapter.
 declare const authClient: AuthClient
 export const fromAuthClient: AuthLike = authClient
@@ -53,9 +53,9 @@ export const fromTestAuth: AuthLike = createTestAuth({ seed: 1 })
 createClient({ network: "ic", auth: () => new AuthClient() })
 createClient({ network: "ic", auth: () => createTestAuth() })
 
-// The factory is handed the client's network under AuthClient 10's own option
+// The factory is handed the client's network under AuthClient 11's own option
 // names, so it passes straight through, or spread with a provider of its own.
-// Its agentOptions, fetch included, fit AuthClient 10's
+// Its agentOptions, fetch included, fit AuthClient 11's
 // Omit<HttpAgentOptions, "identity">.
 createClient({ network: "env", auth: (network) => new AuthClient(network) })
 createClient({

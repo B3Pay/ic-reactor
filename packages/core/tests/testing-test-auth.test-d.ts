@@ -10,7 +10,7 @@ import { createTestAuth } from "../src/testing/test-auth.js"
 
 /**
  * The interface `createClient`'s `auth` option takes (IR1, #779), written as
- * its design states it: what an `@icp-sdk/auth` 10 `AuthClient` satisfies. A
+ * its design states it: what an `@icp-sdk/auth` 11 `AuthClient` satisfies. A
  * test auth has to satisfy it with no adapter.
  */
 interface AuthLike {

@@ -1,7 +1,7 @@
 /**
  * Internet Identity's redirect sign-in (ICRC-167, `AuthClient`'s
  * `transport: "redirect"`) through the client: the real `AuthClient` and
- * `UrlTransport` of `@icp-sdk/auth` 10, a fake Internet Identity that answers
+ * `UrlTransport` of `@icp-sdk/auth` 11, a fake Internet Identity that answers
  * the request in the URL as its sign-in page would and mints from a canister
  * on a fake replica, and a page that is loaded again after each navigation,
  * keeping only what a browser keeps (`sessionStorage`, `localStorage`).
