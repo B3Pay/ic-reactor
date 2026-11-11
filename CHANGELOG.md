@@ -101,7 +101,14 @@ release does only in a minor.
 - `next-ssr` requires `react`, `react-dom` and `react-server-dom-turbopack`
   `^19.3.1`, past the critical advisory GHSA-xqc2-xf4c-x3h3 against React
   Server Components 19.3.0, and resolves 19.3.1. Its tests render Server
-  Components with `react-server-dom-turbopack`; its code does not change.
+  Components with `react-server-dom-turbopack`; the move changes none of
+  its code.
+- The Next.js SSR example's balance route reads only the ledgers of its
+  `src/ledgers.ts`, named by label or canister id. Any other canister is a 400
+  before a client is built. It read whatever canister the URL named, so anyone
+  could use the server to call any canister's `icrc1_balance_of`,
+  `icrc1_decimals` and `icrc1_symbol`. An app that copied the route keeps its
+  own list of ledgers next to it.
 
 ### CI (not published)
 

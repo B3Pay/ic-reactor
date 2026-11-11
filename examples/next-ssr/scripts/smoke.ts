@@ -151,19 +151,15 @@ assert.equal(bad.status, 400)
 console.log(
   `/api/balance/ICP/not-a-principal: ${bad.status} ${JSON.stringify(bad.body)}`
 )
-const notALedger = await api(`/api/balance/${NOT_A_LEDGER.id}/${SAMPLE_OWNER}`)
-assert.equal(notALedger.status, 502)
-console.log(
-  `/api/balance/${NOT_A_LEDGER.id}/…: ${notALedger.status} kind ${JSON.stringify((notALedger.body.error as { kind?: string }).kind)}`
-)
-// A canister that does not exist: refused for good, so a 502 and not a 503.
-const missing = await api(`/api/balance/${NO_CANISTER}/${SAMPLE_OWNER}`)
-const refusal = missing.body.error as { kind?: string; httpStatus?: number }
-assert.equal(missing.status, 502)
-assert.equal(refusal.kind, "not_delivered")
-assert.equal(refusal.httpStatus, 400)
-console.log(
-  `/api/balance/${NO_CANISTER}/…: ${missing.status} kind "${refusal.kind}", HTTP ${refusal.httpStatus} from the IC`
-)
+// The route reads only the app's ledgers: any other canister, one that
+// exists or not, is a 400 before a call is made.
+for (const id of [NOT_A_LEDGER.id, NO_CANISTER]) {
+  const other = await api(`/api/balance/${id}/${SAMPLE_OWNER}`)
+  assert.equal(other.status, 400)
+  assert.equal((other.body.error as { kind?: string }).kind, "invalid_args")
+  console.log(
+    `/api/balance/${id}/…: ${other.status} ${JSON.stringify(other.body)}`
+  )
+}
 
 console.log("smoke: every check passed")

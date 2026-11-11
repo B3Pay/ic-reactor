@@ -12,6 +12,10 @@
 //   number, which would lose digits past 2^53.
 // - Typed principals are validated with `isPrincipal` and made with
 //   `principal()`; anything else is a 400 before any call is made.
+// - The route reads only the ledgers of src/ledgers.ts, named by label or
+//   by canister id: any other canister is a 400 before a client is built. A
+//   route that called whatever canister the URL names would let anyone send
+//   calls to any canister through this server.
 // - A failure is a `ReactorError`: its `kind` decides the HTTP status, with
 //   `httpStatus` telling a refusal that passes from one that stands
 //   (`statusOf`).
@@ -28,7 +32,7 @@ import { LEDGERS } from "@/ledgers"
 
 /** The route's dynamic segments, as Next hands them to the handler. */
 export interface BalanceParams {
-  /** A ledger's label from src/ledgers.ts (`ICP`, `ckBTC`, `ckETH`, any case) or a canister id. */
+  /** A ledger of src/ledgers.ts: its label (`ICP`, `ckBTC`, `ckETH`, any case) or its canister id. */
   readonly ledger: string
   readonly principal: string
 }
@@ -82,13 +86,15 @@ const json = (status: number, body: unknown): Response =>
     headers: { "cache-control": "no-store" },
   })
 
-/** The canister id `text` names: a ledger's label, or a canister id itself. */
+/**
+ * The canister id of the ledger `text` names, by its label or its canister
+ * id, or `undefined` for anything that is not one of src/ledgers.ts.
+ */
 function ledgerIdOf(text: string): string | undefined {
-  const known = LEDGERS.find(
-    ({ label }) => label.toLowerCase() === text.toLowerCase()
-  )
-  if (known !== undefined) return known.id
-  return isPrincipal(text) ? text : undefined
+  const lower = text.toLowerCase()
+  return LEDGERS.find(
+    ({ id, label }) => id === text || label.toLowerCase() === lower
+  )?.id
 }
 
 /**
@@ -107,7 +113,7 @@ export function balanceRoute(newClient: () => Client) {
       return json(400, {
         error: {
           kind: "invalid_args",
-          message: `${params.ledger} is neither ${LEDGERS.map(({ label }) => label).join(", ")} nor a canister id.`,
+          message: `${params.ledger} is none of this app's ledgers: ${LEDGERS.map(({ label }) => label).join(", ")}, or the canister id of one.`,
         },
       })
     }
