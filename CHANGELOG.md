@@ -22,10 +22,10 @@ The docs and examples move to `@icp-sdk/auth` 11, the version Internet
 Identity's revocable sessions ask apps to upgrade to: a sign-out ends the
 session at Internet Identity, and Internet Identity can end a session before
 it expires. The client already handles both, since these sessions came with
-`@icp-sdk/auth` 9 and 10 and 11 run them the same way. No package changes
-what it does, and no `@ic-reactor/*` export is added or removed; in the
-published packages only the consumer guide, core's doc comments and the react
-README change. An app on `@icp-sdk/auth` 10 has nothing to change for
+`@icp-sdk/auth` 9 and 10 and 11 run them the same way. The move changes no
+package's behavior and adds or removes no `@ic-reactor/*` export: in the
+published packages it changes only the consumer guide, core's doc comments
+and the react README. An app on `@icp-sdk/auth` 10 has nothing to change for
 ic-reactor. To move it to 11, install it, and read an `ssoDomain`'s check
 from `getSsoStatus()`, which replaces `isValidSsoDomain`:
 
@@ -37,6 +37,21 @@ The [support table](docs/src/content/docs/versioning.mdx#support-table) names
 `@icp-sdk/auth` 11.2.0 where it named 10: the version the docs install, and
 the one core's tests and the examples run. That raises a floor, which a
 release does only in a minor.
+
+### @ic-reactor/vite-plugin
+
+#### Changed
+
+- Peer `vite` at `^4.5.6 || ^5.4.12 || ^6.0.9 || ^7.0.0 || ^8.0.0`, where it
+  was `^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0`. The releases it no
+  longer accepts lack the fix for CVE-2025-24010: any website open in the
+  developer's browser could send requests to the dev server and read the
+  answers, and the plugin's `/api` proxy passes them on to the local network's
+  canisters. Migration: an app on Vite 4.5.5, 5.4.11, 6.0.8 or older updates
+  Vite within its major, to 4.5.6, 5.4.12 or 6.0.9 or later. Installing the
+  plugin, npm updates such a Vite where the app's range allows it and stops
+  with `ERESOLVE` where the app pins it; pnpm and yarn warn. A floor rises
+  only in a minor, so this ships in one.
 
 ### Docs
 

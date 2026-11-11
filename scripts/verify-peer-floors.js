@@ -53,7 +53,7 @@ const SCRIPT = fileURLToPath(import.meta.url)
  * Peers whose range joins majors that behave differently, per package, as
  * `{ <package>: { <peer>: { <major>: <devDependency that installs it> } } }`.
  * Each major's floor is installed in the worktree under the devDependency
- * named here (`"vite-4": "npm:vite@4.2.0"`), so one install holds every copy.
+ * named here (`"vite-4": "npm:vite@4.5.6"`), so one install holds every copy.
  * These are pinned through devDependencies only, because an override keyed by
  * the peer's name would move every copy to one version. Then, one copy at a
  * time, the package's `node_modules/<peer>` is linked to that copy and the
@@ -69,7 +69,7 @@ const SCRIPT = fileURLToPath(import.meta.url)
  * 3.x auth hooks. Add an entry before declaring a peer range that joins majors.
  */
 export const PER_MAJOR = {
-  // `^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0`: 4.2.0, 5.0.0, 6.0.0,
+  // `^4.5.6 || ^5.4.12 || ^6.0.9 || ^7.0.0 || ^8.0.0`: 4.5.6, 5.4.12, 6.0.9,
   // 7.0.0 and 8.0.0. The tests start real dev, preview and build runs of each.
   "vite-plugin": {
     vite: { 4: "vite-4", 5: "vite-5", 6: "vite-6", 7: "vite-7", 8: "vite-8" },

@@ -241,7 +241,7 @@ jobs:
       # release of each peer. This pins the peers of core, react and the vite
       # plugin to the lowest versions their ranges accept and runs typecheck and
       # tests there, in a throwaway worktree: the vite plugin once for the floor
-      # of each Vite major its range joins (4.2.0, 5.0.0, 6.0.0, 7.0.0, 8.0.0).
+      # of each Vite major its range joins (4.5.6, 5.4.12, 6.0.9, 7.0.0, 8.0.0).
       # react once declared @tanstack/react-query ^5.0.0 while it did not
       # compile below 5.89 (#475). It also compiles the declarations of core,
       # react and the vite plugin built above with the oldest supported
