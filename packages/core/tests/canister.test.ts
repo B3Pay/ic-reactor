@@ -15,6 +15,7 @@ import {
 } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import type { QueryFunctionContext } from "@tanstack/query-core"
+import type { Client } from "../src/client.js"
 import { RECONCILE_DELAYS_MS } from "../src/call.js"
 import { isRetryable } from "../src/errors.js"
 import { isReactorError } from "../src/index.js"
@@ -32,7 +33,6 @@ import {
   clientWithAuth,
   deferred,
   ledgerCanister,
-  requestIdsFor,
   replicaWith,
   requestsFor,
   serve,
@@ -455,11 +455,9 @@ describe("what is sent again", () => {
       mayHaveExecuted: true,
     })
     await pastResendDelays()
-    // The first send and each of the same request again (#1036): all lost.
-    const sends = requestsFor(replica, "bump")
-    expect(sends).toHaveLength(1 + RECONCILE_DELAYS_MS.length)
-    expect(sends.every((send) => send.dropped)).toBe(true)
-    expect(requestIdsFor(replica, "bump")).toHaveLength(1)
+    // The same request sent again (#1036) is lost before it arrives; one
+    // signed anew would arrive, and run.
+    expect(requestsFor(replica, "bump")).toMatchObject([{ dropped: true }])
   })
 
   it.each([408, 500, 503])(
@@ -469,11 +467,11 @@ describe("what is sent again", () => {
       replica.refuseNext(status)
       await expect(canister.bump(1n)).resolves.toBe(2n)
       await pastResendDelays()
-      expect(requestsFor(replica, "bump")).toMatchObject([
+      const sends = requestsFor(replica, "bump")
+      expect(sends).toMatchObject([
         { refused: expect.any(String) },
-        { requestId: expect.any(String) },
+        { requestId: sends[0].requestId },
       ])
-      expect(requestIdsFor(replica, "bump")).toHaveLength(1)
     }
   )
 
@@ -811,6 +809,53 @@ describe("an update whose call request got no answer (#1036)", () => {
     expect(ran.bumps).toBe(0)
     expect(bodies).toHaveLength(1 + RECONCILE_DELAYS_MS.length)
     expect(new Set(bodies).size).toBe(1)
+  })
+
+  it("sends nothing again once the client is disposed", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const lost = loseCallAnswers(replica.fetch, {
+      when: "before",
+      times: Infinity,
+    })
+    const on: { client?: Client } = {}
+    // Disposed while the first send is on its way, before its answer is lost.
+    const client = clientAs(
+      {
+        ...replica,
+        fetch: (input, init) => {
+          if (urlOf(input).endsWith("/call")) on.client?.dispose()
+          return lost.fetch(input, init)
+        },
+      },
+      alice
+    )
+    on.client = client
+    await expect(
+      client.canister<shapes.Actor>(shapes.actor, { id: SHAPES }).bump(4n)
+    ).rejects.toMatchObject({ kind: "outcome_unknown", mayHaveExecuted: true })
+    expect(lost.bodies).toHaveLength(1)
+  })
+
+  it("stops sending it again when timeoutMs passes", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const lost = loseCallAnswers(replica.fetch, {
+      when: "before",
+      times: Infinity,
+    })
+    // Past the first round (at once), before the second (after 250 ms).
+    const timeoutMs = RECONCILE_DELAYS_MS[1] / 2
+    await expect(
+      clientAs({ ...replica, fetch: lost.fetch }, alice)
+        .canister<shapes.Actor>(shapes.actor, { id: SHAPES, timeoutMs })
+        .bump(4n)
+    ).rejects.toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      code: "timeout",
+    })
+    await sleep(RECONCILE_DELAYS_MS[1] + RECONCILE_DELAYS_MS[2] + 200)
+    expect(lost.bodies).toHaveLength(2)
+    expect(new Set(lost.bodies).size).toBe(1)
   })
 })
 

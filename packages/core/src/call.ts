@@ -59,7 +59,8 @@
  * request again, byte for byte. The IC runs one request id at most once, so
  * that can never run the update twice; a request signed anew would be a second
  * update, and is never sent for this. Only after {@link RECONCILE_DELAYS_MS}
- * rounds with no status does the call reject, with the first failure.
+ * rounds with no status does the call reject, with the first failure. A
+ * caller who is no longer current, or a disposed client, sends nothing again.
  *
  * Internal: not exported from the package entry.
  *
@@ -527,7 +528,9 @@ async function run(
           throw notSent(where, "the client was disposed", "client_disposed")
         }
         out = true
-        reply = await dispatch(agent, send, call, sends)
+        reply = await dispatch(agent, send, call, sends, () =>
+          internals.agentFor(caller.principal, where)
+        )
         break
       } catch (error) {
         // Never a re-send: what the attempt out did is unknown, and the
@@ -673,12 +676,15 @@ export function keepSigned(request: HttpAgentRequest, signed: unknown): void {
  * Sends one attempt and returns the reply bytes (`undefined` for a oneway).
  * Rejects with the classified failure. The ingress expiry of a call request
  * is recorded in `sent` as the agent builds it ({@link watchSends}).
+ * `current` rejects once the caller is no longer the current one, or the
+ * client is disposed: {@link reconcile} asks it before each send.
  */
 async function dispatch(
   agent: HttpAgent,
   send: Send,
   call: Outgoing,
-  sent: Sent
+  sent: Sent,
+  current: () => Promise<unknown>
 ): Promise<Uint8Array | undefined> {
   const effectiveTarget = { canisterId: call.effective }
   // Whether the request may be in the IC: only once `agent.call` returned,
@@ -746,7 +752,7 @@ async function dispatch(
       }
       // From here the request may be in the IC, whatever a later failure says.
       accepted = true
-      const reply = await reconcile(agent, signed, call, options)
+      const reply = await reconcile(agent, signed, call, options, current)
       if (reply !== undefined) return reply
       accepted = false
       throw error
@@ -797,15 +803,18 @@ const NOT_KNOWN = Symbol("not known")
  * `undefined` when none could be had within {@link RECONCILE_DELAYS_MS}
  * rounds. Each round reads the request's status, waiting while the IC
  * processes it, and, while the IC does not know it, sends `signed` again
- * unchanged: the same request id, which the IC runs at most once. A certified
- * reject, and the signal's abort, are thrown; any other failure starts the next
- * round.
+ * unchanged: the same request id, which the IC runs at most once. It is sent
+ * again only while `current` resolves: for a caller who is no longer current,
+ * or a disposed client, the status is still read, but nothing is sent. A
+ * certified reject, and the signal's abort, are thrown; any other failure
+ * starts the next round.
  */
 async function reconcile(
   agent: HttpAgent,
   signed: HttpAgentRequest,
   call: Outgoing,
-  options: Parameters<HttpAgent["call"]>[1]
+  options: Parameters<HttpAgent["call"]>[1],
+  current: () => Promise<unknown>
 ): Promise<Uint8Array | undefined> {
   const signal = call.signal
   const requestId = requestIdOf(
@@ -845,6 +854,7 @@ async function reconcile(
       if (definite(error)) throw error
     }
     try {
+      await untilAborted(current(), signal)
       const submitted = await untilAborted(
         agent.call(call.canisterId, options, same),
         signal

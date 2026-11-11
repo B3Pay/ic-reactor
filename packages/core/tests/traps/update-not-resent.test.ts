@@ -81,9 +81,7 @@ describe.concurrent("an update that may have run", () => {
       kind: "outcome_unknown",
       mayHaveExecuted: true,
     })
-    // Every send was the one request, and every answer to it was lost.
-    expect(l.requestIds()).toHaveLength(1)
-    expect(l.calls().every((call) => call.dropped)).toBe(true)
+    expect(l.calls()).toMatchObject([{ dropped: true }])
     expect(l.executed()).toBe(1)
     expect(l.balances.get(ALICE)).toBe(1_000_000n - 500n - FEE)
   })
@@ -104,7 +102,7 @@ describe.concurrent("an update that may have run", () => {
       failureCount: 1,
       error: { kind: "outcome_unknown", mayHaveExecuted: true },
     })
-    expect(l.requestIds()).toHaveLength(1)
+    expect(l.calls()).toHaveLength(1)
     expect(l.executed()).toBe(1)
   })
 
@@ -121,8 +119,11 @@ describe.concurrent("an update that may have run", () => {
       await expect(l.ledger.icrc1_transfer(transferArg(500n))).resolves.toBe(1n)
       await pastResendDelays()
 
-      expect(l.calls()).toMatchObject([{ refused: expect.any(String) }, {}])
-      expect(l.requestIds()).toHaveLength(1)
+      const calls = l.calls()
+      expect(calls).toMatchObject([
+        { refused: expect.any(String) },
+        { requestId: calls[0].requestId },
+      ])
       expect(l.executed()).toBe(1)
     }
   )

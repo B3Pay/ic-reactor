@@ -63,16 +63,9 @@ function withShapes(handlers: TestHandlers<shapes.Actor>, options?: Options) {
 }
 
 /** The canister requests (queries and calls) the fake saw. */
-/**
- * The queries and calls the fake received, each call request once: the
- * client sends a request whose answer was lost again unchanged (#1036).
- */
 const canisterRequests = (test: Pick<Test, "requests">) =>
   test.requests.filter(
-    (request, index, all) =>
-      (request.endpoint === "query" || request.endpoint === "call") &&
-      (request.requestId === undefined ||
-        all.findIndex((r) => r.requestId === request.requestId) === index)
+    (request) => request.endpoint === "query" || request.endpoint === "call"
   )
 
 describe("who a handler is told called", () => {
@@ -614,12 +607,12 @@ describe("the failures a test makes happen", () => {
       kind: "outcome_unknown",
       mayHaveExecuted: true,
     })
-    // Only the same request is sent again, however long the client waits.
+    // Nothing re-sends it, however long the client waits.
     await sleep(1_100)
     expect(ran).toBe(1)
-    expect(
-      canisterRequests({ requests }).filter((request) => request.dropped)
-    ).toMatchObject([{ endpoint: "call", methodName: "bump" }])
+    expect(requests.filter((request) => request.dropped)).toMatchObject([
+      { endpoint: "call", methodName: "bump" },
+    ])
 
     // The loss was for that one call: the next works, and runs.
     await expect(canister.bump(2n)).resolves.toBe(2n)

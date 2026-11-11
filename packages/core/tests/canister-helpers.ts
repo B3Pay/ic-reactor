@@ -148,14 +148,6 @@ export const canisterRequests = (replica: FakeReplica): FakeReplicaRequest[] =>
 export const requestsFor = (replica: FakeReplica, method: string) =>
   canisterRequests(replica).filter((request) => request.methodName === method)
 
-/**
- * The distinct requests among the calls for `method`, by request id: a send
- * of the same signed request again is the same request, run at most once.
- */
-export const requestIdsFor = (replica: FakeReplica, method: string) => [
-  ...new Set(requestsFor(replica, method).map((request) => request.requestId)),
-]
-
 /** A client on `replica` that calls as `identity`. Runs where the test runs (Node: a server). */
 export const clientAs = (
   replica: FakeReplica,

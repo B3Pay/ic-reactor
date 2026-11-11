@@ -85,11 +85,6 @@ export interface Ledger extends TestClient {
   /** The calls (updates) the fake received. */
   readonly calls: () => TestClient["requests"][number][]
   /**
-   * The distinct requests among {@link calls}, by request id: a send of the
-   * same signed request again is the same request, which runs at most once.
-   */
-  readonly requestIds: () => string[]
-  /**
    * Replaces what the ledger does with a transfer. `apply()` books it (debits
    * the caller, credits the payee, counts it in `executed()`) and returns the
    * reply a ledger gives; what the function returns, or throws through
@@ -200,15 +195,6 @@ export function setupLedger(
         (request) => request.endpoint === "query" || request.endpoint === "call"
       ),
     calls: () => requests().filter((request) => request.endpoint === "call"),
-    requestIds: () => [
-      ...new Set(
-        requests().flatMap((request) =>
-          request.endpoint === "call" && request.requestId !== undefined
-            ? [request.requestId]
-            : []
-        )
-      ),
-    ],
     onTransfer(handler) {
       transfer = handler
     },

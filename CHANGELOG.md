@@ -31,17 +31,20 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   never sent for it. The call then resolves with the reply, or rejects with
   the reject the IC reports, where 4.3.0 reported `outcome_unknown`. Only when
   no status comes back does it reject `outcome_unknown`, with the first
-  failure, as before. An app has nothing to change.
+  failure, as before. A caller who is no longer the current one, or a
+  disposed client, sends nothing again. An app has nothing to change; a write
+  that ends `outcome_unknown` after a lost answer now takes about a second
+  longer to say so (a test on fake timers has to advance them past it).
 - `@ic-reactor/core/testing`: the fake replica runs a request id at most
-  once, as a replica does: the same signed request sent again is answered
-  with the first send's status, and `read_state` reports that status. Each
-  `call` entry of `requests` has a `requestId` (hex). After `dropNextReply()`,
-  `requests` shows the client's sends of the same request (up to four `call`
-  entries with one `requestId`; the canister still runs once), so a test that
-  counted `call` entries to check a write ran once should count distinct
-  `requestId`s instead. `refuseNext(408)` or a 5xx on a write is now followed
-  by the same request, which the canister runs: refuse four sends to keep the
-  outcome unknown.
+  once, as a replica does: the same signed request sent again, also while its
+  handler is still running, is answered with the first send's status, and
+  `read_state` reports that status. Each `call` entry of `requests` has a
+  `requestId` (hex). `dropNextReply()` is unchanged for a test: the call ends
+  `outcome_unknown` and `requests` shows the one call that ran, because the
+  client's sends of the same request are lost before they arrive.
+  `refuseNext(408)` or a 5xx on a write is now followed by the same request,
+  which the canister runs, so the write resolves: refuse four sends
+  (`refuseNext(503, 4)`) to keep the outcome unknown.
 
 ## core, react, vite-plugin, mcp 4.3.0
 

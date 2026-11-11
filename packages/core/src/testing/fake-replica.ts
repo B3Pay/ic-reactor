@@ -122,13 +122,15 @@ export interface FakeReplicaRequest {
   /**
    * Whether the reply to this request was lost by
    * {@link FakeReplica.dropNextReply}: the agent saw a network failure. The
-   * first send of a dropped call ran the canister; a re-send of it did not.
+   * call ran the canister. A send of the same request again, or a read of its
+   * status, is lost on its way in and is not in the log.
    */
   readonly dropped?: true
   /**
    * The request id of a call, as hex. Every send of the same signed request
    * has the same one, and the fake, as a replica, runs a request id at most
-   * once: count the distinct ids of a method's calls to count its writes.
+   * once: after {@link FakeReplica.refuseNext}, a call entry with the refused
+   * one's id is that request sent again, not a second write.
    */
   readonly requestId?: string
 }
@@ -211,11 +213,12 @@ export interface FakeReplica {
    * changes, but the agent sees a network failure instead of the answer, so
    * it cannot know the call happened.
    *
-   * The request is remembered, and every send of it, and every `read_state`
-   * of its status, fails as a lost connection without running the canister
-   * again. The agent's own retries, which re-send the same request, therefore
-   * cannot recover the reply and cannot run the call twice, and the agent
-   * cannot learn the outcome by polling. A real replica would still answer a
+   * The request is remembered, and every later send of it, and every
+   * `read_state` of its status, fails as a lost connection before it arrives:
+   * it is not in `requests`, and the canister does not run again. Sending the
+   * same request again, as the agent's own retries and the client (#1036) do,
+   * therefore cannot recover the reply and cannot run the call twice, and
+   * its outcome cannot be learned by polling. A real replica would still answer a
    * `read_state` for a request id it holds: the fake models a network
    * partition for that one request id, so the call stays outcome-unknown.
    *
@@ -712,8 +715,11 @@ export function createFakeReplica(
   const lostRequests = new Set<string>()
   // The status of each call a canister ran, by request id: a replica runs a
   // request id once, and answers a send of it again, and its `read_state`,
-  // with that status.
-  const statuses = new Map<string, Array<[string, TreeNode]>>()
+  // with that status. `running` holds a call from before its canister runs,
+  // so a send of it again while the handler is still at work shares that run.
+  type Status = Array<[string, TreeNode]>
+  const statuses = new Map<string, Status>()
+  const running = new Map<string, Promise<Status>>()
 
   /**
    * The status to refuse a `query` or `call` with, from the first armed
@@ -904,13 +910,14 @@ export function createFakeReplica(
   ) {
     const { method_name = "", arg = new Uint8Array() } = envelope.content
     const requestId = toHex(requestIdOf(envelope.content))
-    // A request id whose reply was lost stays lost: a re-send is neither run
-    // nor answered again, and its status cannot be read (see
-    // `readsLostRequest`). That models a partition for that one request id,
-    // not what a replica does, which would still answer a `read_state`.
-    const resent = lostRequests.has(requestId)
-    const lose = resent || useUp(drops, canisterId, method_name) !== undefined
-    if (lose && !resent) lostRequests.add(requestId)
+    // A request id whose reply was lost stays lost: a send of it again never
+    // arrives, so it is neither logged, run nor answered, and its status
+    // cannot be read (see `readsLostRequest`). That models a partition for
+    // that one request id, not what a replica does, which would still answer
+    // a `read_state`.
+    if (lostRequests.has(requestId)) throw lostReply(method_name)
+    const lose = useUp(drops, canisterId, method_name) !== undefined
+    if (lose) lostRequests.add(requestId)
     requests.push({
       endpoint: "call",
       canisterId,
@@ -920,42 +927,35 @@ export function createFakeReplica(
       ...(lose ? { dropped: true as const } : {}),
       requestId,
     })
-    if (resent) throw lostReply(method_name)
-    const ran = statuses.get(requestId)
-    if (ran !== undefined) {
-      const certificate = await certify([
-        ["request_status", [[requestIdOf(envelope.content), ran]]],
-      ])
-      return cborResponse({ status: "replied", certificate })
+    let run = running.get(requestId)
+    if (run === undefined) {
+      run = execute("update", canisterId, method_name, arg, caller).then(
+        (outcome) => {
+          const status: Status =
+            "reply" in outcome
+              ? [
+                  ["status", utf8("replied")],
+                  ["reply", outcome.reply],
+                ]
+              : [
+                  ["status", utf8("rejected")],
+                  ["reject_code", leb128(BigInt(outcome.reject.code))],
+                  ["reject_message", utf8(outcome.reject.message)],
+                  ...(outcome.reject.errorCode === undefined
+                    ? []
+                    : ([
+                        ["error_code", utf8(outcome.reject.errorCode)],
+                      ] as Status)),
+                ]
+          statuses.set(requestId, status)
+          return status
+        }
+      )
+      running.set(requestId, run)
     }
-
-    const outcome = await execute(
-      "update",
-      canisterId,
-      method_name,
-      arg,
-      caller
-    )
+    const status = await run
     // The canister has run and its state has changed; only the answer is lost.
     if (lose) throw lostReply(method_name)
-
-    const status: Array<[string, TreeNode]> =
-      "reply" in outcome
-        ? [
-            ["status", utf8("replied")],
-            ["reply", outcome.reply],
-          ]
-        : [
-            ["status", utf8("rejected")],
-            ["reject_code", leb128(BigInt(outcome.reject.code))],
-            ["reject_message", utf8(outcome.reject.message)],
-            ...(outcome.reject.errorCode === undefined
-              ? []
-              : ([["error_code", utf8(outcome.reject.errorCode)]] as Array<
-                  [string, TreeNode]
-                >)),
-          ]
-    statuses.set(requestId, status)
     const certificate = await certify([
       ["request_status", [[requestIdOf(envelope.content), status]]],
     ])
@@ -1135,15 +1135,7 @@ export function createFakeReplica(
           caller
         )
       }
-      if (readsLostRequest(envelope)) {
-        requests.push({
-          endpoint,
-          canisterId: effectiveCanisterId,
-          effectiveCanisterId,
-          dropped: true,
-        })
-        throw lostReply()
-      }
+      if (readsLostRequest(envelope)) throw lostReply()
       return await handleReadState(effectiveCanisterId, envelope)
     } catch (error) {
       // A lost reply is the network failing, which the agent sees as the

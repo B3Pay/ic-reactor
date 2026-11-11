@@ -1081,6 +1081,26 @@
     "replace": "agent.call(call.canisterId, options)"
   },
   {
+    "id": "1036-lost-call-sent-again-after-dispose",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "sends nothing again once the client is disposed",
+    "why": "an update whose call got no answer sent again without asking whether its caller is still current (#1036), so a disposed client, or one whose user signed out, still sends the write",
+    "file": "src/call.ts",
+    "search": "      await untilAborted(current(), signal)\n",
+    "replace": ""
+  },
+  {
+    "id": "1036-fake-runs-a-request-in-flight-twice",
+    "package": "core",
+    "test": "tests/testing-fake-replica.test.ts",
+    "testName": "runs it once when it is sent again while the canister is still at work",
+    "why": "the fake replica remembers a call only once its handler returned, so the same request sent again meanwhile runs the handler a second time, which a replica never does (#1036)",
+    "file": "src/testing/fake-replica.ts",
+    "search": "      running.set(requestId, run)\n",
+    "replace": ""
+  },
+  {
     "id": "ir9-gateway-error-resent",
     "package": "core",
     "test": "tests/traps/update-not-resent.test.ts",
@@ -5068,8 +5088,8 @@
     "testName": "dropNextReply() with no argument still loses whatever call request comes next",
     "why": "the bare dropNextReply() skips a certified read and waits for an update, which changes what existing tests that make a certified read first exercise",
     "file": "src/testing/fake-replica.ts",
-    "search": "const lose = resent || useUp(drops, canisterId, method_name) !== undefined",
-    "replace": "const lose =\n      resent ||\n      (method_name !== \"icrc1_fee\" &&\n        useUp(drops, canisterId, method_name) !== undefined)"
+    "search": "const lose = useUp(drops, canisterId, method_name) !== undefined",
+    "replace": "const lose =\n      method_name !== \"icrc1_fee\" &&\n      useUp(drops, canisterId, method_name) !== undefined"
   },
   {
     "id": "875-read-waits-for-http-answer",

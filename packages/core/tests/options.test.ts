@@ -34,7 +34,6 @@ import {
   deferred,
   ledgerCanister,
   replicaWith,
-  requestIdsFor,
   requestsFor,
   serve,
   sleep,
@@ -649,7 +648,7 @@ describe("mutationOptions", () => {
     // onSettled has invalidated and waited for the active read to refetch.
     expect(balance.getCurrentResult().data).toBe(1_000_000n - 100n - FEE)
     expect(reads(replica)).toBe(2)
-    expect(requestIdsFor(replica, "icrc1_transfer")).toHaveLength(1)
+    expect(requestsFor(replica, "icrc1_transfer")).toHaveLength(1)
     unsubscribe()
   })
 
