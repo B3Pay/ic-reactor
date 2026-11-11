@@ -34,7 +34,10 @@ and shows the server-rendering story end to end:
 - **A Route Handler** with its own client per request answers JSON, with
   amounts as decimal text and base units, and maps a `ReactorError` to an
   HTTP status by its `kind`, reading `httpStatus` where the kind is not enough:
-  a canister that does not exist is a 502, not a 503 that invites a retry.
+  a refusal that stands, such as a canister id that names no canister, is a
+  502, not a 503 that invites a retry. It reads only the app's own ledgers:
+  any other canister is a 400 before a client is built, so nobody can use the
+  server to call a canister of their choosing.
 - **Errors on the server.** A canister that is not a ledger renders its own
   section with the error's `kind`; the rest of the page renders as usual.
 - **Sign-in after hydration.** Signing in with Internet Identity moves every
