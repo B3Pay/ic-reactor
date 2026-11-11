@@ -11,7 +11,7 @@
  * and cache stay in the temp directory: each `vite` exports its version and
  * that of the rollup it resolves (3 for Vite 4, 4 from Vite 5 on, as the real
  * releases depend). Its scripts record both; a seeded fault fails one of them
- * on the 4.2 floor.
+ * on the 4.5.6 floor.
  *
  * Run by `pnpm test:scripts`; it needs `pnpm`, `git` and `tar` on the PATH.
  */
@@ -90,13 +90,19 @@ function repository(files) {
 }
 
 describe("the pins", () => {
-  it("installs vite-plugin's Vite floors 4.2.0, 5.0.0, 6.0.0, 7.0.0 and 8.0.0, one copy per major", () => {
-    assert.deepEqual(VITE_FLOORS, ["4.2.0", "5.0.0", "6.0.0", "7.0.0", "8.0.0"])
+  it("installs vite-plugin's Vite floors 4.5.6, 5.4.12, 6.0.9, 7.0.0 and 8.0.0, one copy per major", () => {
+    assert.deepEqual(VITE_FLOORS, [
+      "4.5.6",
+      "5.4.12",
+      "6.0.9",
+      "7.0.0",
+      "8.0.0",
+    ])
     const { overrides, devDependencies, copies } = pinsFor(VITE_PLUGIN)
     assert.deepEqual(devDependencies, {
-      "vite-4": "npm:vite@4.2.0",
-      "vite-5": "npm:vite@5.0.0",
-      "vite-6": "npm:vite@6.0.0",
+      "vite-4": "npm:vite@4.5.6",
+      "vite-5": "npm:vite@5.4.12",
+      "vite-6": "npm:vite@6.0.9",
       "vite-7": "npm:vite@7.0.0",
       "vite-8": "npm:vite@8.0.0",
     })
@@ -116,7 +122,7 @@ describe("the pins", () => {
   it("refuses a peer range that joins majors without a PER_MAJOR entry", () => {
     assert.throws(
       () => pinsFor(VITE_PLUGIN, { perMajor: {} }),
-      /accepts vite "\^4\.2\.0 \|\| .*", which joins majors 4, 5, 6, 7, 8, but PER_MAJOR/
+      /accepts vite "\^4\.5\.6 \|\| .*", which joins majors 4, 5, 6, 7, 8, but PER_MAJOR/
     )
   })
 
@@ -384,9 +390,9 @@ describe("vite-plugin at its Vite floors", () => {
     assert.equal(worktrees(seed.root).length, 1)
   })
 
-  it("fails when the plugin's tests break on the 4.2 floor, and still runs the other majors", () => {
-    const seed = seeded({ test: "4.2.0" })
-    assert.deepEqual(seed.run(), ["vite-plugin at vite 4.2.0: test"])
+  it("fails when the plugin's tests break on the 4.5.6 floor, and still runs the other majors", () => {
+    const seed = seeded({ test: "4.5.6" })
+    assert.deepEqual(seed.run(), ["vite-plugin at vite 4.5.6: test"])
     assert.deepEqual(
       seed.runs(),
       VITE_FLOORS.flatMap((floor) => [
@@ -408,11 +414,11 @@ describe("vite-plugin at its Vite floors", () => {
     assert.equal(worktrees(seed.root).length, 1)
   })
 
-  it("fails when the plugin's typecheck breaks on the 4.2 floor, without running its tests there", () => {
-    const seed = seeded({ typecheck: "4.2.0" })
-    assert.deepEqual(seed.run(), ["vite-plugin at vite 4.2.0: typecheck"])
+  it("fails when the plugin's typecheck breaks on the 4.5.6 floor, without running its tests there", () => {
+    const seed = seeded({ typecheck: "4.5.6" })
+    assert.deepEqual(seed.run(), ["vite-plugin at vite 4.5.6: typecheck"])
     assert.deepEqual(seed.runs(), [
-      ran("typecheck", "4.2.0"),
+      ran("typecheck", "4.5.6"),
       ...VITE_FLOORS.slice(1).flatMap((floor) => [
         ran("typecheck", floor),
         ran("test", floor),
