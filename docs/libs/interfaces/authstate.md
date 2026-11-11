@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [core/src/client.ts:153](https://github.com/B3Pay/ic-reactor/blob/2a52353585b14e682629ed7e8febd57587b35517/packages/core/src/client.ts#L153)
+Defined in: [core/src/client.ts:153](https://github.com/B3Pay/ic-reactor/blob/54f2e9a6546209a14d8dd5ea0fddf5446aaf02cb/packages/core/src/client.ts#L153)
 
 Who a client calls as, and why. [Client.authState](/docs/ic-reactor/libs/interfaces/client/#authstate) returns it.
 
@@ -29,7 +29,7 @@ an explicit `AnonymousIdentity`. A client on a server reports
 
 > `readonly` **status**: `"signed-in"` \| `"signed-in-elsewhere"` \| `"expired"` \| `"anonymous"`
 
-Defined in: [core/src/client.ts:163](https://github.com/B3Pay/ic-reactor/blob/2a52353585b14e682629ed7e8febd57587b35517/packages/core/src/client.ts#L163)
+Defined in: [core/src/client.ts:163](https://github.com/B3Pay/ic-reactor/blob/54f2e9a6546209a14d8dd5ea0fddf5446aaf02cb/packages/core/src/client.ts#L163)
 
 - `anonymous`: nobody is signed in (the auth says `signed-out`, or a state
   the client does not know), the client runs on a server, or it was built
@@ -45,7 +45,7 @@ Defined in: [core/src/client.ts:163](https://github.com/B3Pay/ic-reactor/blob/2a
 
 > `readonly` **principal**: `string`
 
-Defined in: [core/src/client.ts:165](https://github.com/B3Pay/ic-reactor/blob/2a52353585b14e682629ed7e8febd57587b35517/packages/core/src/client.ts#L165)
+Defined in: [core/src/client.ts:165](https://github.com/B3Pay/ic-reactor/blob/54f2e9a6546209a14d8dd5ea0fddf5446aaf02cb/packages/core/src/client.ts#L165)
 
 The principal calls go out as, as text.
 
@@ -55,12 +55,12 @@ The principal calls go out as, as text.
 
 > `readonly` `optional` **expiresAt?**: `number`
 
-Defined in: [core/src/client.ts:179](https://github.com/B3Pay/ic-reactor/blob/2a52353585b14e682629ed7e8febd57587b35517/packages/core/src/client.ts#L179)
+Defined in: [core/src/client.ts:179](https://github.com/B3Pay/ic-reactor/blob/54f2e9a6546209a14d8dd5ea0fddf5446aaf02cb/packages/core/src/client.ts#L179)
 
 When the session ends, in milliseconds since the epoch (`Date.now()`'s
 scale; `new Date(expiresAt)` for a date), so an app can show "signed in
 until". Present only while `status` is `"signed-in"` through an auth whose
-`getStatus()` carries `expiresAtMs`, as `AuthClient` 10's does; absent for
+`getStatus()` carries `expiresAtMs`, as `AuthClient` 11's does; absent for
 a client built with `identity`. The client tells its listeners when that
 time passes, and the status turns `"expired"`.
 
