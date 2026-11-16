@@ -370,6 +370,7 @@ describe('"env" in a browser', () => {
     it.each([
       ["a canister's ic0.app domain", `https://${CANISTER}.ic0.app`],
       ["icp0.io itself", "https://icp0.io"],
+      ["icp.net itself", "https://icp.net"],
       ["the API domain", MAINNET],
       // #975: as for a name without the dot.
       [
@@ -396,6 +397,11 @@ describe('"env" in a browser', () => {
     it.each([
       ["<id>.icp0.io", `https://${CANISTER}.icp0.io`],
       ["<id>.raw.icp0.io", `https://${CANISTER}.raw.icp0.io`],
+      ["<id>.icp1.io", `https://${CANISTER}.icp1.io`],
+      ["<id>.raw.icp1.io", `https://${CANISTER}.raw.icp1.io`],
+      // A cloud engine's app: *.icp.net is on the Public Suffix List.
+      ["<id>.icp.net", `https://${CANISTER}.icp.net`],
+      ["<id>.raw.icp.net", `https://${CANISTER}.raw.icp.net`],
     ])(
       "routes through its origin and believes the cookie's ids only, on %s",
       (_, origin) => {
