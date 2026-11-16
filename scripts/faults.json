@@ -5988,6 +5988,26 @@
     "replace": "true"
   },
   {
+    "id": "icp-net-cookie-ids-untrusted",
+    "package": "core",
+    "test": "tests/env-canister-id.test.ts",
+    "testName": "resolves from the cookie for \"env\" and \"ic\" on <id>.icp.net",
+    "why": "a cloud engine app's own <id>.icp.net page, under the public suffix *.icp.net, does not believe its asset canister's cookie, so { name } fails where cloud engines serve apps",
+    "file": "src/network.ts",
+    "search": "(?:icp0\\.io|icp1\\.io|icp\\.net)",
+    "replace": "(?:icp0\\.io|icp1\\.io)"
+  },
+  {
+    "id": "icp-net-page-falls-back",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "routes through its origin, with no cookie read and no fetch, on icp.net itself",
+    "why": "an icp.net page, a mainnet gateway, is not routed through its own origin and falls back to icp-api.io",
+    "file": "src/network.ts",
+    "search": "  \"icp.net\",\n",
+    "replace": ""
+  },
+  {
     "id": "env-lan-page-falls-back-to-mainnet",
     "package": "core",
     "test": "tests/network.test.ts",
