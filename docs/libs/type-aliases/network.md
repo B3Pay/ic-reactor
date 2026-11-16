@@ -7,7 +7,7 @@ prev: true
 
 > **Network** = `"ic"` \| `"local"` \| `"env"` \| \{ `host`: `string`; `rootKey?`: `Uint8Array`; `name?`: `string`; `fetchRootKey?`: `boolean`; \}
 
-Defined in: [core/src/network.ts:89](https://github.com/B3Pay/ic-reactor/blob/090469e07cb26e3f2ade71258797d8ec87b95bf9/packages/core/src/network.ts#L89)
+Defined in: [core/src/network.ts:91](https://github.com/B3Pay/ic-reactor/blob/be620c18d8d1d1915745db74e86825062a1a6f69/packages/core/src/network.ts#L91)
 
 Where the canisters are.
 
@@ -28,8 +28,9 @@ Where the canisters are.
   others never reach mainnet, but none is local. The root key
   comes from the `ic_env` cookie, but only where that cookie is trusted:
   when both the page and the replica are local, or the client was built
-  with `allowEnvConfig: true`. On a canister's own `<id>.icp0.io` page the
-  cookie's canister ids are believed by default, never its root key. A
+  with `allowEnvConfig: true`. On a canister's own `<id>.icp0.io` page
+  (or `<id>.icp1.io`, or a cloud engine's `<id>.icp.net`) the cookie's
+  canister ids are believed by default, never its root key. A
   local replica with no key from the cookie has its root key fetched. A
   forwarding page is routed but is not local, so there the key is neither
   taken from the cookie nor fetched,
