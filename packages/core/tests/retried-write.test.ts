@@ -111,6 +111,11 @@ function setup() {
     },
   })
   const ledger = test.client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
+  const transfers = () =>
+    test.requests.filter(
+      (request) =>
+        request.endpoint === "call" && request.methodName === "icrc1_transfer"
+    )
   return {
     ...test,
     ledger,
@@ -119,11 +124,9 @@ function setup() {
     /** How many transfers reached the ledger, the ones it answered `Err` included. */
     handled: () => handled,
     /** How many transfer requests the client sent, the ones turned away included. */
-    sent: () =>
-      test.requests.filter(
-        (request) =>
-          request.endpoint === "call" && request.methodName === "icrc1_transfer"
-      ).length,
+    sent: () => transfers().length,
+    /** How many transfers the client signed: one request id each, however often it was sent. */
+    signed: () => new Set(transfers().map(({ requestId }) => requestId)).size,
     /** Runs `then` once, after the ledger booked the next transfer and before it answers. */
     afterNextTransfer(then: () => void) {
       before = () => {
@@ -266,11 +269,19 @@ describe("a mutation given retry", () => {
   })
 
   it.each([
-    ["HTTP 503", (t: Setup) => t.refuseNext(503), { httpStatus: 503 }],
+    [
+      "HTTP 503",
+      // The client sends the request it signed again three times, to learn its
+      // outcome (#1036): every one of the four sends is turned away.
+      (t: Setup) => t.refuseNext(503, 4),
+      { httpStatus: 503 },
+      4,
+    ],
     [
       "a reject with code 4 after the transfer was booked",
       (t: Setup) => t.afterNextTransfer(() => t.reject(4, "refused late")),
       { kind: "rejected", rejectCode: 4 },
+      1,
     ],
     [
       "a trap after the transfer was booked",
@@ -279,10 +290,11 @@ describe("a mutation given retry", () => {
           throw new Error("trapped late")
         }),
       { kind: "rejected", rejectCode: 5 },
+      1,
     ],
   ])(
     "does not send the retry after %s, which may follow a delivery",
-    async (_name, fail, first) => {
+    async (_name, fail, first, sends) => {
       const t = setup()
       const observer = new MutationObserver(
         t.client.queryClient,
@@ -296,7 +308,9 @@ describe("a mutation given retry", () => {
         ...retriedWrite,
         cause: { ...first, mayHaveExecuted: true },
       })
-      expect(t.sent()).toBe(1)
+      // The first attempt's sends, all of the one request it signed.
+      expect(t.sent()).toBe(sends)
+      expect(t.signed()).toBe(1)
     }
   )
 

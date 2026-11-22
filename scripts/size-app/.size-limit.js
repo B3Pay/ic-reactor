@@ -47,8 +47,9 @@ export default [
     // With #949 on top of v4: measured 93,777 B, so the limit moved from 93,860 B to 93.87 kB.
     // With #913 on top of v4: measured 93,924 B, so the limit moved from 93,870 B to 94.07 kB.
     // With client.time() refusing a time five minutes before an earlier one (#1066): measured 94,097 B (94,031 B before, +66 B), so the limit moved from 94,070 B to 94.15 kB.
-    // With a retried write refused after an attempt that may have executed (#1037): measured 94,511 B (94,122 B before, +389 B), so the limit moved from 94,150 B to 94.56 kB.
-    limit: "94.56 kB",
+    // With an update whose call got no answer read back and sent again as the same request (#1036): measured 94,523 B (94,097 B before, +426 B), so the limit moved from 94,150 B to 94.55 kB.
+    // With a retried write refused after an attempt that may have executed (#1037): measured 94,903 B (94,542 B before, +361 B), so the limit moved from 94,550 B to 94.95 kB.
+    limit: "94.95 kB",
     gzip: true,
   },
   {
@@ -86,8 +87,9 @@ export default [
     // With #949 on top of v4: measured 95,092 B, so the limit moved from 95,180 B to 95.19 kB.
     // With #913 on top of v4: measured 95,239 B, so the limit moved from 95,190 B to 95.38 kB.
     // With client.time() refusing a time five minutes before an earlier one (#1066): measured 95,387 B (95,322 B before, +65 B), so the limit moved from 95,380 B to 95.44 kB.
-    // With a retried write refused after an attempt that may have executed (#1037): measured 95,780 B (95,406 B before, +374 B), so the limit moved from 95,440 B to 95.83 kB.
-    limit: "95.83 kB",
+    // With an update whose call got no answer read back and sent again as the same request (#1036): measured 95,801 B (95,387 B before, +414 B), so the limit moved from 95,440 B to 95.84 kB.
+    // With a retried write refused after an attempt that may have executed (#1037): measured 96,189 B (95,820 B before, +369 B), so the limit moved from 95,840 B to 96.24 kB.
+    limit: "96.24 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },
