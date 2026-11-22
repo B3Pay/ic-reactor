@@ -28,6 +28,7 @@ import {
   onlineManager,
 } from "@tanstack/query-core"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { RECONCILE_DELAYS_MS } from "../src/call.js"
 import { isReactorError, type ReactorError } from "../src/index.js"
 import { createTestClient } from "../src/testing/index.js"
 import { LEDGER } from "./canister-helpers.js"
@@ -159,6 +160,17 @@ const rejection = (write: Promise<unknown>): Promise<ReactorError> =>
   )
 
 /**
+ * How long a test waits for what follows a lost reply. Before the attempt
+ * rejects, the client reads the request's status back and sends the same
+ * request again, in the rounds of `RECONCILE_DELAYS_MS` (#1036). They take
+ * most of the second `vi.waitFor` gives by default, which a busy machine, or
+ * a process that runs one test alone, then overruns.
+ */
+const patiently = {
+  timeout: RECONCILE_DELAYS_MS.reduce((sum, ms) => sum + ms, 0) + 3_000,
+}
+
+/**
  * A run of `observer` that lost its first reply and is held back before the
  * attempt its `retry` asks for: offline, which is where TanStack pauses a
  * retry. Returns the run as its `QueryClient` holds it.
@@ -178,11 +190,13 @@ async function pausedBeforeRetry(
   })
   t.dropNextReply()
   observer.mutate(arg).catch(() => undefined)
-  await vi.waitFor(() =>
-    expect(observer.getCurrentResult()).toMatchObject({
-      isPaused: true,
-      failureCount: 1,
-    })
+  await vi.waitFor(
+    () =>
+      expect(observer.getCurrentResult()).toMatchObject({
+        isPaused: true,
+        failureCount: 1,
+      }),
+    patiently
   )
   const run = queryClient
     .getMutationCache()
@@ -532,11 +546,13 @@ describe("a mutation given retry", () => {
     t.dropNextReply()
     const first = observer.mutate(arg)
     first.catch(() => undefined)
-    await vi.waitFor(() =>
-      expect(observer.getCurrentResult()).toMatchObject({
-        isPaused: true,
-        failureCount: 1,
-      })
+    await vi.waitFor(
+      () =>
+        expect(observer.getCurrentResult()).toMatchObject({
+          isPaused: true,
+          failureCount: 1,
+        }),
+      patiently
     )
     onlineManager.setOnline(true)
 
@@ -589,11 +605,13 @@ describe("a mutation given retry", () => {
     )
     t.dropNextReply()
     observer.mutate(arg).catch(() => undefined)
-    await vi.waitFor(() =>
-      expect(observer.getCurrentResult()).toMatchObject({
-        isPaused: true,
-        failureCount: 2,
-      })
+    await vi.waitFor(
+      () =>
+        expect(observer.getCurrentResult()).toMatchObject({
+          isPaused: true,
+          failureCount: 2,
+        }),
+      patiently
     )
     const [first] = failures
     const [run] = t.client.queryClient.getMutationCache().getAll()
