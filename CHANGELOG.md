@@ -68,13 +68,18 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   reads. It is refused this way whoever is signed in by then, and on a
   disposed client: in 4.3.0 a run whose retry came after an account switch
   ended `cancelled` (`caller_changed`) with `mayHaveExecuted: false`, although
-  its first attempt may have run, and left the reads as they were. Still sent:
-  a retry after a failure that proves nothing ran (`not_delivered`, a
+  its first attempt may have run, and left the reads as they were. A mutation
+  TanStack Query restored from a persister after such an attempt is refused
+  the same way, where 4.3.0 refused it `caller_changed`. The client goes by
+  the failure the persister stored: a persister that stores a structured
+  clone (IndexedDB) keeps no field of an error, so there a restored mutation
+  that had failed is refused `retried_write` whatever the failure was. Still
+  sent: a retry after a failure that proves nothing ran (`not_delivered`, a
   canister's `Err`), a new `mutate()`, and a call of `mutationFn` by hand. The
   client knows the attempts of one `mutate()` by the function context TanStack
   Query passes from 5.89 on (`@ic-reactor/react` always has it). Before 5.89
   it reads TanStack's own record of the run on `client.queryClient` and goes
-  by the options object on another `QueryClient`, with two limits that
+  by the options object on another `QueryClient`, with three limits that
   [Writes](docs/src/content/docs/guides/writes.mdx#a-retried-attempt) names.
   Migration: none for an app that kept `retry: false`. An app that set `retry`
   on a write gets `retried_write` where the write was sent again: take the

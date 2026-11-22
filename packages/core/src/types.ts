@@ -395,7 +395,13 @@ export interface CanisterMutationOptions<V, D, E> {
    * is current by then: the attempt would go out as a new request, and the
    * canister would run the write a second time. `client.resendOf()` offers
    * the write from that error as from the first. After a failure that proves
-   * nothing ran, it sends the attempt. It knows the attempts of a run by
+   * nothing ran, it sends the attempt. A mutation TanStack restored from a
+   * persister after a failed attempt comes with that failure as the
+   * persister stored it, and is refused this way unless that copy says
+   * `mayHaveExecuted: false`. JSON keeps the field. A structured clone, which
+   * a persister on IndexedDB stores, keeps no field of an error, so there a
+   * restored mutation that had failed is refused this way whatever the
+   * failure was. It knows the attempts of a run by
    * `context` (5.89 and later). Without one (before 5.89) it reads TanStack's
    * own record of the run on the client's `queryClient`, and on another
    * `QueryClient` it goes by the options object this `onMutate` started the
@@ -437,7 +443,10 @@ export interface CanisterMutationOptions<V, D, E> {
    * (before 5.89, an `onMutate` of the app's that replaced this one and
    * returned something else; or a call by hand), it resolves them when it
    * runs. To add an `onSettled` of your own, call this one from it with
-   * every argument it gets.
+   * every argument it gets. Before 5.89 it also counts the run
+   * `onMutateResult` carries out of the options `onMutate` was called on:
+   * what `mutationFn` keeps there to refuse a retried attempt is dropped
+   * once no run of those options is pending.
    */
   readonly onSettled: (
     data: D | undefined,

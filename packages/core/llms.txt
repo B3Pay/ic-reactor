@@ -440,7 +440,10 @@ export function Send({ arg }: { arg: TransferArg }) {
   `client.queryClient`. A mutation restored from a persister is never
   sent: it is refused `caller_changed` (call `mutate()` again), or
   `retried_write` after an attempt that may have executed (read the state
-  back). On another `QueryClient`, keep the
+  back). It goes by the failure the persister stored: a structured clone
+  (IndexedDB) keeps no field of an error, so there a restored mutation that
+  had failed is `retried_write` whatever the failure was. On another
+  `QueryClient`, keep the
   client's `onMutate` (spread its result into yours; before TanStack Query
   5.89, pass it unwrapped). If nobody is signed in,
   the client refuses it (`unauthenticated`) before calling anything.

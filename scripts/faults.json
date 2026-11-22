@@ -675,7 +675,7 @@
     "testName": "invalidates the canister a { name } write went to when the cookie moves the name before the write settles",
     "why": "onSettled resolves a { name } from the ic_env cookie again when the write settles, so after a local redeploy mid-write it invalidates the canister the cookie names now and leaves the reads of the one written to stale",
     "file": "src/options.ts",
-    "search": "        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()",
+    "search": "        const run = keptRun(context) ?? started ?? resolveRun()",
     "replace": "        const run = resolveRun()"
   },
   {
@@ -685,8 +685,8 @@
     "testName": "keeps a { name } write and its invalidation on one canister when an onMutate of the app's replaces the given one",
     "why": "onSettled looks for the run only in what onMutate returned, not by the run's function context, so under an onMutate of the app's that replaces the given one (TanStack's optimistic-update recipe) it resolves a { name } again at settlement, and a local redeploy mid-write leaves the reads of the canister written to stale",
     "file": "src/options.ts",
-    "search": "        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()",
-    "replace": "        const run = runIn(onMutateResult) ?? resolveRun()"
+    "search": "        const run = keptRun(context) ?? started ?? resolveRun()",
+    "replace": "        const run = started ?? resolveRun()"
   },
   {
     "id": "ir2t-name-write-sent-where-resolved-late",
@@ -2940,8 +2940,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "a mutation given an offered argument sends it as whoever is the caller when it runs, so another account pays the same transfer again",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
-    "replace": "      const caller = callerOf(this, key, run)"
+    "search": "      const caller = again?.caller ?? callerOf(this, key)",
+    "replace": "      const caller = callerOf(this, key)"
   },
   {
     "id": "ir850-send-as-whoever",
@@ -5618,7 +5618,7 @@
     "testName": "refuses a write paused offline when the account is switched before it is sent, and sends nothing",
     "why": "a write TanStack paused offline goes out as whoever is signed in when it resumes, not as the caller current when mutate() was called (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "search": "      const caller = again?.caller ?? callerOf(this, key)",
     "replace": "      const caller = again?.caller ?? internals.current()"
   },
   {
@@ -5628,7 +5628,7 @@
     "testName": "refuses a write queued behind its scope when the account is switched before its turn, and sends nothing",
     "why": "a write queued behind its mutation scope goes out as whoever is signed in at its turn (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "search": "      const caller = again?.caller ?? callerOf(this, key)",
     "replace": "      const caller = again?.caller ?? internals.current()"
   },
   {
@@ -5648,7 +5648,7 @@
     "testName": "refuses the retry of a write when the account is switched after the first attempt failed",
     "why": "an app's TanStack retry of a write goes out as whoever is signed in when it retries (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "search": "      const caller = again?.caller ?? callerOf(this, key)",
     "replace": "      const caller = again?.caller ?? internals.current()"
   },
   {
@@ -5665,8 +5665,8 @@
       },
       {
         "file": "src/options.ts",
-        "search": "        return internals.mutationCallers.get(key) ?? run?.caller\n",
-        "replace": "        return (\n          internals.mutationCallers.get(key) ?? run?.caller ?? internals.current()\n        )\n"
+        "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
+        "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
       }
     ]
   },
@@ -5687,8 +5687,8 @@
     "testName": "refuses a write TanStack restored from a persister",
     "why": "a mutation restored from a persister, for which TanStack runs no onMutate, goes out as whoever is signed in when it resumes (#893)",
     "file": "src/options.ts",
-    "search": "        return internals.mutationCallers.get(key) ?? run?.caller\n",
-    "replace": "        return (\n          internals.mutationCallers.get(key) ?? run?.caller ?? internals.current()\n        )\n"
+    "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
+    "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
   },
   {
     "id": "893-write-caller-leftover-taken",
@@ -5766,7 +5766,7 @@
     "testName": "refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)",
     "why": "onSettled no longer counts a settled run out of its options, so once two callers shared an observer every later write of it is refused",
     "file": "src/options.ts",
-    "search": "        if (kept !== undefined && kept.runs > 0) {",
+    "search": "        if (kept && kept.runs > 0) {",
     "replace": "        if (false) {"
   },
   {
@@ -5977,6 +5977,95 @@
     "file": "src/options.ts",
     "search": "  if (kept !== undefined || (key !== undefined && started)) return kept\n",
     "replace": "  if (kept !== undefined || key !== undefined) return kept\n"
+  },
+  {
+    "id": "1037-view-run-of-other-client-not-seen",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "refuses a second run through a stale pinned view on another QueryClient as its changed caller's",
+    "why": "a view's mutation function takes a run on another QueryClient for one the client did not see start, though the client's onMutate started it, so TanStack's record of another pending run with the same options and argument is read for it: a second mutate() while the first waits to retry is refused retried_write with the first run's error, though no attempt of it was sent (#1037)",
+    "file": "src/client.ts",
+    "search": "              mutationCallers.has(context as object)\n",
+    "replace": "              false\n"
+  },
+  {
+    "id": "1037-other-client-run-start-not-noted",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "does not send the retry of a run on another QueryClient, and sends that QueryClient's next run",
+    "why": "the client's onMutate no longer notes who started a run on another QueryClient, where no MutationCache of the client's reads it, so the client sees no run start there and refuses every write as one nobody started (#1037)",
+    "file": "src/options.ts",
+    "search": "          if (!internals.mutationCallers.has(key)) {\n            internals.mutationCallers.set(key, caller)\n          }\n",
+    "replace": ""
+  },
+  {
+    "id": "1037-settled-run-record-kept",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "keeps nothing of a run with no run context once it settled",
+    "why": "what an attempt left under an observer's options is not removed when the last pending run of those options settles, so on TanStack before 5.89 a long-lived observer holds the argument, the error and the signed request of every write whose outcome was unknown (#1037)",
+    "file": "src/options.ts",
+    "search": "          if (kept.runs === 1) unknownAttempts.delete(counted)\n",
+    "replace": ""
+  },
+  {
+    "id": "1037-settled-run-counted-by-options",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "keeps nothing of a run with no run context once it settled, when an onSettled of the app's calls the client's",
+    "why": "a settled run is counted out of the options onSettled is called on, not of the options its onMutate counted it in for, so with an onSettled of the app's that calls the client's as the guide says nothing is counted out and what the run left is kept (#1037)",
+    "file": "src/options.ts",
+    "search": "        const counted = started?.options\n",
+    "replace": "        const counted = started && (this as object)\n"
+  },
+  {
+    "id": "1037-settled-sibling-drops-record",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "still refuses the retry of a run with no run context after another run of its options settled",
+    "why": "the records under an observer's options are removed when any run of those options settles, so the retry of a run that still waits finds nothing and the write goes out again as a new request (#1037)",
+    "file": "src/options.ts",
+    "search": "          if (kept.runs === 1) unknownAttempts.delete(counted)\n",
+    "replace": "          unknownAttempts.delete(counted)\n"
+  },
+  {
+    "id": "1037-run-counted-out-twice",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "still refuses the retry of a run with no run context after onSettled was called twice for another run",
+    "why": "a run is counted out of its options every time onSettled is called for it, so a second call counts out a run that still waits to retry: what it left is removed, and its retry is refused caller_changed, which says nothing ran (#1037)",
+    "file": "src/options.ts",
+    "search": "          started.options = undefined\n",
+    "replace": ""
+  },
+  {
+    "id": "1037-settling-without-run-counts-out",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "still refuses the retry of a run with no run context after a run the client's onMutate did not start settled",
+    "why": "a settling that hands onSettled no run of the client's counts a run out of the options it is called on, as a run whose onMutate threw would, so a run that still waits to retry loses what it left and its retry is refused caller_changed, which says nothing ran (#1037)",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "        const counted = started?.options\n",
+        "replace": "        const counted = started?.options ?? (this as object)\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "          started.options = undefined\n",
+        "replace": "          if (started) started.options = undefined\n"
+      }
+    ]
+  },
+  {
+    "id": "1037-cloned-failure-says-nothing-ran",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "refuses a restored run whose persister kept no field of its failure as a retried write",
+    "why": "a failure counts as one that may have executed only when it says so, and a persister that stores a structured clone (IndexedDB) keeps no field of an error, so a run restored after an attempt that may have executed is refused caller_changed, which tells the app to call mutate() again (#1037)",
+    "file": "src/options.ts",
+    "search": "  (reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted !== false\n",
+    "replace": "  (reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted === true\n"
   },
   {
     "id": "894-view-write-caller-unread",

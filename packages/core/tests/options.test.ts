@@ -1382,11 +1382,12 @@ describe("mutationOptions", () => {
     const options = client.mutationOptions(canister, "address")
     // Two runs of one observer on another QueryClient, as TanStack before
     // 5.89 runs them: every function called on the observer's one options
-    // object, with the argument alone.
+    // object, with the argument alone, and onSettled with what onMutate
+    // returned for the run.
     const shared = { ...options }
-    options.onMutate.call(shared, "a")
+    const startedA = options.onMutate.call(shared, "a")
     auth.switchTo(2)
-    options.onMutate.call(shared, "b")
+    const startedB = options.onMutate.call(shared, "b")
     // Neither run can be told from the other, so neither is sent, whoever
     // is current.
     await expect(options.mutationFn.call(shared, "b")).rejects.toMatchObject(
@@ -1398,8 +1399,8 @@ describe("mutationOptions", () => {
     )
     expect(requestsFor(replica, "address")).toEqual([])
     // Once both settled, a new run is sent as its caller.
-    await options.onSettled.call(shared, undefined, null, "a", undefined)
-    await options.onSettled.call(shared, undefined, null, "b", undefined)
+    await options.onSettled.call(shared, undefined, null, "a", startedA)
+    await options.onSettled.call(shared, undefined, null, "b", startedB)
     options.onMutate.call(shared, "c")
     await expect(options.mutationFn.call(shared, "c")).resolves.toBe(
       `c:${alice}`

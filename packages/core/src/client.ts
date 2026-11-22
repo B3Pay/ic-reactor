@@ -886,9 +886,12 @@ export interface ClientInternals {
    * started, by its `Mutation` and (TanStack Query 5.89 and later) by the
    * function context TanStack made for the run. Read by the `MutationCache`'s
    * own `onMutate`, which `mutate()` runs before the mutation's `onMutate`
-   * and which a mutation's options cannot replace. Weak, so an entry lives as
-   * long as its mutation. A restored mutation (hydrated from a persister) has
-   * none: TanStack runs no `onMutate` for it.
+   * and which a mutation's options cannot replace. A run on another
+   * `QueryClient` has an entry by its context too, written by the `onMutate`
+   * of `mutationOptions` when TanStack runs it there. So a context with an
+   * entry is a run the client saw start. Weak, so an entry lives as long as
+   * its mutation. A restored mutation (hydrated from a persister) has none:
+   * TanStack runs no `onMutate` for it.
    */
   readonly mutationCallers: WeakMap<object, Caller>
   /**
@@ -1943,7 +1946,10 @@ export function createClientWith(
             }
             // An attempt after one of the same run that may have executed
             // is refused as that, as the client's own function refuses it,
-            // so that the run does not end saying nothing ran.
+            // so that the run does not end saying nothing ran. A run the
+            // client saw start (`mutationCallers`) answers only for its own
+            // attempts: TanStack's record of the pending runs is read for
+            // one it did not see start, which a persister restored.
             const earlier = earlierAttempt(
               queryClient,
               this,

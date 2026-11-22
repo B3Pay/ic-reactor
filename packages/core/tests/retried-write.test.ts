@@ -150,6 +150,12 @@ const retrying = (
   retryDelay: 0,
 })
 
+/** The transfer's options as the client returns them. */
+const transferOptions = (t: Setup) =>
+  t.client.mutationOptions(t.ledger, "icrc1_transfer")
+
+type TransferOptions = ReturnType<typeof transferOptions>
+
 /** What `write` rejects with. */
 const rejection = (write: Promise<unknown>): Promise<ReactorError> =>
   write.then(
@@ -451,6 +457,69 @@ describe("a mutation given retry", () => {
     expect(t.sent()).toBe(1)
   })
 
+  it("refuses a second run through a stale pinned view on another QueryClient as its changed caller's, while the first waits to retry: a run answers for its own attempts", async ({
+    skip,
+  }) => {
+    if (!(await sharesRunContext())) {
+      skip(
+        "this TanStack Query passes mutationFn no run context, so the client cannot tell the runs of one observer with one argument apart"
+      )
+    }
+    const t = setup()
+    type ViewOf = (principal: string) => typeof t.client
+    const viewAs = (t.client as unknown as { [AS_VIEW]: ViewOf })[AS_VIEW]
+    // What useClient() returned in the render the user still sees.
+    const pinned = viewAs.call(t.client, t.client.caller())
+    // An app's own QueryClient: the client's MutationCache sees none of its
+    // runs start.
+    const queryClient = new QueryClient()
+    const arg = transfer(null)
+    let held = false
+    const observer = new MutationObserver(queryClient, {
+      ...pinned.mutationOptions(t.ledger, "icrc1_transfer"),
+      retry: (failureCount: number) => {
+        // The first run is held back before its one retry.
+        if (!held) onlineManager.setOnline(false)
+        held = true
+        return failureCount < 1
+      },
+      retryDelay: 0,
+    })
+    t.afterNextTransfer(() => {
+      throw new Error("trapped late")
+    })
+    const first = observer.mutate(arg)
+    first.catch(() => undefined)
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult()).toMatchObject({
+        isPaused: true,
+        failureCount: 1,
+      })
+    )
+    onlineManager.setOnline(true)
+    // The account is switched, and the user presses again before a render
+    // caught up.
+    t.auth.switchTo(2)
+
+    const second = await rejection(observer.mutate(arg))
+
+    // No attempt of this run was sent, and its error says so: the trap is
+    // the first run's.
+    expect(second).toMatchObject({
+      kind: "cancelled",
+      code: "caller_changed",
+      mayHaveExecuted: false,
+    })
+    expect(second.cause).toBeUndefined()
+    // The first run's retry is refused as the retry it is.
+    void queryClient.resumePausedMutations()
+    await expect(first).rejects.toMatchObject({
+      ...retriedWrite,
+      cause: { kind: "rejected", rejectCode: 5, mayHaveExecuted: true },
+    })
+    expect(t.sent()).toBe(1)
+  })
+
   it("refuses the retry on a disposed client as a retried write", async () => {
     const t = setup()
     const observer = new MutationObserver(
@@ -653,6 +722,119 @@ describe("a mutation given retry", () => {
     await expect(options.mutationFn.call(observed, arg)).resolves.toBe(3n)
   })
 
+  /** What a write with no run of its options pending is refused as. */
+  const nobodyStarted = {
+    kind: "cancelled",
+    code: "caller_changed",
+    mayHaveExecuted: false,
+  }
+
+  it.each([
+    [
+      "TanStack calls the client's onSettled, as a method of the run's options",
+      (_options: TransferOptions, observed: object) => observed,
+    ],
+    [
+      "an onSettled of the app's calls the client's, as a method of the options the client returned",
+      (options: TransferOptions) => options,
+    ],
+  ])(
+    "keeps nothing of a run with no run context once it settled, when %s (TanStack before 5.89)",
+    async (_name, calledOn) => {
+      const t = setup()
+      const options = transferOptions(t)
+      const arg = transfer(null)
+      // One observer's options object, which lives as long as the observer.
+      const observed = { ...options }
+      const started = options.onMutate.call(observed, arg)
+      t.dropNextReply()
+      const first = await rejection(options.mutationFn.call(observed, arg))
+      const refused = await rejection(options.mutationFn.call(observed, arg))
+      expect(refused).toMatchObject(retriedWrite)
+      expect(refused.cause).toBe(first)
+
+      // The run ends on the refusal: onSettled gets what onMutate returned.
+      await options.onSettled.call(
+        calledOn(options, observed),
+        undefined,
+        refused as never,
+        arg,
+        started
+      )
+
+      // The argument and the error are no longer held for these options. An
+      // attempt TanStack never makes shows it: with no run of the options
+      // pending it is refused as one nobody started, not from a record.
+      const stray = await rejection(options.mutationFn.call(observed, arg))
+      expect(stray).toMatchObject(nobodyStarted)
+      expect(stray.cause).toBeUndefined()
+      expect(t.sent()).toBe(1)
+    }
+  )
+
+  it.each([
+    [
+      "another run of its options settled",
+      async (options: TransferOptions, observed: object) => {
+        const other = transfer(null)
+        const started = options.onMutate.call(observed, other)
+        await options.mutationFn.call(observed, other)
+        await options.onSettled.call(observed, 2n, null, other, started)
+      },
+    ],
+    [
+      "onSettled was called twice for another run, as an onSettled of the app's might call it",
+      async (options: TransferOptions, observed: object) => {
+        const other = transfer(null)
+        const started = options.onMutate.call(observed, other)
+        await options.mutationFn.call(observed, other)
+        await options.onSettled.call(observed, 2n, null, other, started)
+        await options.onSettled.call(observed, 2n, null, other, started)
+      },
+    ],
+    [
+      "a run the client's onMutate did not start settled, of which TanStack hands onSettled nothing",
+      async (options: TransferOptions, observed: object) => {
+        await options.onSettled.call(
+          observed,
+          undefined,
+          null,
+          transfer(null),
+          undefined
+        )
+      },
+    ],
+  ])(
+    "still refuses the retry of a run with no run context after %s (TanStack before 5.89)",
+    async (_name, meanwhile) => {
+      const t = setup()
+      const options = transferOptions(t)
+      const observed = { ...options }
+      const arg = transfer(null)
+      const started = options.onMutate.call(observed, arg)
+      t.dropNextReply()
+      const first = await rejection(options.mutationFn.call(observed, arg))
+
+      // While the first run waits to retry.
+      await meanwhile(options, observed)
+
+      const refused = await rejection(options.mutationFn.call(observed, arg))
+      expect(refused).toMatchObject(retriedWrite)
+      expect(refused.cause).toBe(first)
+      // Once the first run settled too, nothing is kept.
+      await options.onSettled.call(
+        observed,
+        undefined,
+        refused as never,
+        arg,
+        started
+      )
+      await expect(
+        options.mutationFn.call(observed, arg)
+      ).rejects.toMatchObject(nobodyStarted)
+    }
+  )
+
   it("leaves a call of mutationFn by hand alone: it is a new call each time", async () => {
     const t = setup()
     const options = t.client.mutationOptions(t.ledger, "icrc1_transfer")
@@ -704,6 +886,38 @@ describe("a mutation given retry", () => {
       expect(restored?.state.error).toMatchObject({
         ...retriedWrite,
         cause: lostReply,
+      })
+    )
+    expect(t.sent()).toBe(1)
+  })
+
+  it("refuses a restored run whose persister kept no field of its failure as a retried write: nothing says the attempt did not run", async () => {
+    const t = setup()
+    const { queryClient } = t.client
+    const arg = transfer(null)
+    const paused = await pausedBeforeRetry(t, queryClient, arg)
+    const failed = paused.state.failureReason as ReactorError
+    // What a persister that stores the state itself keeps, as IndexedDB
+    // does: a structured clone, in which an error is left its message alone.
+    const persisted = structuredClone(dehydrate(queryClient))
+    const kept = persisted.mutations[0]?.state.failureReason as unknown as Error
+    expect(kept).toBeInstanceOf(Error)
+    expect(kept.message).toBe(failed.message)
+    expect(kept).not.toHaveProperty("mayHaveExecuted")
+    queryClient.getMutationCache().clear()
+    queryClient.setMutationDefaults(paused.options.mutationKey as never, {
+      mutationFn: paused.options.mutationFn as never,
+    })
+    hydrate(queryClient, persisted)
+    onlineManager.setOnline(true)
+    await queryClient.resumePausedMutations()
+
+    const [restored] = queryClient.getMutationCache().getAll()
+    // Not `caller_changed`, which tells the app to call mutate() again.
+    await vi.waitFor(() =>
+      expect(restored?.state.error).toMatchObject({
+        ...retriedWrite,
+        cause: { message: failed.message },
       })
     )
     expect(t.sent()).toBe(1)
