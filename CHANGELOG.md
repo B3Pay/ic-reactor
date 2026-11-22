@@ -53,6 +53,68 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `refuseNext(408)` or a 5xx on a write is now followed by the same request,
   which the canister runs, so the write resolves: refuse four sends
   (`refuseNext(503, 4)`) to keep the outcome unknown.
+- A mutation given a `retry` of the app's no longer sends a write again after
+  an attempt that may have executed (#1037). `client.mutationOptions()` sets
+  `retry: false` and the guide says to keep it, but
+  `{ ...client.mutationOptions(...), retry: 3 }` compiles. In 4.3.0 TanStack
+  Query then called the mutation function again after a lost reply, a timeout
+  or a 5xx, each call went out as a new request, and the canister ran the
+  write twice. Now, once an attempt of a `mutate()` rejected with
+  `mayHaveExecuted: true`, the client sends nothing for a later attempt of
+  that `mutate()`. The attempt rejects `outcome_unknown` with the new code
+  `retried_write` and `mayHaveExecuted: true`. Its `cause` is the earlier
+  attempt's error and its `expiresAt` that write's, `client.resendOf()` offers
+  the write from it as from the first error, and the mutation invalidates its
+  reads. It is refused this way whoever is signed in by then, and on a
+  disposed client: in 4.3.0 a run whose retry came after an account switch
+  ended `cancelled` (`caller_changed`) with `mayHaveExecuted: false`, although
+  its first attempt may have run, and left the reads as they were. A mutation
+  TanStack Query restored from a persister after such an attempt is refused
+  the same way, where 4.3.0 refused it `caller_changed`. The client goes by
+  the failure the persister stored: a persister that stores a structured
+  clone (IndexedDB) keeps no field of an error, so there a restored mutation
+  that had failed is refused `retried_write` whatever the failure was. Still
+  sent: a retry after a failure that proves nothing ran (`not_delivered`, a
+  canister's `Err`), a new `mutate()`, and a call of `mutationFn` by hand. A
+  `mutationFn` of your own that calls the client's makes such a call each time
+  it runs, unless it hands on the context TanStack Query handed it: with the
+  context the client knows the run, whatever argument your function makes
+  ([Writes](docs/src/content/docs/guides/writes.mdx#adding-your-own-callbacks)).
+  The client knows the attempts of one `mutate()` by the function context
+  TanStack Query passes from 5.89 on (`@ic-reactor/react` always has it).
+  Before 5.89 it reads TanStack's own record of the run on
+  `client.queryClient` and goes by the options object on another
+  `QueryClient`, with four limits that
+  [Writes](docs/src/content/docs/guides/writes.mdx#a-retried-attempt) names.
+  Migration: none for an app that kept `retry: false`. An app that set `retry`
+  on a write gets `retried_write` where the write was sent again: take the
+  `retry` off, and handle the error as any `outcome_unknown`. `error.code`
+  has one more value.
+- A `mutationFn` of your own that writes to two canisters, and hands the
+  context TanStack Query gave it to the client's `mutationFn` of both options,
+  now has each write go to its own canister (#1037). In 4.3.0 the client kept
+  the canister a run resolved under that context alone, so the `mutationFn`
+  of the second options called its method on the canister of the first: a
+  transfer meant for one ledger was sent to the other. Each method of a
+  canister object now keeps what a run resolved for it. The `onSettled` of
+  each options, called from yours, refreshes the reads those options name,
+  also when the two writes went through two methods of one canister, where
+  4.3.0 refreshed the reads of the first options twice. With a `retry` of
+  yours on such a mutation, the `retried_write` that holds a write back names
+  the write that may have executed, by its `method`, its `canisterId` and the
+  canister that `isReactorError(error, canister, method)` matches, also when
+  the write it holds back is the other one. A mutation that uses the client's
+  `mutationFn` as the options return it works as before, with one difference.
+  Options a later render builds from the same canister object, which
+  `client.canister()` returns for the same arguments, find what a waiting run
+  resolved, as in 4.3.0. Options built from another canister object of the
+  same canister (another `timeoutMs` or `certified`) no longer do: the
+  canister is resolved again when the write is sent, and the reads refreshed
+  are that canister's. The write goes elsewhere than in 4.3.0 only when a
+  `{ name }` was moved to another canister id while the run waited. Two
+  options built for one method of one canister object share what a run
+  resolved, the reads it refreshes included, as in 4.3.0: give them the same
+  `invalidates` when a function of yours calls both.
 
 ## core, react, vite-plugin, mcp 4.3.0
 

@@ -45,9 +45,15 @@ import {
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
-import { keepSigned, keptUnknown, type CallRequest } from "./call.js"
+import {
+  keepSigned,
+  keptUnknown,
+  retriedWrite,
+  slotOf,
+  type CallRequest,
+} from "./call.js"
 import { readTarget, recordOf } from "./canister.js"
-import { createBuilders } from "./options.js"
+import { createBuilders, earlierAttempt } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
 import type {
   Canister,
@@ -616,8 +622,12 @@ export interface Client {
    * rejects `unauthenticated` before anything is sent. `retry` is `false`: an
    * update
    * re-sends itself only when the failure proves the first attempt never got
-   * in (see {@link Canister}), and a TanStack retry would re-send after
-   * failures that do not prove it, running the write twice.
+   * in (see {@link Canister}), and a TanStack retry asks for another attempt
+   * after failures that do not prove it, which would run the write twice.
+   * Given a `retry` all the same, the mutation function does not send the
+   * attempt after one that may have executed: it rejects `outcome_unknown`,
+   * code `retried_write`, `mayHaveExecuted: true` (see the JSDoc of the
+   * returned `mutationFn`).
    *
    * `onSettled` invalidates the reads the write may have changed, on the
    * `QueryClient` the mutation ran on (which TanStack Query 5.89 and later
@@ -877,9 +887,12 @@ export interface ClientInternals {
    * started, by its `Mutation` and (TanStack Query 5.89 and later) by the
    * function context TanStack made for the run. Read by the `MutationCache`'s
    * own `onMutate`, which `mutate()` runs before the mutation's `onMutate`
-   * and which a mutation's options cannot replace. Weak, so an entry lives as
-   * long as its mutation. A restored mutation (hydrated from a persister) has
-   * none: TanStack runs no `onMutate` for it.
+   * and which a mutation's options cannot replace. A run on another
+   * `QueryClient` has an entry by its context too, written by the `onMutate`
+   * of `mutationOptions` when TanStack runs it there. So a context with an
+   * entry is a run the client saw start. Weak, so an entry lives as long as
+   * its mutation. A restored mutation (hydrated from a persister) has none:
+   * TanStack runs no `onMutate` for it.
    */
   readonly mutationCallers: WeakMap<object, Caller>
   /**
@@ -1928,9 +1941,31 @@ export function createClientWith(
               internals,
               "client.mutationOptions()"
             ).resolve()
-            const refusal = createReactorError("cancelled", {
+            const where = {
               method: String(method),
-              canisterId: target.ok ? target.id : target.slot,
+              canisterId: slotOf(target),
+            }
+            // An attempt after one of the same run that may have executed
+            // is refused as that, as the client's own function refuses it,
+            // so that the run does not end saying nothing ran. A run the
+            // client saw start (`mutationCallers`) answers only for its own
+            // attempts: TanStack's record of the pending runs is read for
+            // one it did not see start, which a persister restored.
+            const earlier = earlierAttempt(
+              queryClient,
+              this,
+              vars,
+              context,
+              mutationCallers.has(context as object)
+            )
+            if (earlier !== undefined) {
+              throw fromCanister(
+                retriedWrite(earlier, where),
+                canister as object
+              )
+            }
+            const refusal = createReactorError("cancelled", {
+              ...where,
               code: "caller_changed",
               reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
             })

@@ -117,6 +117,7 @@ import {
   isRetryable,
   readHttpStatus,
   resendDidNotRun,
+  retriedWriteError,
   retryUpdate,
   timedOutError,
   type CallMode,
@@ -212,6 +213,10 @@ export function notEncoded(
 export type ResolvedTarget =
   | { readonly ok: true; readonly id: string }
   | { readonly ok: false; readonly slot: string; readonly message: string }
+
+/** The canisterId segment of `target`: its id, or the key segment of an unresolved name. */
+export const slotOf = (target: ResolvedTarget): string =>
+  target.ok ? target.id : target.slot
 
 /** One call. */
 export interface CallRequest {
@@ -344,6 +349,47 @@ export const keptUnknown = (
 }
 
 /**
+ * The error of an attempt of a mutation that is not sent because `earlier`,
+ * what an earlier attempt of the same run rejected with, says that attempt
+ * may have executed ({@link retriedWriteError}): TanStack Query makes such an
+ * attempt for a mutation given `retry`, and it would go out as a new request,
+ * which the canister runs as a second write. It names the method and the
+ * canister of the earlier attempt, the write that may have run, and is marked
+ * with that attempt's canister object: `where`, the method and the canister
+ * of the attempt held back, is said only for an attempt that left no such
+ * record (one read back from a persister that kept no field of it). The two
+ * differ when a `mutationFn` of the app's own writes through the options of
+ * two methods or two canisters in one run, and the retry reaches another
+ * write first.
+ * The write that attempt sent stays kept for it in {@link UNKNOWN_WRITES}, so
+ * that `client.resendOf()` offers it from this error as from the first. The
+ * refusal of an attempt before this one is thrown again as it is, so the
+ * `cause` stays the error of the attempt that may have run.
+ */
+export const retriedWrite = (
+  earlier: unknown,
+  where: { readonly method: string; readonly canisterId: string }
+): ReactorError => {
+  if (isReactorError(earlier) && earlier.code === "retried_write") {
+    return earlier as ReactorError
+  }
+  const sent = UNKNOWN_WRITES.get(earlier as object)
+  const { method, canisterId } = earlier as {
+    readonly method?: unknown
+    readonly canisterId?: unknown
+  }
+  const refused = retriedWriteError(
+    typeof method === "string" && typeof canisterId === "string"
+      ? { method, canisterId }
+      : where,
+    earlier,
+    sent && firstOf(sent).expiresAt
+  )
+  if (sent !== undefined) UNKNOWN_WRITES.set(refused, sent)
+  return refused
+}
+
+/**
  * Runs one call through the steps of this module. Resolves with the reply as
  * the generated `Actor` types it (unwrapped), and rejects with a
  * `ReactorError`, marked with the request's canister when it has one. A write
@@ -394,7 +440,7 @@ async function run(
   if (internals.disposed()) {
     throw createReactorError("cancelled", {
       method: name,
-      canisterId: target.ok ? target.id : target.slot,
+      canisterId: slotOf(target),
       code: "client_disposed",
       reason: "the call was made on a disposed client; nothing was sent",
     })

@@ -425,17 +425,42 @@ export function Send({ arg }: { arg: TransferArg }) {
   or 5xx it reads the request's status and sends that same signed request
   again, never a new one (the IC runs one request at most once), up to three
   times, before it rejects `outcome_unknown`. Any other failure is final.
+  Given a `retry` of yours all the same, the client sends nothing for the
+  attempt TanStack Query makes after one that may have executed: that
+  attempt rejects `outcome_unknown`, `code` `retried_write`,
+  `mayHaveExecuted: true`, with the earlier attempt's error as its `cause`,
+  and `resendOf` (below) offers the write from it as from the first.
 - A write is sent as the caller current when `mutate()` was called, or not at
   all. Held back by TanStack Query (offline, queued behind its `scope`, or
   retried) while the account changes, it is refused (`cancelled`,
   `caller_changed`, `mayHaveExecuted: false`) and nothing is sent; a
-  re-send `resendOf` offered is refused as `outcome_unknown` instead (below). This holds
+  re-send `resendOf` offered, and a retry after an attempt that may have
+  executed, are refused as `outcome_unknown` instead. This holds
   with an `onMutate` of yours that replaces the client's, on
-  `client.queryClient`. A mutation restored from a persister is always
-  refused that way: call `mutate()` again. On another `QueryClient`, keep the
+  `client.queryClient`. A mutation restored from a persister is never
+  sent: it is refused `caller_changed` (call `mutate()` again), or
+  `retried_write` after an attempt that may have executed (read the state
+  back). It goes by the failure the persister stored: a structured clone
+  (IndexedDB) keeps no field of an error, so there a restored mutation that
+  had failed is `retried_write` whatever the failure was. On another
+  `QueryClient`, keep the
   client's `onMutate` (spread its result into yours; before TanStack Query
   5.89, pass it unwrapped). If nobody is signed in,
   the client refuses it (`unauthenticated`) before calling anything.
+- The client's `mutationFn` is what keeps the two rules above. For a step of
+  your own before a write, keep the client's `onMutate` and call the
+  `mutationFn` of the same options from yours with the context TanStack Query
+  hands yours (5.89 and later): `mutationFn: (variables, context) =>
+  options.mutationFn(variables, context)`. Make that call the last step of
+  your function: a write that succeeded is not held back when a later step
+  fails and a `retry` of yours runs the function again. A function that
+  writes to two canisters hands the context to the `mutationFn` of both
+  options, and each write goes to its own canister. With the argument alone,
+  or with a direct call on the canister in its place, the write is a new call
+  each time your function runs: it goes out as whoever is signed in by then,
+  and a `retry` of yours sends it again after an attempt that may have
+  executed. Before 5.89 there is no context to hand on: do the step before
+  `mutate()` instead.
 - Send the same write again after `mayHaveExecuted: true` only to a method
   that runs the same argument from the same sender at most once, such as an
   ICRC-1 transfer with `created_at_time` set (it answers `Duplicate`).
@@ -494,6 +519,7 @@ have executed:
 | the canister returned `Err`                                                      | `canister_err`                    | no                |
 | the caller changed, the call was aborted, or a read's `timeoutMs` passed (`code: "timeout"`) | `cancelled` | no (an aborted write: yes) |
 | a `client.resendOf()` re-send that did not run, refused (its `code` says why) or turned away by any of the rows above (its `httpStatus` or `rejectCode` says why); the first attempt may have run | `outcome_unknown` | yes |
+| a mutation's attempt after one of the same `mutate()` that may have executed (a `retry` of yours): not sent, `code: "retried_write"`, the earlier attempt's error is its `cause` | `outcome_unknown` | yes |
 
 A write that got no answer (`outcome_unknown`, or `cancelled` with
 `mayHaveExecuted: true`) carries `error.expiresAt`: the latest ingress expiry

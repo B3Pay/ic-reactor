@@ -332,7 +332,12 @@ export interface MutationTargets {
  * `mutationFn` when an `onMutate` of the app's replaced this one), so a
  * `{ name }` whose `ic_env` cookie entry changes while the update is in
  * flight (a local redeploy) still has the reads of the canister it wrote to
- * invalidated, and not those of the one the cookie names now.
+ * invalidated, and not those of the one the cookie names now. From 5.89 they
+ * are kept by the method of the canister object the options were built from.
+ * Options a later render builds from the same canister object find them
+ * (`client.canister()` returns the same object for the same arguments).
+ * Ones built from another canister object of the same canister, such as one
+ * with another `timeoutMs`, resolve both again when their `mutationFn` runs.
  */
 export interface CanisterMutationOptions<V, D, E> {
   /**
@@ -368,30 +373,92 @@ export interface CanisterMutationOptions<V, D, E> {
    * principal, and rejects the same way while someone else is current. It
    * calls at the canister `onMutate` resolved for this run.
    *
-   * On the client's own `queryClient`, the caller of each run is read by its
-   * `MutationCache` when `mutate()` starts the run, whatever the options'
-   * `onMutate` is, so an `onMutate` of the app's that replaces this one
-   * keeps the rule. On another `QueryClient` it is the one this `onMutate`
-   * read. Refused the same way, because the caller of the run is not known:
-   * a mutation TanStack restored from a persister (it runs no `onMutate` for
-   * one; call `mutate()` again), a run on another `QueryClient` whose
-   * `onMutate` replaced this one (5.89 and later), and, without a context
-   * (before 5.89), a run on another `QueryClient` whose options object
-   * (what TanStack calls `onMutate` and `mutationFn` on) this `onMutate`
-   * read nothing for: called from an `onMutate` of the app's, or given new
-   * options by a later render. Also refused before 5.89: a run whose
-   * observer has another run pending that started as someone else, on any
-   * `QueryClient`, since every run of one observer shares its options
-   * object and `mutationFn` cannot tell them apart. Exceptions, which go out as the caller
-   * current when they are sent: a call by hand (no context, and no
-   * `onMutate` of this one ever ran without one for the method), and,
+   * On the client's own `queryClient`, the caller of each run of this
+   * function is read by its `MutationCache` when `mutate()` starts the run,
+   * whatever the options' `onMutate` is, so an `onMutate` of the app's that
+   * replaces this one keeps the rule. On another `QueryClient` it is the one
+   * this `onMutate` read. Refused the same way, because the caller of the run
+   * is not known: a mutation TanStack restored from a persister (it runs no
+   * `onMutate` for one; call `mutate()` again), a run on another
+   * `QueryClient` whose `onMutate` replaced this one (5.89 and later), and,
+   * without a context (before 5.89), a run on another `QueryClient` whose
+   * options object (what TanStack calls `onMutate` and `mutationFn` on) this
+   * `onMutate` read nothing for: called from an `onMutate` of the app's, or
+   * given new options by a later render. Also refused before 5.89: a run
+   * whose observer has another run pending that started as someone else, on
+   * any `QueryClient`, since every run of one observer shares its options
+   * object and `mutationFn` cannot tell them apart. Exceptions, which go out
+   * as the caller current when they are sent: a call by hand (no context, and
+   * no `onMutate` of this one ever ran without one for the method), and,
    * before 5.89, a run on another `QueryClient` whose `onMutate` replaced
    * this one, or one restored there.
    *
+   * Called again for the same run (TanStack does that for a `retry` of the
+   * app's) after an attempt that may have executed, it sends nothing and
+   * rejects with `kind: "outcome_unknown"`, `code: "retried_write"`,
+   * `mayHaveExecuted: true` and that attempt's error as its `cause`, whoever
+   * is current by then: the attempt would go out as a new request, and the
+   * canister would run the write a second time. `client.resendOf()` offers
+   * the write from that error as from the first. After a failure that proves
+   * nothing ran, it sends the attempt. A mutation TanStack restored from a
+   * persister after a failed attempt comes with that failure as the
+   * persister stored it, and is refused this way unless that copy says
+   * `mayHaveExecuted: false`. JSON keeps the field. A structured clone, which
+   * a persister on IndexedDB stores, keeps no field of an error, so there a
+   * restored mutation that had failed is refused this way whatever the
+   * failure was. It knows the attempts of a run by
+   * `context` (5.89 and later). Without one (before 5.89) it reads TanStack's
+   * own record of the run on the client's `queryClient`, and on another
+   * `QueryClient` it goes by the options object this `onMutate` started the
+   * run with. There, pending runs of one observer with the same argument
+   * cannot be told apart: none of them is sent while one waits to retry such
+   * an attempt on the client's `queryClient`, and on another `QueryClient`
+   * the next run with that argument takes the record over, so an earlier
+   * run still waiting to retry is sent. Not refused: a call by hand, which
+   * is a new call each time, and, before 5.89, a retried attempt of a run on
+   * another `QueryClient` whose `onMutate` replaced this one, or of one
+   * restored there, which nothing tells from a call by hand.
+   *
+   * Called from a `mutationFn` of the app's own, which is in the options in
+   * its place, it keeps both rules when that function hands it the `context`
+   * it got (5.89 and later): it knows the run by it, whatever argument the
+   * app's function makes for the attempt. Who started the run is then what
+   * `onMutate` read, on the client's own `queryClient` too, whose
+   * `MutationCache` reads the caller only of a run whose `mutationFn` is
+   * this one. So with an `onMutate` of the app's that replaced this one as
+   * well, the write is refused. A call that resolved holds back no later
+   * one: when a later step of the app's function fails and a `retry` runs
+   * that function again, the write is sent again. The context stands for the
+   * run, and not for one canister or method: handed the context of a run
+   * that other options started (those of another canister, or of another
+   * method of this one), this function calls at its own canister. It
+   * resolves that canister, and the reads its options invalidate, when it is
+   * first called for the run, and the `onSettled` of its options finds them
+   * by the same context. Two options built for one method of one canister
+   * object share what a run resolved, the reads it refreshes included: give
+   * them the same `invalidates`. Once a write of such a run has failed with
+   * `mayHaveExecuted: true`, every write the run still makes is refused,
+   * whichever options it goes through: that `retried_write` names the method
+   * and the canister of the write that may have executed, which
+   * `isReactorError(error, canister, method)` matches it for, and not those
+   * of the call it holds back.
+   *
+   * Handed no context by such a function, it does not know the run. From
+   * 5.89 on the call is then one by hand. Before 5.89, which has no context
+   * to hand on, no function of the app's keeps both rules: the call is
+   * refused when TanStack called this `onMutate` (the options object it is
+   * called on is not the run's); it goes by that options object when an
+   * `onMutate` of the app's called this one on it, which keeps the caller
+   * and does not know an argument made anew for a retried attempt; and it is
+   * a call by hand when an `onMutate` of the app's replaced this one.
+   *
    * It finds that run through `context`, which TanStack Query passes from
-   * 5.89 on. When `onMutate` resolved nothing for that context (an
-   * `onMutate` of the app's replaced this one), it resolves the run when it
-   * starts and keeps it for `onSettled`, which gets the same context.
+   * 5.89 on, among the runs of this method of the canister object the
+   * options were built from. When nothing was resolved there for that
+   * context (an `onMutate` of the app's replaced this one, or a later render
+   * built the options of a pending run from another canister object of the
+   * same canister), it resolves the run when it starts and keeps it for
+   * `onSettled`, which gets the same context.
    * Without a context (TanStack Query before 5.89, a direct call) it
    * resolves the canister when it starts. Before 5.89 that leaves a gap: a
    * `{ name }` whose cookie entry is rewritten between `onMutate` and
@@ -401,7 +468,12 @@ export interface CanisterMutationOptions<V, D, E> {
    * or waits for its `scope`.
    */
   readonly mutationFn: (variables: V, context?: unknown) => Promise<D>
-  /** A mutation is never retried by TanStack: an update re-sent after an unknown outcome can run twice. */
+  /**
+   * A mutation is never retried by TanStack: an update re-sent after an
+   * unknown outcome can run twice. Keep it. With a `retry` of the app's in
+   * its place, `mutationFn` refuses the attempt after one that may have
+   * executed (`retried_write`).
+   */
   readonly retry: false
   /**
    * Invalidates the reads the write may have changed, unless the failure
@@ -412,7 +484,10 @@ export interface CanisterMutationOptions<V, D, E> {
    * (before 5.89, an `onMutate` of the app's that replaced this one and
    * returned something else; or a call by hand), it resolves them when it
    * runs. To add an `onSettled` of your own, call this one from it with
-   * every argument it gets.
+   * every argument it gets. Before 5.89 it also counts the run
+   * `onMutateResult` carries out of the options `onMutate` was called on:
+   * what `mutationFn` keeps there to refuse a retried attempt is dropped
+   * once no run of those options is pending.
    */
   readonly onSettled: (
     data: D | undefined,
