@@ -89,7 +89,8 @@ only when both the replica and the page are local, or when you write
 cookie, so write `allowEnvConfig: true` only when every subdomain of the page's
 domain is trusted. `allowEnvConfig: false` never reads the cookie. One more
 page believes the cookie's canister ids by default, and nothing else in it: a
-canister's own `<id>.icp0.io` page (see [Deploy to mainnet](#deploy-to-mainnet)).
+canister's own `<id>.icp0.io` page, or a cloud engine app's `<id>.icp.net`
+(see [Deploy to mainnet](#deploy-to-mainnet)).
 
 Whether siblings can write it depends on the Public Suffix List. `icp0.io` and
 `raw.icp0.io` are on it, so no other canister's page can set a cookie that
@@ -254,13 +255,15 @@ What `network: "env"` does on each of these pages:
 | The page                           | The host             | The root key        | `{ name: "backend" }`                   |
 | ---------------------------------- | -------------------- | ------------------- | --------------------------------------- |
 | `<id>.icp0.io`, `<id>.raw.icp0.io` | the page's origin    | mainnet's, built in | resolved from the cookie                |
+| `<id>.icp.net` (a cloud engine)    | the page's origin    | mainnet's, built in | resolved from the cookie                |
 | `<id>.ic0.app`                     | the page's origin    | mainnet's, built in | not resolved (`canister_id_unresolved`) |
 | a custom domain                    | `https://icp-api.io` | mainnet's, built in | not resolved (`canister_id_unresolved`) |
 
 `icp0.io` and `raw.icp0.io` are on the Public Suffix List, so no other
 canister's page can set a cookie that `<id>.icp0.io` receives, and the
-client believes the cookie's canister ids there without `allowEnvConfig`. It
-takes nothing else from it: the agent keeps mainnet's root key, and sign-in
+same holds for `icp1.io` and for `*.icp.net`, where a cloud engine serves
+its apps. The client believes the cookie's canister ids there without
+`allowEnvConfig`. It takes nothing else from it: the agent keeps mainnet's root key, and sign-in
 keeps `AuthClient`'s default, mainnet's Internet Identity, whatever the
 cookie's `INTERNET_IDENTITY_PROVIDER` says. `ic0.app` is not on the list:
 any canister's page can set a cookie there for every other one, so the

@@ -222,6 +222,9 @@ describe("a { name } target on a canister's own icp0.io page", () => {
   it.each([
     ["<id>.icp0.io", `https://${ICP0_CANISTER}.icp0.io`],
     ["<id>.raw.icp0.io", `https://${ICP0_CANISTER}.raw.icp0.io`],
+    ["<id>.icp1.io", `https://${ICP0_CANISTER}.icp1.io`],
+    // A cloud engine serves its apps on <id>.icp.net (*.icp.net is listed).
+    ["<id>.icp.net", `https://${ICP0_CANISTER}.icp.net`],
   ])('resolves from the cookie for "env" and "ic" on %s', (_, page) => {
     for (const network of ["env", "ic"] as Network[]) {
       const { result, net } = resolveBackend(network, page)
@@ -240,6 +243,12 @@ describe("a { name } target on a canister's own icp0.io page", () => {
     ["raw.icp0.io itself", "https://raw.icp0.io"],
     ["a label that is not a canister id", "https://my-app.icp0.io"],
     ["a name two labels under icp0.io", `https://a.${ICP0_CANISTER}.icp0.io`],
+    ["icp.net itself", "https://icp.net"],
+    [
+      "a label that is not a canister id under icp.net",
+      "https://my-app.icp.net",
+    ],
+    ["a name two labels under icp.net", `https://a.${ICP0_CANISTER}.icp.net`],
     ["ic0.app, not a public suffix", `https://${ICP0_CANISTER}.ic0.app`],
     ["a custom domain", CUSTOM_PAGE],
   ])("is refused on %s", (_, page) => {

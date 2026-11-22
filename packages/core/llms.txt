@@ -81,8 +81,9 @@ development `ReactorProvider` throws when it is handed such a client.
   `icp canister status -e local -i backend` into
   `.env.development.local`, which only `next dev` reads).
 
-Deploying to mainnet (`icp deploy -e ic`): with `"env"`, a canister's own
-`<id>.icp0.io` (or `<id>.raw.icp0.io`) page believes its cookie's canister
+Deploying to mainnet (`icp deploy -e ic`) or to a cloud engine: with
+`"env"`, a canister's own `<id>.icp0.io` (or `<id>.raw.icp0.io`) page, and a
+cloud engine app's `<id>.icp.net` page, believes its cookie's canister
 ids (a public suffix: no sibling can set it) and nothing else: never its root
 key or its `INTERNET_IDENTITY_PROVIDER` (sign-in stays mainnet's). Off a local
 page, when the page receives more than one `ic_env` cookie and they differ,

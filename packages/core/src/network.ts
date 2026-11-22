@@ -19,7 +19,8 @@
  *   `<id>.icp0.io` and `<id>.raw.icp0.io`: `icp0.io` and `*.raw.icp0.io` are
  *   on the Public Suffix List, so a browser refuses a cookie a sibling
  *   canister sets for them, and the cookie such a page receives is its own
- *   asset canister's.) It carries the
+ *   asset canister's. The same holds on `icp1.io` and on `icp.net`, where
+ *   cloud engines serve their apps.) It carries the
  *   root key certificates are verified against and the canister ids calls are
  *   routed to, and certificate verification cannot notice a substituted id
  *   (the attacker names a real canister, whose replies verify against the real
@@ -61,8 +62,9 @@ import { isServer } from "./runtime.js"
  *   others never reach mainnet, but none is local. The root key
  *   comes from the `ic_env` cookie, but only where that cookie is trusted:
  *   when both the page and the replica are local, or the client was built
- *   with `allowEnvConfig: true`. On a canister's own `<id>.icp0.io` page the
- *   cookie's canister ids are believed by default, never its root key. A
+ *   with `allowEnvConfig: true`. On a canister's own `<id>.icp0.io` page
+ *   (or `<id>.icp1.io`, or a cloud engine's `<id>.icp.net`) the cookie's
+ *   canister ids are believed by default, never its root key. A
  *   local replica with no key from the cookie has its root key fetched. A
  *   forwarding page is routed but is not local, so there the key is neither
  *   taken from the cookie nor fetched,
@@ -121,8 +123,9 @@ export interface NetworkOptions {
    * `true` trusts the cookie (root key and canister ids) wherever the code
    * runs in a browser, `false` never reads it, and absent trusts it only when
    * both the agent host and the page are a local replica, or (canister ids
-   * only) when the page is a canister's own `<id>.icp0.io` or
-   * `<id>.raw.icp0.io` page and the agent host is mainnet's. Set it to `true`
+   * only) when the page is a canister's own `<id>.icp0.io`, `<id>.icp1.io`
+   * or `<id>.icp.net` page (or its `raw.` page) and the agent host is
+   * mainnet's. Set it to `true`
    * only when every subdomain of the page's domain is trusted to write
    * cookies. Even with `true`, the root key is never taken for a mainnet host
    * and an `http:` Internet Identity URL only on a local page.
@@ -250,7 +253,13 @@ const LOCAL_HOST = "http://127.0.0.1:8000"
 const DFX_LOCAL_HOST = "http://127.0.0.1:4943"
 
 /** The domains whose pages route agent traffic through their own origin. */
-const MAINNET_DOMAINS = ["ic0.app", "icp0.io", "icp-api.io"]
+const MAINNET_DOMAINS = [
+  "ic0.app",
+  "icp0.io",
+  "icp1.io",
+  "icp.net",
+  "icp-api.io",
+]
 
 /** Whether `hostname` is `domain` or one of its subdomains. */
 const isUnder = (hostname: string, domain: string): boolean =>
@@ -285,12 +294,15 @@ const SHARED_PARENTS = [
 ]
 
 /**
- * A canister's own page on `icp0.io`: `<id>.icp0.io` or `<id>.raw.icp0.io`,
- * `<id>` being principal text. Both parents are on the Public Suffix List
- * (`icp0.io` and `*.raw.icp0.io`), so no other site can set a cookie this
+ * A canister's own page on a mainnet gateway domain that is on the Public
+ * Suffix List: `<id>.icp0.io`, `<id>.icp1.io` or `<id>.icp.net` (where cloud
+ * engines serve their apps), or the `raw.` page of one, `<id>` being
+ * principal text. The list names `icp0.io`, `*.raw.icp0.io`, `icp1.io`,
+ * `*.raw.icp1.io` and `*.icp.net`, so no other site can set a cookie such a
  * page receives. `ic0.app` is not on it, nor is a custom domain known to be.
  */
-const ICP0_CANISTER_PAGE = /^([a-z0-9-]+)\.(?:raw\.)?icp0\.io$/
+const ICP0_CANISTER_PAGE =
+  /^([a-z0-9-]+)\.(?:raw\.)?(?:icp0\.io|icp1\.io|icp\.net)$/
 
 /**
  * Names that forward a dev server and its replica to the browser from

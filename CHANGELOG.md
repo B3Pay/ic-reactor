@@ -22,6 +22,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Changed
 
+- core: `network: "env"` treats `icp.net`, where cloud engines serve their
+  apps, and `icp1.io` as the mainnet gateways they are, as it does
+  `icp0.io`. A page on either routes calls through its own origin, and a
+  canister's own `<id>.icp.net` or `<id>.icp1.io` page (or its `raw.` page)
+  believes its `ic_env` cookie's canister ids, so `{ name: "backend" }`
+  resolves there; before, it was refused `untrusted_host`. Both domains are
+  on the Public Suffix List (`*.icp.net`, `icp1.io` and `*.raw.icp1.io`), so
+  no other canister's page can set that cookie. The root key stays mainnet's.
 - An update whose `call` request got no answer (a lost connection, HTTP 408
   or a 5xx) no longer rejects `outcome_unknown` at once (#1036). The client
   reads the request's status from the IC and, while the IC does not know the
