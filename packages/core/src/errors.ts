@@ -37,7 +37,10 @@ import type { Canister, ErrorOf } from "./types.js"
  *   or turned away: the write it re-sends may have run all the same. Its
  *   `code`, `httpStatus` and `rejectCode` say why the re-send did not run
  *   (such as `caller_changed`, `target_changed` or `arg_changed`), and its
- *   `cause` is the re-send's own error.
+ *   `cause` is the re-send's own error. An attempt of a mutation that
+ *   TanStack Query makes for a `retry`, after an attempt that may have
+ *   executed, has this kind too: it is not sent (`retried_write`), and its
+ *   `cause` is that attempt's error.
  * - `rejected`: the IC or the canister rejected the call; `rejectCode` says which.
  * - `invalid_reply`: a reply arrived but did not decode as the method's result.
  * - `canister_err`: the canister ran the call and replied with the `Err` arm of
@@ -81,7 +84,9 @@ type ReactorErrorBase = Error & {
   /**
    * A machine-readable sub-reason within a `kind`, such as
    * `"canister_id_unresolved"` for an unresolved `{ name }` target,
-   * `"anonymous_write"` for an update without a signed-in identity, or
+   * `"anonymous_write"` for an update without a signed-in identity,
+   * `"retried_write"` for an attempt of a mutation that was not sent because
+   * an earlier attempt of the same run may have executed, or
    * `"canister_not_found"` when the IC answered that the canister the request
    * was routed to does not exist (for a call to `aaaaa-aa`, the canister its
    * arguments name, while `canisterId` stays `aaaaa-aa`).
@@ -457,6 +462,33 @@ export const resendDidNotRun = (
       mayHaveExecuted: true,
       reason: "the re-send did not run; the write may have executed",
       cause: failure,
+    }),
+    expiresAt
+  ) as ReactorError
+
+/**
+ * The error of an attempt of a mutation that is not sent because an earlier
+ * attempt of the same run may have executed (code `"retried_write"`): the
+ * attempt a `retry` on the mutation asks for, which would go out as a new
+ * request and run the write a second time. `earlier`, what that attempt
+ * rejected with, is the `cause`. The write's outcome is as open as that
+ * attempt left it: `outcome_unknown` with `mayHaveExecuted: true`, and
+ * `expiresAt`, the latest of the write's sends.
+ */
+export const retriedWriteError = (
+  where: { readonly method: string; readonly canisterId: string },
+  earlier: unknown,
+  expiresAt: bigint | undefined
+): ReactorError =>
+  withExpiry(
+    build({
+      ...where,
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      code: "retried_write",
+      reason:
+        "an earlier attempt of this write may have executed; it was not sent again",
+      cause: earlier,
     }),
     expiresAt
   ) as ReactorError

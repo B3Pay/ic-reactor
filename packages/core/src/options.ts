@@ -33,6 +33,7 @@ import {
   isWrite,
   prepareMethod,
   notEncoded,
+  retriedWrite,
   valuesOf,
   type ResolvedTarget,
 } from "./call.js"
@@ -252,6 +253,76 @@ const runIn = (onMutateResult: unknown): MutationRun | undefined =>
  */
 const runKey = (context: unknown): object | undefined =>
   typeof context === "object" && context !== null ? context : undefined
+
+/**
+ * What attempts of mutation runs rejected with when it says the attempt may
+ * have executed, by the run and then by the argument: what refuses a later
+ * attempt of the same run ({@link earlierAttempt}).
+ *
+ * A run is known by the function context TanStack Query (5.89 and later)
+ * passes every attempt of it. Before 5.89 it passes none, and the attempts
+ * of a run share only the options object they are called on, as the pending
+ * runs of one observer do. There the record is kept under that object, and
+ * only for options our `onMutate` started a run with: it removes an
+ * argument's record when it starts the next run with that argument.
+ */
+const unknownAttempts = new WeakMap<object, Map<unknown, unknown>>()
+
+/**
+ * Whether `reason`, what an attempt of a write rejected with, says the
+ * attempt may have executed. Read by shape, so that it holds for the copy of
+ * an error a persister wrote and read back, which is no `ReactorError`.
+ */
+const mayHaveRun = (reason: unknown): boolean =>
+  typeof reason === "object" &&
+  reason !== null &&
+  (reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted === true
+
+/**
+ * What an earlier attempt of the run a `mutationFn` is called for rejected
+ * with, when that says the attempt may have executed, and `undefined` when
+ * no attempt of the run did. `options` is the object the function was called
+ * on, and `queryClient` the client's own.
+ *
+ * Found in {@link unknownAttempts}. Where that can miss an attempt, TanStack's
+ * own record of the run is read too, the `failureReason` it keeps while it
+ * retries:
+ *
+ * - without a context (before 5.89), in the client's own `queryClient`: a
+ *   later render may have handed the run new options, and an `onMutate` of
+ *   the app's may have replaced ours;
+ * - for a run the client did not see start (`started` is `false`), in the
+ *   `QueryClient` its context names: one TanStack restored from a persister
+ *   comes with the attempts it made before the reload.
+ *
+ * Pending runs with the same options object and the same argument cannot be
+ * told apart there, so none of them is sent while one of them waits to retry
+ * such an attempt.
+ */
+export const earlierAttempt = (
+  queryClient: QueryClient,
+  options: unknown,
+  vars: unknown,
+  context: unknown,
+  started: boolean
+): unknown => {
+  const key = runKey(context)
+  const kept = unknownAttempts.get(key ?? (options as object))?.get(vars)
+  if (kept !== undefined || (key !== undefined && started)) return kept
+  return (
+    (key as { readonly client?: QueryClient } | undefined)?.client ??
+    queryClient
+  )
+    .getMutationCache()
+    .getAll()
+    .find(
+      ({ options: own, state }) =>
+        own === options &&
+        state.status === "pending" &&
+        state.variables === vars &&
+        mayHaveRun(state.failureReason)
+    )?.state.failureReason
+}
 
 /**
  * The builders of one client. `owner` returns the client, which is built
@@ -647,6 +718,30 @@ export function createBuilders(
       const target = run?.target ?? record.resolve()
       const again = offered.get(vars as object)
       const caller = again?.caller ?? callerOf(this, key, run)
+      // An attempt TanStack makes for a `retry` of the app's, after an
+      // attempt of the same run that may have executed, is never sent: it
+      // would be a new request, and the canister would run the write again.
+      // Checked before anything else, so that the run ends saying the write
+      // may have executed whoever is current by now, and on a disposed
+      // client too.
+      const earlier = earlierAttempt(
+        owner().queryClient,
+        this,
+        vars,
+        context,
+        caller !== undefined
+      )
+      if (earlier !== undefined) {
+        return Promise.reject(
+          fromCanister(
+            retriedWrite(earlier, {
+              method: prepared.name,
+              canisterId: target.ok ? target.id : target.slot,
+            }),
+            canister as object
+          )
+        )
+      }
       // A disposed client cancels every call itself (`client_disposed`).
       if (caller === undefined && !internals.disposed()) {
         return Promise.reject(
@@ -661,6 +756,11 @@ export function createBuilders(
           )
         )
       }
+      // Where an attempt that may have executed is kept for the attempts
+      // after it: the run's context, or with none the options of a run our
+      // `onMutate` started (see `unknownAttempts`).
+      const kept =
+        key ?? (callersByOptions.has(this as object) ? this : undefined)
       return invoke(internals, {
         method: prepared,
         target,
@@ -671,6 +771,15 @@ export function createBuilders(
         resend: true,
         canister: canister as object,
         again,
+      }).catch((error: unknown) => {
+        if (kept !== undefined && mayHaveRun(error)) {
+          let byArgument = unknownAttempts.get(kept as object)
+          if (byArgument === undefined) {
+            unknownAttempts.set(kept as object, (byArgument = new Map()))
+          }
+          byArgument.set(vars, error)
+        }
+        throw error
       })
     }
     internals.ownMutationFns.add(mutationFn)
@@ -698,6 +807,9 @@ export function createBuilders(
         else {
           startedMethods.add(prepared)
           if (typeof this === "object" && this !== null) {
+            // A new run with this argument: what an attempt of an earlier
+            // run with it left is not this run's.
+            unknownAttempts.get(this)?.delete(_vars)
             const kept = callersByOptions.get(this)
             callersByOptions.set(
               this,

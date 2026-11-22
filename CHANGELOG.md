@@ -18,6 +18,10 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+#### Changed
+
 - core: `network: "env"` treats `icp.net`, where cloud engines serve their
   apps, and `icp1.io` as the mainnet gateways they are, as it does
   `icp0.io`. A page on either routes calls through its own origin, and a
@@ -26,6 +30,33 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   resolves there; before, it was refused `untrusted_host`. Both domains are
   on the Public Suffix List (`*.icp.net`, `icp1.io` and `*.raw.icp1.io`), so
   no other canister's page can set that cookie. The root key stays mainnet's.
+- A mutation given a `retry` of the app's no longer sends a write again after
+  an attempt that may have executed (#1037). `client.mutationOptions()` sets
+  `retry: false` and the guide says to keep it, but
+  `{ ...client.mutationOptions(...), retry: 3 }` compiles. In 4.3.0 TanStack
+  Query then called the mutation function again after a lost reply, a timeout
+  or a 5xx, each call went out as a new request, and the canister ran the
+  write twice. Now, once an attempt of a `mutate()` rejected with
+  `mayHaveExecuted: true`, the client sends nothing for a later attempt of
+  that `mutate()`. The attempt rejects `outcome_unknown` with the new code
+  `retried_write` and `mayHaveExecuted: true`. Its `cause` is the earlier
+  attempt's error and its `expiresAt` that write's, `client.resendOf()` offers
+  the write from it as from the first error, and the mutation invalidates its
+  reads. It is refused this way whoever is signed in by then, and on a
+  disposed client: in 4.3.0 a run whose retry came after an account switch
+  ended `cancelled` (`caller_changed`) with `mayHaveExecuted: false`, although
+  its first attempt may have run, and left the reads as they were. Still sent:
+  a retry after a failure that proves nothing ran (`not_delivered`, a
+  canister's `Err`), a new `mutate()`, and a call of `mutationFn` by hand. The
+  client knows the attempts of one `mutate()` by the function context TanStack
+  Query passes from 5.89 on (`@ic-reactor/react` always has it). Before 5.89
+  it reads TanStack's own record of the run on `client.queryClient` and goes
+  by the options object on another `QueryClient`, with two limits that
+  [Writes](docs/src/content/docs/guides/writes.mdx#a-retried-attempt) names.
+  Migration: none for an app that kept `retry: false`. An app that set `retry`
+  on a write gets `retried_write` where the write was sent again: take the
+  `retry` off, and handle the error as any `outcome_unknown`. `error.code`
+  has one more value.
 
 ## core, react, vite-plugin, mcp 4.3.0
 

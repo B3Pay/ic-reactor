@@ -5740,6 +5740,215 @@
     "replace": "        if (false) {"
   },
   {
+    "id": "1037-retried-attempt-sent",
+    "package": "core",
+    "test": "tests/traps/update-not-resent.test.ts",
+    "testName": "is never re-sent by a mutation given retry after its reply was lost",
+    "why": "the mutation function sends every attempt TanStack Query makes for a retry of the app's, so a write whose reply was lost goes out again as a new request and the ledger books it twice (#1037)",
+    "file": "src/options.ts",
+    "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
+    "replace": "      if (false) {\n        return Promise.reject("
+  },
+  {
+    "id": "1037-attempt-not-kept",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "sends a write whose reply was lost once, whatever retry asks for",
+    "why": "an attempt that may have executed is not kept for its run, so the attempt after it finds nothing and is sent (#1037)",
+    "file": "src/options.ts",
+    "search": "        if (kept !== undefined && mayHaveRun(error)) {",
+    "replace": "        if (false) {"
+  },
+  {
+    "id": "1037-retry-refused-after-nothing-ran",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "still sends the retry after an attempt that was turned away before the canister saw it",
+    "why": "every failed attempt is kept as one that may have executed, so a retry after a failure proving nothing ran is refused and a retry policy is of no use anywhere (#1037)",
+    "file": "src/options.ts",
+    "search": "        if (kept !== undefined && mayHaveRun(error)) {",
+    "replace": "        if (kept !== undefined) {"
+  },
+  {
+    "id": "1037-retry-refused-after-err",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "still sends the retry after the canister answered Err, which is its answer",
+    "why": "an attempt is kept by what invalidates reads, which a canister's Err does too, so a retry after an Err, the canister's own answer, is refused as an unknown outcome (#1037)",
+    "file": "src/options.ts",
+    "search": "        if (kept !== undefined && mayHaveRun(error)) {",
+    "replace": "        if (kept !== undefined && mayHaveChanged(error)) {"
+  },
+  {
+    "id": "1037-refusal-says-nothing-ran",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "does not send the retry after",
+    "why": "the refusal of a retried attempt says mayHaveExecuted: false because that attempt was not sent, though the attempt before it may have run: the app reads the write as not executed and its reads are not refreshed (#1037)",
+    "file": "src/errors.ts",
+    "search": "      mayHaveExecuted: true,\n      code: \"retried_write\",\n",
+    "replace": "      mayHaveExecuted: false,\n      code: \"retried_write\",\n"
+  },
+  {
+    "id": "1037-refusal-loses-expiry",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "rejects each later attempt with the error of the attempt that may have run as its cause",
+    "why": "the refusal of a retried attempt carries no expiresAt, so a read-back cannot tell when no send of the write can still start (#1037)",
+    "file": "src/call.ts",
+    "search": "    sent && firstOf(sent).expiresAt\n",
+    "replace": "    undefined\n"
+  },
+  {
+    "id": "1037-record-kept-by-options",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "sends the next run of the mutation, with the same argument too",
+    "why": "an attempt that may have executed is kept by the options object and the argument on every TanStack version, not by the run, so the user's next mutate() with that argument is refused as a retry (#1037)",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(vars)\n",
+        "replace": "  const kept = unknownAttempts.get(options as object)?.get(vars)\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "        key ?? (callersByOptions.has(this as object) ? this : undefined)\n",
+        "replace": "        this\n"
+      }
+    ]
+  },
+  {
+    "id": "1037-refusal-not-offered",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "offers the write from the refusal, and the re-send answers Duplicate",
+    "why": "the refusal of a retried attempt is not linked to the write the earlier attempt sent, so resendOf offers nothing from the error the mutation ends with (#1037)",
+    "file": "src/call.ts",
+    "search": "  if (sent !== undefined) UNKNOWN_WRITES.set(refused, sent)\n",
+    "replace": ""
+  },
+  {
+    "id": "1037-resend-run-exempt",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "does not send the retry of a re-send whose reply was lost again, and still offers the write",
+    "why": "a run that re-sends an offered write is left out of the rule, so its retry sends the write a third time without the user asking (#1037)",
+    "file": "src/options.ts",
+    "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
+    "replace": "      if (earlier !== undefined && again === undefined) {\n        return Promise.reject("
+  },
+  {
+    "id": "1037-view-retry-says-nothing-ran",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "refuses the retry through a view pinned to its caller as a retried write, whoever is current by then",
+    "why": "a view's mutation function refuses a retried attempt after an account switch as caller_changed with mayHaveExecuted: false, though an earlier attempt of the run may have executed (#1037)",
+    "file": "src/client.ts",
+    "search": "            if (earlier !== undefined) {\n              throw fromCanister(",
+    "replace": "            if (false) {\n              throw fromCanister("
+  },
+  {
+    "id": "1037-switched-retry-says-nothing-ran",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses the retry of a write that may have run as a retried write, not as its caller's",
+    "why": "a retried attempt is refused as one only while its caller is current, so after an account switch the run ends cancelled (caller_changed) with mayHaveExecuted: false, though its first attempt may have executed (#1037)",
+    "file": "src/options.ts",
+    "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
+    "replace": "      if (earlier !== undefined && sameCaller(caller, internals.current())) {\n        return Promise.reject("
+  },
+  {
+    "id": "1037-switched-retry-leaves-reads",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "refreshes the canister's reads when the run ends on the refusal after an account switch",
+    "why": "a run retried after an account switch ends on an error that says nothing ran, so the reads of the canister are not invalidated though the write may have changed them (#1037)",
+    "file": "src/options.ts",
+    "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
+    "replace": "      if (earlier !== undefined && sameCaller(caller, internals.current())) {\n        return Promise.reject("
+  },
+  {
+    "id": "1037-disposed-retry-says-nothing-ran",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "refuses the retry on a disposed client as a retried write",
+    "why": "on a disposed client a retried attempt is refused as client_disposed with mayHaveExecuted: false, though an earlier attempt of the run may have executed (#1037)",
+    "file": "src/options.ts",
+    "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
+    "replace": "      if (earlier !== undefined && !internals.disposed()) {\n        return Promise.reject("
+  },
+  {
+    "id": "1037-sibling-run-taken-for-retry",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "sends another run of the same observer with the same argument while the first waits to retry",
+    "why": "TanStack's record of a pending run is read for a run the client saw start with its own context too, so a second mutate() with the same argument is taken for the retry of the first and refused (#1037)",
+    "file": "src/options.ts",
+    "search": "  if (kept !== undefined || (key !== undefined && started)) return kept\n",
+    "replace": "  if (kept !== undefined) return kept\n"
+  },
+  {
+    "id": "1037-no-context-own-run-not-read",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "refuses an attempt with no run context while a run of its options with its argument waits to retry",
+    "why": "without a run context (TanStack before 5.89) TanStack's own record of the run is not read, so a retried attempt of a run whose options a later render replaced is sent (#1037)",
+    "file": "src/options.ts",
+    "search": "  if (kept !== undefined || (key !== undefined && started)) return kept\n",
+    "replace": "  if (kept !== undefined || key === undefined || started) return kept\n"
+  },
+  {
+    "id": "1037-refusal-wraps-refusal",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "keeps the first failure as the cause when TanStack's record of the run holds a refusal",
+    "why": "a refusal found as the earlier failure is wrapped in a new refusal, so the cause of the error the mutation ends with is another refusal and not the failure that says why the outcome is open (#1037)",
+    "file": "src/call.ts",
+    "search": "  if (isReactorError(earlier) && earlier.code === \"retried_write\") {\n    return earlier as ReactorError\n  }\n",
+    "replace": ""
+  },
+  {
+    "id": "1037-no-context-run-not-kept",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "refuses a retried attempt with no run context on another QueryClient, until the next run of its options with its argument",
+    "why": "without a run context an attempt that may have executed is not kept for the options its run started with, so on another QueryClient the retried attempt is sent (#1037)",
+    "file": "src/options.ts",
+    "search": "        key ?? (callersByOptions.has(this as object) ? this : undefined)\n",
+    "replace": "        key\n"
+  },
+  {
+    "id": "1037-options-record-outlives-run",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "refuses a retried attempt with no run context on another QueryClient, until the next run of its options with its argument",
+    "why": "the record kept under an observer's options is not removed when the next run with that argument starts, so every later mutate() of the observer with it is refused (#1037)",
+    "file": "src/options.ts",
+    "search": "            unknownAttempts.get(this)?.delete(_vars)\n",
+    "replace": ""
+  },
+  {
+    "id": "1037-call-by-hand-refused",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "leaves a call of mutationFn by hand alone",
+    "why": "an attempt is kept under whatever object mutationFn is called on, so a second call by hand with the same argument, which is the app's own decision, is refused as a retry (#1037)",
+    "file": "src/options.ts",
+    "search": "        key ?? (callersByOptions.has(this as object) ? this : undefined)\n",
+    "replace": "        key ?? this\n"
+  },
+  {
+    "id": "1037-restored-run-says-nothing-ran",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "refuses a run TanStack restored from a persister with an attempt that may have run",
+    "why": "TanStack's record is not read for a run the client did not see start, so a run restored from a persister after an attempt that may have executed is refused caller_changed with mayHaveExecuted: false (#1037)",
+    "file": "src/options.ts",
+    "search": "  if (kept !== undefined || (key !== undefined && started)) return kept\n",
+    "replace": "  if (kept !== undefined || key !== undefined) return kept\n"
+  },
+  {
     "id": "894-view-write-caller-unread",
     "package": "core",
     "test": "tests/client-pinned.test.ts",

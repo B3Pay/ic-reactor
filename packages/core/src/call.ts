@@ -101,6 +101,7 @@ import {
   isRetryable,
   readHttpStatus,
   resendDidNotRun,
+  retriedWriteError,
   retryUpdate,
   timedOutError,
   type CallMode,
@@ -318,6 +319,37 @@ export const keptUnknown = (
   const kept = resendDidNotRun(failure, firstOf(again).expiresAt)
   UNKNOWN_WRITES.set(kept, again)
   return kept
+}
+
+/**
+ * The error of an attempt of a mutation that is not sent because `earlier`,
+ * what an earlier attempt of the same run rejected with, says that attempt
+ * may have executed ({@link retriedWriteError}): TanStack Query makes such an
+ * attempt for a mutation given `retry`, and it would go out as a new request,
+ * which the canister runs as a second write. It names the canister the
+ * earlier attempt went to, `where` saying only the method and the canister
+ * of an attempt that left no such record (one read back from a persister).
+ * The write that attempt sent stays kept for it in {@link UNKNOWN_WRITES}, so
+ * that `client.resendOf()` offers it from this error as from the first. The
+ * refusal of an attempt before this one is thrown again as it is, so the
+ * `cause` stays the error of the attempt that may have run.
+ */
+export const retriedWrite = (
+  earlier: unknown,
+  where: { readonly method: string; readonly canisterId: string }
+): ReactorError => {
+  if (isReactorError(earlier) && earlier.code === "retried_write") {
+    return earlier as ReactorError
+  }
+  const sent = UNKNOWN_WRITES.get(earlier as object)
+  const { canisterId } = earlier as { readonly canisterId?: unknown }
+  const refused = retriedWriteError(
+    typeof canisterId === "string" ? { ...where, canisterId } : where,
+    earlier,
+    sent && firstOf(sent).expiresAt
+  )
+  if (sent !== undefined) UNKNOWN_WRITES.set(refused, sent)
+  return refused
 }
 
 /**

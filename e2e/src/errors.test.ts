@@ -1,9 +1,12 @@
 /**
  * Failures on the real replica, as `ReactorError`s: a reject 4 from
  * `ic0.msg_reject`, a trap (reject 5), the `Err` arm of a Result (Q7), an
- * anonymous write refused before sending, and a `{ name }` with no id.
+ * anonymous write refused before sending, a `{ name }` with no id, and an
+ * update whose reply was lost, which a mutation given `retry` does not send
+ * again (#1037).
  */
 import { createClient } from "@ic-reactor/core"
+import { MutationObserver } from "@tanstack/react-query"
 import { afterEach, describe, expect, it } from "vitest"
 import { actor, type Actor } from "./declarations/hello_actor"
 import { ANONYMOUS, ed25519, network, rejection, target } from "./replica"
@@ -103,5 +106,51 @@ describe("failures on the local replica", () => {
       })
       expect(error.message).toContain("not_deployed")
     }
+  })
+
+  it("a mutation given `retry` sends an update whose reply was lost once, and the canister runs it once (#1037)", async () => {
+    // A connection that delivers a request and loses the answer: of the call,
+    // and of every read of its status.
+    let losing = false
+    const client = createClient({
+      network,
+      identity: ed25519(),
+      fetch: async (input, init) => {
+        const response = await fetch(input, init)
+        const url = input instanceof Request ? input.url : String(input)
+        if (losing && /\/(call|read_state)$/.test(new URL(url).pathname)) {
+          throw new TypeError("fetch failed")
+        }
+        return response
+      },
+    })
+    clients.push(client)
+    const hello = client.canister<Actor>(actor, target)
+    const before = await hello.count()
+    const increment = new MutationObserver(client.queryClient, {
+      ...client.mutationOptions(hello, "increment"),
+      // What the guide forbids: TanStack Query calls the mutation function
+      // again after a failure, and each call of it would sign a new request.
+      retry: 3,
+      retryDelay: 0,
+    })
+
+    losing = true
+    const error = await rejection(increment.mutate())
+    losing = false
+
+    expect(error).toMatchObject({
+      kind: "outcome_unknown",
+      code: "retried_write",
+      mayHaveExecuted: true,
+      method: "increment",
+      canisterId: target.id,
+      cause: { kind: "outcome_unknown", mayHaveExecuted: true },
+    })
+    // TanStack made all four attempts, and the client refused the last three.
+    expect(increment.getCurrentResult().failureCount).toBe(4)
+    // The replica ran the one request it got: a retried attempt that went
+    // out would have moved the counter again.
+    await expect(hello.count()).resolves.toBe(before + 1n)
   })
 })

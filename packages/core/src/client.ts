@@ -45,9 +45,9 @@ import {
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
-import { keptUnknown, type CallRequest } from "./call.js"
+import { keptUnknown, retriedWrite, type CallRequest } from "./call.js"
 import { readTarget, recordOf } from "./canister.js"
-import { createBuilders } from "./options.js"
+import { createBuilders, earlierAttempt } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
 import type {
   Canister,
@@ -616,8 +616,12 @@ export interface Client {
    * rejects `unauthenticated` before anything is sent. `retry` is `false`: an
    * update
    * re-sends itself only when the failure proves the first attempt never got
-   * in (see {@link Canister}), and a TanStack retry would re-send after
-   * failures that do not prove it, running the write twice.
+   * in (see {@link Canister}), and a TanStack retry asks for another attempt
+   * after failures that do not prove it, which would run the write twice.
+   * Given a `retry` all the same, the mutation function does not send the
+   * attempt after one that may have executed: it rejects `outcome_unknown`,
+   * code `retried_write`, `mayHaveExecuted: true` (see the JSDoc of the
+   * returned `mutationFn`).
    *
    * `onSettled` invalidates the reads the write may have changed, on the
    * `QueryClient` the mutation ran on (which TanStack Query 5.89 and later
@@ -1923,9 +1927,28 @@ export function createClientWith(
               internals,
               "client.mutationOptions()"
             ).resolve()
-            const refusal = createReactorError("cancelled", {
+            const where = {
               method: String(method),
               canisterId: target.ok ? target.id : target.slot,
+            }
+            // An attempt after one of the same run that may have executed
+            // is refused as that, as the client's own function refuses it,
+            // so that the run does not end saying nothing ran.
+            const earlier = earlierAttempt(
+              queryClient,
+              this,
+              vars,
+              context,
+              mutationCallers.has(context as object)
+            )
+            if (earlier !== undefined) {
+              throw fromCanister(
+                retriedWrite(earlier, where),
+                canister as object
+              )
+            }
+            const refusal = createReactorError("cancelled", {
+              ...where,
               code: "caller_changed",
               reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
             })

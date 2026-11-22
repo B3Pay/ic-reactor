@@ -55,6 +55,11 @@ call `mutate()` again. A write run on a `QueryClient` other than
 `client.queryClient` keeps the rule only through the client's `onMutate` (see
 `onMutate` below).
 
+One refusal comes before these. A retry after an attempt that may have
+executed, of a restored mutation too, is refused as an unknown outcome, code
+`retried_write`, whoever is current by then, so that the run does not end
+saying nothing ran (see [A retried attempt](#a-retried-attempt)).
+
 A write needs a signed-in caller. If nobody is signed in, or the client was
 built with `identity: "anonymous"`, the client refuses it before sending
 anything: kind `unauthenticated`, code `anonymous_write`,
@@ -183,9 +188,11 @@ can run the write twice. Two rules follow.
 
 - **Never add `retry` to a write.** `retry` is `false` in the client's
   options, and it must stay `false`. Spreading the options and setting
-  `retry: 3` compiles, and it makes TanStack Query send the update again
-  after failures that do not prove it never got in: a lost reply, a timeout, a
-  5xx. The write then runs twice.
+  `retry: 3` compiles, and it makes TanStack Query call the mutation function
+  again after failures that do not prove the update never got in: a lost
+  reply, a timeout, a 5xx. Sent again, the write would run twice, so the
+  client does not send it (see below). `retry` then only delays the error,
+  by TanStack's wait before each attempt.
 - **Never call an update from `useQuery`.** TanStack Query may run a query
   function again whenever it refetches. Call update methods from `useMutation`
   or directly. `queryOptions` does not compile for an update of a generated
@@ -208,6 +215,46 @@ That is at most two re-sends. If they all fail, the call fails with the last
 error, kind `not_delivered`, `mayHaveExecuted: false`. The agents the client
 builds never retry on their own (`retryTimes` is 0), so these two rules are the
 only re-sending.
+
+### A retried attempt
+
+A mutation given `retry` all the same is held to the same rule. Once an
+attempt of a `mutate()` run rejected with `mayHaveExecuted: true`, the client
+sends nothing for any later attempt of that run. The attempt rejects kind
+`outcome_unknown`, code `retried_write`, `mayHaveExecuted: true`:
+
+- its `cause` is the error of the attempt that may have run, which says why
+  the outcome is open, and its `expiresAt` is that write's;
+- it is refused this way whoever is signed in by then, and on a disposed
+  client too, so the run does not end on a `cancelled` that says nothing ran;
+- `client.resendOf()` offers the write from it as from the first error (next
+  section), and the mutation invalidates its reads as after any unknown
+  outcome.
+
+A retry after a failure that proves nothing ran, such as `not_delivered` or a
+canister's `Err`, is still sent, as the caller who started the run. A new
+`mutate()` is a new run: pressing again is the user's decision, and the client
+sends it. So is a call of `mutationFn` by hand.
+
+The client knows the attempts of one run by the function context TanStack
+Query passes each of them, from 5.89 on. Before 5.89 there is none. On
+`client.queryClient` the client then reads TanStack's own record of the run,
+and on another `QueryClient` it goes by the options object the client's
+`onMutate` started the run with. Three limits follow before 5.89:
+
+- Pending runs of one observer with the same argument cannot be told apart.
+  On `client.queryClient` none of them is sent while one waits to retry an
+  attempt that may have executed. On another `QueryClient` the next run with
+  that argument is sent, and so is the retry of the one before it.
+- On another `QueryClient`, a retried attempt cannot be told from a call by
+  hand, and is sent, when an `onMutate` of yours is in place of the client's
+  or the run was restored from a persister.
+- On another `QueryClient`, a run that a later render gave new options
+  before its retry is not sent, but it is refused as `caller_changed`, which
+  says nothing ran (see [Who signs](#who-signs)).
+
+`@ic-reactor/react` needs a TanStack Query that passes the context, so none
+of the three applies to a `useMutation` of an app that uses it.
 
 What to do after `mayHaveExecuted: true` is yours to decide. Read the state
 back, then decide whether to send again. The [Errors page](/v4/guides/errors/)

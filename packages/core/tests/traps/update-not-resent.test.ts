@@ -2,13 +2,14 @@
  * Trap: an update sent again after a failure that does not say it never ran.
  *
  * The mistake a hand-written integration makes: it wraps the call in a retry
- * ("three attempts, back off"), or leaves the agent's own retries on. Every
- * attempt of an update is a new request with a new id, so the Internet
- * Computer cannot tell a retry from a second payment and runs both. A
- * canister that rejected with code 4 keeps what it changed, one that trapped
- * (code 5) may have committed some of it before the trap, a reply that was
- * lost on its way back came from a canister that ran, and an HTTP 408 or 5xx
- * may follow a delivery: re-sending after any of them can pay twice.
+ * ("three attempts, back off"), leaves the agent's own retries on, or gives
+ * the mutation a `retry` as it would a query. Every attempt of an update is
+ * a new request with a new id, so the Internet Computer cannot tell a retry
+ * from a second payment and runs both. A canister that rejected with code 4
+ * keeps what it changed, one that trapped (code 5) may have committed some
+ * of it before the trap, a reply that was lost on its way back came from a
+ * canister that ran, and an HTTP 408 or 5xx may follow a delivery:
+ * re-sending after any of them can pay twice.
  *
  * The guarantee: after reject code 4, reject code 5, a lost reply, HTTP 408
  * and HTTP 5xx, exactly one request was sent, however long the client waits
@@ -16,6 +17,10 @@
  * looks), and the failure says `mayHaveExecuted: true` so the app reads the
  * balance back before it offers to try again. The cases where a re-send is
  * safe, and made, are in `update-resent-when-never-delivered.test.ts`.
+ *
+ * A mutation given `retry` sends no request of its own either: the attempts
+ * TanStack Query makes after an attempt that may have run are refused
+ * (`retried_write`), with the same `mayHaveExecuted: true` (#1037).
  */
 import { MutationObserver } from "@tanstack/query-core"
 import { afterAll, describe, expect, it, vi } from "vitest"
@@ -100,6 +105,37 @@ describe.concurrent("an update that may have run", () => {
     })
     expect(l.calls()).toHaveLength(1)
     expect(l.executed()).toBe(1)
+  })
+
+  it("is never re-sent by a mutation given retry after its reply was lost, so the ledger debits once", async () => {
+    const l = setupLedger()
+    l.dropNextReply()
+    // The mistake: `retry` spread over the client's options, which TanStack
+    // Query answers by calling the mutation function again.
+    const mutation = new MutationObserver(l.client.queryClient, {
+      ...l.client.mutationOptions(l.ledger, "icrc1_transfer"),
+      retry: 3,
+      retryDelay: 0,
+    })
+
+    const failure = await rejection(mutation.mutate(transferArg(500n)))
+    await pastResendDelays()
+
+    // The three attempts after the first were refused, not sent, and the
+    // failure still says the first one may have run.
+    expect(failure).toMatchObject({
+      kind: "outcome_unknown",
+      code: "retried_write",
+      mayHaveExecuted: true,
+      cause: { kind: "outcome_unknown", mayHaveExecuted: true },
+    })
+    expect(mutation.getCurrentResult()).toMatchObject({
+      status: "error",
+      failureCount: 4,
+    })
+    expect(l.calls()).toMatchObject([{ dropped: true }])
+    expect(l.executed()).toBe(1)
+    expect(l.balances.get(ALICE)).toBe(1_000_000n - 500n - FEE)
   })
 
   it.each([408, 500, 502, 503])(

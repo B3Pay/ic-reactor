@@ -388,6 +388,26 @@ export interface CanisterMutationOptions<V, D, E> {
    * before 5.89, a run on another `QueryClient` whose `onMutate` replaced
    * this one, or one restored there.
    *
+   * Called again for the same run (TanStack does that for a `retry` of the
+   * app's) after an attempt that may have executed, it sends nothing and
+   * rejects with `kind: "outcome_unknown"`, `code: "retried_write"`,
+   * `mayHaveExecuted: true` and that attempt's error as its `cause`, whoever
+   * is current by then: the attempt would go out as a new request, and the
+   * canister would run the write a second time. `client.resendOf()` offers
+   * the write from that error as from the first. After a failure that proves
+   * nothing ran, it sends the attempt. It knows the attempts of a run by
+   * `context` (5.89 and later). Without one (before 5.89) it reads TanStack's
+   * own record of the run on the client's `queryClient`, and on another
+   * `QueryClient` it goes by the options object this `onMutate` started the
+   * run with. There, pending runs of one observer with the same argument
+   * cannot be told apart: none of them is sent while one waits to retry such
+   * an attempt on the client's `queryClient`, and on another `QueryClient`
+   * the next run with that argument takes the record over, so an earlier
+   * run still waiting to retry is sent. Not refused: a call by hand, which
+   * is a new call each time, and, before 5.89, a retried attempt of a run on
+   * another `QueryClient` whose `onMutate` replaced this one, or of one
+   * restored there, which nothing tells from a call by hand.
+   *
    * It finds that run through `context`, which TanStack Query passes from
    * 5.89 on. When `onMutate` resolved nothing for that context (an
    * `onMutate` of the app's replaced this one), it resolves the run when it
@@ -401,7 +421,12 @@ export interface CanisterMutationOptions<V, D, E> {
    * or waits for its `scope`.
    */
   readonly mutationFn: (variables: V, context?: unknown) => Promise<D>
-  /** A mutation is never retried by TanStack: an update re-sent after an unknown outcome can run twice. */
+  /**
+   * A mutation is never retried by TanStack: an update re-sent after an
+   * unknown outcome can run twice. Keep it. With a `retry` of the app's in
+   * its place, `mutationFn` refuses the attempt after one that may have
+   * executed (`retried_write`).
+   */
   readonly retry: false
   /**
    * Invalidates the reads the write may have changed, unless the failure

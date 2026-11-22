@@ -1179,6 +1179,27 @@ describe("mutationOptions", () => {
   })
 
   it("refuses the retry of a write when the account is switched after the first attempt failed, and sends it no more", async () => {
+    const { replica, auth, client, canister } = addressBook()
+    // The first attempt is turned away before the canister sees it, so
+    // nothing ran and a retry may go out, but only as its caller.
+    replica.refuseNext(400)
+    const write = new MutationObserver(client.queryClient, {
+      ...client.mutationOptions(canister, "address"),
+      // An app's own retry, against the advice.
+      retry: (failureCount: number) => {
+        auth.switchTo(2)
+        return failureCount < 1
+      },
+      retryDelay: 0,
+    }).mutate("x")
+    await expect(write).rejects.toMatchObject(callerChanged)
+    // Only the request that was turned away.
+    expect(requestsFor(replica, "address")).toMatchObject([
+      { refused: expect.stringContaining("HTTP 400") },
+    ])
+  })
+
+  it("refuses the retry of a write that may have run as a retried write, not as its caller's, when the account is switched after the first attempt", async () => {
     const { replica, auth, client, canister, calls } = addressBook()
     calls.before = () => {
       calls.before = undefined
@@ -1191,7 +1212,14 @@ describe("mutationOptions", () => {
       retry: 1,
       retryDelay: 0,
     }).mutate("x")
-    await expect(write).rejects.toMatchObject(callerChanged)
+    // The trap may have followed a commit, so the run must not end saying
+    // that nothing ran, which `caller_changed` would.
+    await expect(write).rejects.toMatchObject({
+      kind: "outcome_unknown",
+      code: "retried_write",
+      mayHaveExecuted: true,
+      cause: { kind: "rejected", rejectCode: 5, mayHaveExecuted: true },
+    })
     expect(requestsFor(replica, "address")).toHaveLength(1)
   })
 

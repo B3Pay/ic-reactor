@@ -42,7 +42,8 @@ export default [
     // With #949 on top of v4: measured 18,841 B, so the limit moved from 18,920 B to 18.93 kB.
     // With #913 on top of v4: measured 18,975 B, so the limit moved from 18,930 B to 19.1 kB.
     // With client.time() refusing a time five minutes before an earlier one (#1066): measured 19,150 B (19,091 B before, +59 B), so the limit moved from 19,100 B to 19.2 kB.
-    limit: "19.2 kB",
+    // With a retried write refused after an attempt that may have executed (#1037): measured 19,532 B (19,169 B before, +363 B), so the limit moved from 19,200 B to 19.58 kB.
+    limit: "19.58 kB",
     gzip: true,
   },
 ]
