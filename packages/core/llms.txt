@@ -447,6 +447,16 @@ export function Send({ arg }: { arg: TransferArg }) {
   client's `onMutate` (spread its result into yours; before TanStack Query
   5.89, pass it unwrapped). If nobody is signed in,
   the client refuses it (`unauthenticated`) before calling anything.
+- The client's `mutationFn` is what keeps the two rules above. For a step of
+  your own before a write, keep the client's `onMutate` and call the
+  `mutationFn` of the same options from yours with the context TanStack Query
+  hands yours (5.89 and later): `mutationFn: (variables, context) =>
+  options.mutationFn(variables, context)`. Never hand that context to the
+  `mutationFn` of other options: it would call its method on this run's
+  canister. With the argument alone, or with a direct call on the canister in
+  its place, the write is a new call each time your function runs: it goes
+  out as whoever is signed in by then, and a `retry` of yours sends it again
+  after an attempt that may have executed.
 - Send the same write again after `mayHaveExecuted: true` only to a method
   that runs the same argument from the same sender at most once, such as an
   ICRC-1 transfer with `created_at_time` set (it answers `Duplicate`).

@@ -243,7 +243,9 @@ sends nothing for any later attempt of that run. The attempt rejects kind
 A retry after a failure that proves nothing ran, such as `not_delivered` or a
 canister's `Err`, is still sent, as the caller who started the run. A new
 `mutate()` is a new run: pressing again is the user's decision, and the client
-sends it. So is a call of `mutationFn` by hand.
+sends it. So is a call of `mutationFn` by hand, which is what a `mutationFn`
+of your own makes unless it hands on the context it got (see
+[Adding your own callbacks](#adding-your-own-callbacks)).
 
 The client knows the attempts of one run by the function context TanStack
 Query passes each of them, from 5.89 on. Before 5.89 there is none. On
@@ -486,7 +488,8 @@ export function SendWithMessage({ arg }: { arg: TransferArg }) {
 
 The options have an `onMutate` and an `onSettled` of their own. Together they
 resolve the canister a run writes to and invalidate its reads, so replacing
-either one drops the invalidation. Call the client's from yours.
+either one drops the invalidation. Call the client's from yours. The same goes
+for a `mutationFn` of your own, last in this section.
 
 **`onSettled`:** call the client's with every argument you get, and return its
 promise so the mutation settles once the reads are fetched again.
@@ -595,6 +598,56 @@ The key comes from `client.queryKey(backend, "get_profile", who)`, built for
 the caller now. A key written by hand would match nothing. The
 [Vite wallet example](/v4/examples/vite-wallet/) has a longer version for an
 address book, in `src/optimistic-contacts.ts`.
+
+**`mutationFn`:** the client's `mutationFn` is what keeps the rules of
+[Who signs](#who-signs) and [A retried attempt](#a-retried-attempt). For a
+step of your own before the write, call it from yours with the context
+TanStack Query handed yours, `options.mutationFn(variables, context)`. The
+context, passed from TanStack Query 5.89 on, is how the client knows the run.
+The write then goes out as whoever started the run, or not at all, and after
+an attempt of the run that may have executed the client sends no other,
+whatever argument your function makes for it.
+
+The context stands for the one write that the options you spread started, to
+the canister their `onMutate` resolved. Hand it to the `mutationFn` of those
+same options and to no other: the `mutationFn` of other options, given this
+context, calls its method on that canister.
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+export function SendWithFee({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const options = client.mutationOptions(ledger, "icrc1_transfer")
+  const transfer = useMutation({
+    ...options,
+    mutationFn: async (variables: TransferArg, context) => {
+      const fee = await ledger.icrc1_fee()
+      // The context: the second argument TanStack Query hands this function.
+      return options.mutationFn({ ...variables, fee }, context)
+    },
+  })
+  return <button onClick={() => transfer.mutate(arg)}>Send</button>
+}
+```
+
+Keep the client's `onMutate` next to it, or call it from yours as above. With
+a `mutationFn` of your own in the options, the client's `onMutate` is what
+reads who started the run, and a write whose `onMutate` replaced it is refused
+(`caller_changed`).
+
+Without the context the client cannot tell which run a call is for. From 5.89
+on, a call with the argument alone is a new call every time your function
+runs, as a direct call on the canister is: it goes out as whoever is signed in
+by then, and a `retry` of yours sends it again after an attempt that may have
+executed. Before 5.89 TanStack Query has no context to hand on, and the client
+refuses the call (`caller_changed`) once TanStack has run the client's
+`onMutate` for the method.
 
 ## Outside React
 

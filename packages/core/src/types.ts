@@ -368,23 +368,23 @@ export interface CanisterMutationOptions<V, D, E> {
    * principal, and rejects the same way while someone else is current. It
    * calls at the canister `onMutate` resolved for this run.
    *
-   * On the client's own `queryClient`, the caller of each run is read by its
-   * `MutationCache` when `mutate()` starts the run, whatever the options'
-   * `onMutate` is, so an `onMutate` of the app's that replaces this one
-   * keeps the rule. On another `QueryClient` it is the one this `onMutate`
-   * read. Refused the same way, because the caller of the run is not known:
-   * a mutation TanStack restored from a persister (it runs no `onMutate` for
-   * one; call `mutate()` again), a run on another `QueryClient` whose
-   * `onMutate` replaced this one (5.89 and later), and, without a context
-   * (before 5.89), a run on another `QueryClient` whose options object
-   * (what TanStack calls `onMutate` and `mutationFn` on) this `onMutate`
-   * read nothing for: called from an `onMutate` of the app's, or given new
-   * options by a later render. Also refused before 5.89: a run whose
-   * observer has another run pending that started as someone else, on any
-   * `QueryClient`, since every run of one observer shares its options
-   * object and `mutationFn` cannot tell them apart. Exceptions, which go out as the caller
-   * current when they are sent: a call by hand (no context, and no
-   * `onMutate` of this one ever ran without one for the method), and,
+   * On the client's own `queryClient`, the caller of each run of this
+   * function is read by its `MutationCache` when `mutate()` starts the run,
+   * whatever the options' `onMutate` is, so an `onMutate` of the app's that
+   * replaces this one keeps the rule. On another `QueryClient` it is the one
+   * this `onMutate` read. Refused the same way, because the caller of the run
+   * is not known: a mutation TanStack restored from a persister (it runs no
+   * `onMutate` for one; call `mutate()` again), a run on another
+   * `QueryClient` whose `onMutate` replaced this one (5.89 and later), and,
+   * without a context (before 5.89), a run on another `QueryClient` whose
+   * options object (what TanStack calls `onMutate` and `mutationFn` on) this
+   * `onMutate` read nothing for: called from an `onMutate` of the app's, or
+   * given new options by a later render. Also refused before 5.89: a run
+   * whose observer has another run pending that started as someone else, on
+   * any `QueryClient`, since every run of one observer shares its options
+   * object and `mutationFn` cannot tell them apart. Exceptions, which go out
+   * as the caller current when they are sent: a call by hand (no context, and
+   * no `onMutate` of this one ever ran without one for the method), and,
    * before 5.89, a run on another `QueryClient` whose `onMutate` replaced
    * this one, or one restored there.
    *
@@ -413,6 +413,18 @@ export interface CanisterMutationOptions<V, D, E> {
    * is a new call each time, and, before 5.89, a retried attempt of a run on
    * another `QueryClient` whose `onMutate` replaced this one, or of one
    * restored there, which nothing tells from a call by hand.
+   *
+   * Called from a `mutationFn` of the app's own, which is in the options in
+   * its place, it keeps both rules when that function hands it the `context`
+   * it got (5.89 and later): it knows the run by it, whatever argument the
+   * app's function makes for the attempt. Who started the run is then what
+   * `onMutate` read, on the client's own `queryClient` too, whose
+   * `MutationCache` reads the caller only of a run whose `mutationFn` is
+   * this one. So with an `onMutate` of the app's that replaced this one as
+   * well, the write is refused. Handed no context, it is a call by hand.
+   * The context stands for the run of the options `onMutate` was called
+   * for: handed the context of a run that other options started, this
+   * function calls its method at the canister resolved for that run.
    *
    * It finds that run through `context`, which TanStack Query passes from
    * 5.89 on. When `onMutate` resolved nothing for that context (an

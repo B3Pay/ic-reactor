@@ -5691,6 +5691,35 @@
     "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
   },
   {
+    "id": "893-write-caller-own-fn-sent-as-current",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write paused offline across an account switch when a mutationFn of the app's calls the given one with both arguments",
+    "why": "nothing reads who started a run whose mutationFn is the app's own (the client's MutationCache reads only a run of the client's function, and the given onMutate no longer notes it), and a run nobody read falls back to the caller current when it is sent, so a write held back offline across an account switch goes out as the new account (#893)",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "          if (!internals.mutationCallers.has(key)) {\n            internals.mutationCallers.set(key, caller)\n          }\n",
+        "replace": ""
+      },
+      {
+        "file": "src/options.ts",
+        "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
+        "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
+      }
+    ]
+  },
+  {
+    "id": "893-write-caller-own-fn-and-onmutate-sent-as-current",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write whose mutationFn and onMutate are both the app's own",
+    "why": "a run nothing read the caller of (its mutationFn is the app's own, so the client's MutationCache does not read it, and its onMutate replaced the given one) falls back to the caller current when it is sent, so a write held back across an account switch would go out as the new account (#893)",
+    "file": "src/options.ts",
+    "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
+    "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
+  },
+  {
     "id": "893-write-caller-leftover-taken",
     "package": "core",
     "test": "tests/options.test.ts",
@@ -5766,7 +5795,7 @@
     "testName": "refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)",
     "why": "onSettled no longer counts a settled run out of its options, so once two callers shared an observer every later write of it is refused",
     "file": "src/options.ts",
-    "search": "        if (kept && kept.runs > 0) {",
+    "search": "        if (kept) {",
     "replace": "        if (false) {"
   },
   {
@@ -5838,7 +5867,7 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(vars)\n",
+        "search": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(key ?? vars)\n",
         "replace": "  const kept = unknownAttempts.get(options as object)?.get(vars)\n"
       },
       {
@@ -6064,8 +6093,57 @@
     "testName": "refuses a restored run whose persister kept no field of its failure as a retried write",
     "why": "a failure counts as one that may have executed only when it says so, and a persister that stores a structured clone (IndexedDB) keeps no field of an error, so a run restored after an attempt that may have executed is refused caller_changed, which tells the app to call mutate() again (#1037)",
     "file": "src/options.ts",
-    "search": "  (reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted !== false\n",
-    "replace": "  (reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted === true\n"
+    "search": "    !known) !== false\n",
+    "replace": "    false) !== false\n"
+  },
+  {
+    "id": "1037-app-failure-refuses-known-run",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "sends the re-send a function of the app's own makes after a step of its own failed",
+    "why": "a failure TanStack kept that does not say whether its attempt may have executed counts as one that may have for a run whose starter the client knows too, where it is the failure of a step of the app's own before the write was sent, so the client refuses a write it would send, retried_write, though no attempt of the run went out (#1037)",
+    "file": "src/options.ts",
+    "search": "        mayHaveRun(state.failureReason, started)\n",
+    "replace": "        mayHaveRun(state.failureReason)\n"
+  },
+  {
+    "id": "1037-wrapped-fn-context-ignored",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "knows the run of a write that a function of the app's own calls with both arguments",
+    "why": "the client's mutationFn looks for an earlier attempt without the run context it was handed, so when a function of the app's own calls it with both arguments, as the guide says, it finds nothing under the options it is called on and the retry goes out as a new request (#1037)",
+    "file": "src/options.ts",
+    "search": "        vars,\n        context,\n        caller !== undefined\n",
+    "replace": "        vars,\n        undefined,\n        caller !== undefined\n"
+  },
+  {
+    "id": "1037-run-record-kept-by-argument",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "knows the run of a write that a function of the app's own calls with both arguments",
+    "why": "what an attempt of a run known by its context left is kept by the argument as well, so when a function of the app's own makes the argument anew for each attempt (a fee it reads first), the retry finds nothing and goes out as a new request (#1037)",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(key ?? vars)\n",
+        "replace": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(vars)\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "          byArgument.set(key ?? vars, error)\n",
+        "replace": "          byArgument.set(vars, error)\n"
+      }
+    ]
+  },
+  {
+    "id": "1037-wrapped-fn-run-start-not-noted",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "sends a write paused offline as its caller when a mutationFn of the app's calls the given one with both arguments",
+    "why": "the client's onMutate no longer notes who started a run whose mutationFn is a function of the app's own, which the client's MutationCache does not read, so a write that function hands the client with both arguments is refused as one nobody started (#1037)",
+    "file": "src/options.ts",
+    "search": "          if (!internals.mutationCallers.has(key)) {\n            internals.mutationCallers.set(key, caller)\n          }\n",
+    "replace": ""
   },
   {
     "id": "894-view-write-caller-unread",

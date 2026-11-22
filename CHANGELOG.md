@@ -75,11 +75,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   clone (IndexedDB) keeps no field of an error, so there a restored mutation
   that had failed is refused `retried_write` whatever the failure was. Still
   sent: a retry after a failure that proves nothing ran (`not_delivered`, a
-  canister's `Err`), a new `mutate()`, and a call of `mutationFn` by hand. The
-  client knows the attempts of one `mutate()` by the function context TanStack
-  Query passes from 5.89 on (`@ic-reactor/react` always has it). Before 5.89
-  it reads TanStack's own record of the run on `client.queryClient` and goes
-  by the options object on another `QueryClient`, with three limits that
+  canister's `Err`), a new `mutate()`, and a call of `mutationFn` by hand. A
+  `mutationFn` of your own that calls the client's makes such a call each time
+  it runs, unless it hands on the context TanStack Query handed it: with the
+  context the client knows the run, whatever argument your function makes
+  ([Writes](docs/src/content/docs/guides/writes.mdx#adding-your-own-callbacks)).
+  The client knows the attempts of one `mutate()` by the function context
+  TanStack Query passes from 5.89 on (`@ic-reactor/react` always has it).
+  Before 5.89 it reads TanStack's own record of the run on
+  `client.queryClient` and goes by the options object on another
+  `QueryClient`, with three limits that
   [Writes](docs/src/content/docs/guides/writes.mdx#a-retried-attempt) names.
   Migration: none for an app that kept `retry: false`. An app that set `retry`
   on a write gets `retried_write` where the write was sent again: take the

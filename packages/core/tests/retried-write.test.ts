@@ -835,6 +835,100 @@ describe("a mutation given retry", () => {
     }
   )
 
+  /** What `useClient()` returns in a render that shows the current caller. */
+  const pinnedView = (t: Setup) => {
+    type ViewOf = (principal: string) => typeof t.client
+    const viewAs = (t.client as unknown as { [AS_VIEW]: ViewOf })[AS_VIEW]
+    return viewAs.call(t.client, t.client.caller())
+  }
+
+  it.each([
+    [
+      "on the client's own QueryClient",
+      (t: Setup) => [transferOptions(t), t.client.queryClient] as const,
+    ],
+    [
+      "on another QueryClient",
+      (t: Setup) => [transferOptions(t), new QueryClient()] as const,
+    ],
+    [
+      "through the view useClient() returns",
+      (t: Setup) =>
+        [
+          pinnedView(t).mutationOptions(t.ledger, "icrc1_transfer"),
+          t.client.queryClient,
+        ] as const,
+    ],
+  ])(
+    "knows the run of a write that a function of the app's own calls with both arguments, %s: its retry is not sent",
+    async (_name, built) => {
+      const t = setup()
+      const [options, queryClient] = built(t)
+      const observer = new MutationObserver(queryClient, {
+        ...options,
+        // A step of the app's own before the write, as the guide says to
+        // write it: the client's function gets the context TanStack handed
+        // this one, and here an argument made anew for each attempt.
+        mutationFn: async (arg: icrc1.TransferArg, context?: unknown) => {
+          const fee = await t.ledger.icrc1_fee()
+          return options.mutationFn({ ...arg, fee }, context)
+        },
+        retry: 3,
+        retryDelay: 0,
+      })
+      t.dropNextReply()
+
+      const error = await rejection(observer.mutate(transfer(null)))
+
+      if (await sharesRunContext()) {
+        expect(error).toMatchObject({ ...retriedWrite, cause: lostReply })
+        expect(t.sent()).toBe(1)
+      } else {
+        // TanStack before 5.89 hands a mutationFn no context to pass on. The
+        // client cannot tell which run the call is for, and refuses it.
+        expect(error).toMatchObject(nobodyStarted)
+        expect(t.sent()).toBe(0)
+      }
+    }
+  )
+
+  it("sends the re-send a function of the app's own makes after a step of its own failed: that failure is not the write's", async () => {
+    const t = setup()
+    const arg = transfer()
+    t.dropNextReply()
+    const first = await rejection(t.ledger.icrc1_transfer(arg))
+    const again = t.client.resendOf(first, t.ledger, "icrc1_transfer", {
+      dedupedBy,
+    })
+    if (again === undefined) throw new Error("nothing was offered")
+    const options = transferOptions(t)
+    let failed = false
+    const observer = new MutationObserver(t.client.queryClient, {
+      ...options,
+      // Called on the run's options with the argument alone, so the client
+      // looks the run up in TanStack's record, which holds the failure of
+      // the app's own step and nothing of the client's.
+      mutationFn(this: unknown, offered: icrc1.TransferArg) {
+        if (!failed) {
+          failed = true
+          return Promise.reject(new TypeError("the app's own step failed"))
+        }
+        return options.mutationFn.call(this, offered)
+      },
+      retry: 1,
+      retryDelay: 0,
+    })
+
+    // The re-send went out, and the ledger found the transfer of the first
+    // send.
+    await expect(observer.mutate(again.arg)).rejects.toMatchObject({
+      kind: "canister_err",
+      err: { tag: "Duplicate", value: { duplicate_of: 1n } },
+    })
+    expect(t.sent()).toBe(2)
+    expect(t.ran()).toBe(1n)
+  })
+
   it("leaves a call of mutationFn by hand alone: it is a new call each time", async () => {
     const t = setup()
     const options = t.client.mutationOptions(t.ledger, "icrc1_transfer")

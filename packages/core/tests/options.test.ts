@@ -1178,6 +1178,77 @@ describe("mutationOptions", () => {
     await expect(write).resolves.toBe(`x:${clickedAs}`)
   })
 
+  /** A mutationFn of the app's own around the given one, which it calls with both arguments, as the guide says. */
+  const wrappingMutationFn = (client: Client, canister: unknown) => {
+    const options = client.mutationOptions(
+      canister as Parameters<Client["mutationOptions"]>[0],
+      "address" as never
+    )
+    return new MutationObserver<unknown, unknown, string, unknown>(
+      client.queryClient,
+      {
+        ...options,
+        mutationFn: async (seed: string, context?: unknown) => {
+          await Promise.resolve()
+          return options.mutationFn(seed as never, context)
+        },
+      } as never
+    )
+  }
+
+  it("refuses a write paused offline across an account switch when a mutationFn of the app's calls the given one with both arguments", async () => {
+    const { replica, auth, client, canister } = addressBook()
+    const write = pausedOffline(
+      client,
+      wrappingMutationFn(client, canister),
+      () => auth.switchTo(2)
+    )
+    await expect(write).rejects.toMatchObject(callerChanged)
+    expect(requestsFor(replica, "address")).toEqual([])
+  })
+
+  it("sends a write paused offline as its caller when a mutationFn of the app's calls the given one with both arguments", async () => {
+    const { replica, client, canister } = addressBook()
+    const clickedAs = client.caller()
+    const write = pausedOffline(
+      client,
+      wrappingMutationFn(client, canister),
+      () => undefined
+    )
+    if (await sharesRunContext()) {
+      await expect(write).resolves.toBe(`x:${clickedAs}`)
+    } else {
+      // TanStack before 5.89 hands a mutationFn no context to pass on. The
+      // client cannot tell which run the call is for, and refuses it.
+      await expect(write).rejects.toMatchObject(callerChanged)
+      expect(requestsFor(replica, "address")).toEqual([])
+    }
+  })
+
+  it("refuses a write whose mutationFn and onMutate are both the app's own, though the mutationFn calls the given one with both arguments: nothing read who started it", async () => {
+    const { replica, client, canister } = addressBook()
+    const options = client.mutationOptions(canister, "address")
+    const observer = new MutationObserver(client.queryClient, {
+      ...options,
+      onMutate: () => ({ previous: "the app's own context" }),
+      mutationFn: (seed: string, context?: unknown) =>
+        options.mutationFn(seed, context),
+    })
+
+    // The client's MutationCache reads the caller of a run of the client's
+    // own mutationFn, and the given onMutate that of any run it is called
+    // for. Here neither ran.
+    if (await sharesRunContext()) {
+      await expect(observer.mutate("x")).rejects.toMatchObject(callerChanged)
+      expect(requestsFor(replica, "address")).toEqual([])
+    } else {
+      // TanStack before 5.89 hands a mutationFn no context to pass on, and
+      // nothing of the client's ran for this run: the call is one by hand,
+      // which goes out as the caller current when it is sent.
+      await expect(observer.mutate("x")).resolves.toBe(`x:${client.caller()}`)
+    }
+  })
+
   it("refuses the retry of a write when the account is switched after the first attempt failed, and sends it no more", async () => {
     const { replica, auth, client, canister } = addressBook()
     // The first attempt is turned away before the canister sees it, so

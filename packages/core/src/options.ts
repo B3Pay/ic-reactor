@@ -258,36 +258,51 @@ const runKey = (context: unknown): object | undefined =>
 
 /**
  * What attempts of mutation runs rejected with when it says the attempt may
- * have executed, by the run and then by the argument: what refuses a later
- * attempt of the same run ({@link earlierAttempt}).
+ * have executed: what refuses a later attempt of the same run
+ * ({@link earlierAttempt}).
  *
  * A run is known by the function context TanStack Query (5.89 and later)
- * passes every attempt of it, and the record lives as long as that context.
- * Before 5.89 it passes none, and the attempts of a run share only the
- * options object they are called on, as the pending runs of one observer do.
- * There the record is kept under that object, which can outlive any number
- * of runs, and only for options our `onMutate` started a run with. It is
- * removed for an argument when `onMutate` starts the next run with that
- * argument, and for the whole object when `onSettled` counts out the last
- * pending run `onMutate` counted in for it: until then one of those runs may
- * still wait to retry. An `onSettled` of the app's that does not call ours
- * with what `onMutate` returned leaves the records for as long as the options
- * object lives.
+ * passes every attempt of it. Its record is kept under that context alone,
+ * and lives as long as it: the argument is left out, since a `mutationFn` of
+ * the app's own that calls ours may make a new one for each attempt. (The
+ * inner map then has the one entry, under the context again.)
+ *
+ * Before 5.89 TanStack passes no context, and the attempts of a run share
+ * only the options object they are called on, as the pending runs of one
+ * observer do. There the record is kept under that object and then under the
+ * argument, which is all that tells those runs apart. The object can outlive
+ * any number of runs, and a record is kept only for options our `onMutate`
+ * started a run with. It is removed for an argument when `onMutate` starts
+ * the next run with that argument, and for the whole object when `onSettled`
+ * counts out the last pending run `onMutate` counted in for it: until then
+ * one of those runs may still wait to retry. An `onSettled` of the app's that
+ * does not call ours with what `onMutate` returned leaves the records for as
+ * long as the options object lives.
  */
 const unknownAttempts = new WeakMap<object, Map<unknown, unknown>>()
 
 /**
  * Whether the attempt of a write that rejected with `reason` may have
- * executed: unless `reason` says it did not (`mayHaveExecuted: false`). Read
- * by shape, so that it holds for the copy of an error a persister wrote and
- * read back, which is no `ReactorError`. JSON keeps the field. A structured
- * clone, which a persister on IndexedDB stores, keeps an error's message and
- * none of its fields, so nothing says such an attempt did not run.
+ * executed. An error of the client's says (`mayHaveExecuted`), and what a
+ * call of the client's rejects with is always one. What TanStack kept as a
+ * run's `failureReason` may not say, and is then read by whether the client
+ * knows who started that run (`known`):
+ *
+ * - If it does, the run was started in this page, where every failure the
+ *   client made says. So this one is the app's own, made by a function of
+ *   the app's around `mutationFn` before the write was sent: nothing ran.
+ * - If it does not, the failure may be the copy of the client's error that a
+ *   persister wrote and read back, and nothing says the attempt did not run.
+ *   JSON keeps the field. A structured clone, which a persister on IndexedDB
+ *   stores, keeps an error's message and none of its fields. The client
+ *   refuses the writes of such a run whatever this answers, so reading the
+ *   copy this way holds back no write it would send.
  */
-const mayHaveRun = (reason: unknown): boolean =>
+const mayHaveRun = (reason: unknown, known?: boolean): boolean =>
   typeof reason === "object" &&
   reason !== null &&
-  (reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted !== false
+  ((reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted ??
+    !known) !== false
 
 /**
  * What an earlier attempt of the run a `mutationFn` is called for rejected
@@ -309,7 +324,9 @@ const mayHaveRun = (reason: unknown): boolean =>
  *
  * Pending runs with the same options object and the same argument cannot be
  * told apart there, so none of them is sent while one of them waits to retry
- * such an attempt.
+ * such an attempt. A failure TanStack kept that does not say whether its
+ * attempt may have executed counts as one that may have only when `started`
+ * is `false` ({@link mayHaveRun}).
  */
 export const earlierAttempt = (
   queryClient: QueryClient,
@@ -319,7 +336,7 @@ export const earlierAttempt = (
   started: boolean
 ): unknown => {
   const key = runKey(context)
-  const kept = unknownAttempts.get(key ?? (options as object))?.get(vars)
+  const kept = unknownAttempts.get(key ?? (options as object))?.get(key ?? vars)
   if (kept !== undefined || (key !== undefined && started)) return kept
   return (
     (key as { readonly client?: QueryClient } | undefined)?.client ??
@@ -332,7 +349,7 @@ export const earlierAttempt = (
         own === options &&
         state.status === "pending" &&
         state.variables === vars &&
-        mayHaveRun(state.failureReason)
+        mayHaveRun(state.failureReason, started)
     )?.state.failureReason
 }
 
@@ -787,7 +804,7 @@ export function createBuilders(
           if (byArgument === undefined) {
             unknownAttempts.set(kept as object, (byArgument = new Map()))
           }
-          byArgument.set(vars, error)
+          byArgument.set(key ?? vars, error)
         }
         throw error
       })
@@ -864,7 +881,7 @@ export function createBuilders(
         const started = runIn(onMutateResult)
         const counted = started?.options
         const kept = counted && callersByOptions.get(counted)
-        if (kept && kept.runs > 0) {
+        if (kept) {
           started.options = undefined
           callersByOptions.set(counted, {
             caller: kept.runs > 1 ? kept.caller : undefined,
