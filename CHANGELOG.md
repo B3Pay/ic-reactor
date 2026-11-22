@@ -96,15 +96,25 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   the canister a run resolved under that context alone, so the `mutationFn`
   of the second options called its method on the canister of the first: a
   transfer meant for one ledger was sent to the other. Each method of a
-  canister now keeps what a run resolved for it. The `onSettled` of each
-  options, called from yours, refreshes the reads those options name, also
-  when the two writes went through two methods of one canister, where 4.3.0
-  refreshed the reads of the first options twice. With a `retry` of yours on
-  such a mutation, the `retried_write` that holds a write back names the write
-  that may have executed, by its `method`, its `canisterId` and the canister
-  that `isReactorError(error, canister, method)` matches, also when the write
-  it holds back is the other one. A mutation that uses the client's
-  `mutationFn` as the options return it is not affected.
+  canister object now keeps what a run resolved for it. The `onSettled` of
+  each options, called from yours, refreshes the reads those options name,
+  also when the two writes went through two methods of one canister, where
+  4.3.0 refreshed the reads of the first options twice. With a `retry` of
+  yours on such a mutation, the `retried_write` that holds a write back names
+  the write that may have executed, by its `method`, its `canisterId` and the
+  canister that `isReactorError(error, canister, method)` matches, also when
+  the write it holds back is the other one. A mutation that uses the client's
+  `mutationFn` as the options return it works as before, with one difference.
+  Options a later render builds from the same canister object, which
+  `client.canister()` returns for the same arguments, find what a waiting run
+  resolved, as in 4.3.0. Options built from another canister object of the
+  same canister (another `timeoutMs` or `certified`) no longer do: the
+  canister is resolved again when the write is sent, and the reads refreshed
+  are that canister's. The write goes elsewhere than in 4.3.0 only when a
+  `{ name }` was moved to another canister id while the run waited. Two
+  options built for one method of one canister object share what a run
+  resolved, the reads it refreshes included, as in 4.3.0: give them the same
+  `invalidates` when a function of yours calls both.
 
 ## core, react, vite-plugin, mcp 4.3.0
 

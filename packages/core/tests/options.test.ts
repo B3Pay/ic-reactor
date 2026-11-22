@@ -1072,6 +1072,59 @@ describe("mutationOptions", () => {
     )
   })
 
+  it("resolves the canister again when the write is sent, and refreshes that canister's reads, when the later render built the waiting run's options from another canister object of the same canister", async ({
+    skip,
+  }) => {
+    if (!(await sharesRunContext())) {
+      skip(
+        "this TanStack Query does not pass mutationFn the run's context, so mutationFn resolves the canister when it starts"
+      )
+    }
+    const { replica, client, backend, redeploy } = redeployable()
+    const read = client.queryOptions(backend, "one", 1n)
+    await client.queryClient.fetchQuery(read)
+
+    onlineManager.setOnline(false)
+    const first = client.mutationOptions(backend, "bump")
+    const observer = new MutationObserver(client.queryClient, first)
+    const write = observer.mutate(1n)
+    await vi.waitFor(() => {
+      expect(observer.getCurrentResult().isPaused).toBe(true)
+      expect(observer.getCurrentResult().context).toBeDefined()
+    })
+    // client.canister() returns one canister object for the same arguments,
+    // and another for another timeoutMs. What a run resolved is kept by the
+    // method of the canister object, so options built from this one find
+    // nothing for the waiting run, though their mutationKey is the same and
+    // TanStack hands them to it.
+    const patient = client.canister<shapes.Actor>(shapes.actor, {
+      name: "backend",
+      timeoutMs: 30_000,
+    })
+    expect(patient).not.toBe(backend)
+    const later = client.mutationOptions(patient, "bump")
+    expect(later.mutationKey).toEqual(first.mutationKey)
+    observer.setOptions(later)
+    redeploy()
+    onlineManager.setOnline(true)
+    const moved = client.queryOptions(backend, "one", 1n)
+    await client.queryClient.fetchQuery(moved)
+    void client.queryClient.resumePausedMutations()
+    await expect(write).resolves.toBe(2n)
+
+    // The write and its invalidation stay on one canister: the one the name
+    // points to when the write is sent.
+    expect(requestsFor(replica, "bump")).toMatchObject([
+      { canisterId: REDEPLOYED },
+    ])
+    expect(
+      client.queryClient.getQueryState(moved.queryKey)?.isInvalidated
+    ).toBe(true)
+    expect(client.queryClient.getQueryState(read.queryKey)?.isInvalidated).toBe(
+      false
+    )
+  })
+
   /**
    * A shapes canister whose `address` answers with its sender, held back
    * while `hold` is set, and a client on it signed in as seed 1.
@@ -1445,6 +1498,66 @@ describe("mutationOptions", () => {
 
     expect(afterNote).toEqual([false, true])
     expect(invalidated()).toEqual([true, true])
+  })
+
+  it("shares what such a run resolved between two options for one method of one canister object, the reads it refreshes included", async ({
+    skip,
+  }) => {
+    if (!(await sharesRunContext())) {
+      skip("this TanStack Query hands a mutationFn no context to pass on")
+    }
+    const replica = replicaWith({ [SHAPES]: whoCanister(new Map()) })
+    const client = clientAs(replica, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const who = client.queryOptions(canister, "who", undefined)
+    const one = client.queryOptions(canister, "one", 1n)
+    await client.queryClient.fetchQuery(who)
+    await client.queryClient.fetchQuery(one)
+    const invalidated = () =>
+      [who, one].map(
+        ({ queryKey }) =>
+          client.queryClient.getQueryState(queryKey)?.isInvalidated
+      )
+    const options = client.mutationOptions(canister, "address", {
+      invalidates: [[canister, "who"]],
+    })
+    // The same method of the same canister object, with other reads to
+    // refresh: a limit, which the JSDoc of mutationFn states (give both the
+    // same invalidates).
+    const again = client.mutationOptions(canister, "address", {
+      invalidates: [[canister, "one"]],
+    })
+    let afterAgain: unknown
+    const observer = new MutationObserver(client.queryClient, {
+      ...options,
+      mutationFn: async (seed: string, context?: unknown) => {
+        await again.mutationFn(seed, context)
+        return options.mutationFn(seed, context)
+      },
+      onSettled: async (
+        data: string | undefined,
+        error: ReactorError | null,
+        variables: string,
+        onMutateResult: unknown,
+        context?: unknown
+      ) => {
+        await again.onSettled(
+          undefined,
+          error,
+          variables,
+          onMutateResult,
+          context
+        )
+        afterAgain = invalidated()
+        await options.onSettled(data, error, variables, onMutateResult, context)
+      },
+    })
+
+    await observer.mutate("x")
+
+    // Both refresh the reads of the options that started the run.
+    expect(afterAgain).toEqual([true, false])
+    expect(invalidated()).toEqual([true, false])
   })
 
   it("refuses the retry of a write when the account is switched after the first attempt failed, and sends it no more", async () => {

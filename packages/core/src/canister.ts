@@ -54,12 +54,17 @@ export interface CanisterMethod extends PreparedMethod {
    * later) creates for the run and passes to `onMutate`, `mutationFn` and
    * `onSettled` alike: how `mutationFn` finds what `onMutate` resolved, and
    * `onSettled` what `mutationFn` wrote to, even when an `onMutate` of the
-   * app's replaced the client's, and whichever render's options TanStack
-   * calls (it hands a pending run later options only when their mutationKey,
-   * so their canister and method, is the same). Kept by the method of the
-   * canister and not by the client: a `mutationFn` of the app's own may hand
-   * one run's context to the `mutationFn` of other options, whose write goes
-   * to their canister, and whose `onSettled` refreshes the reads they name.
+   * app's replaced the client's, and whichever render built the options
+   * TanStack calls, when it built them from this canister object. (TanStack
+   * hands a pending run later options only when their mutationKey, so their
+   * canister id and method, is the same. Options built from another canister
+   * object of that id, one with another `timeoutMs` or `certified`, find
+   * nothing here: their `mutationFn` resolves the run again.) Kept by the
+   * method of the canister and not by the client: a `mutationFn` of the app's
+   * own may hand one run's context to the `mutationFn` of other options,
+   * whose write goes to their canister, and whose `onSettled` refreshes the
+   * reads they name. Options built for this method share an entry, whatever
+   * `invalidates` each of them names.
    */
   readonly runs: WeakMap<object, MutationRun>
 }

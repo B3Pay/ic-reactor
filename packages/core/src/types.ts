@@ -332,7 +332,12 @@ export interface MutationTargets {
  * `mutationFn` when an `onMutate` of the app's replaced this one), so a
  * `{ name }` whose `ic_env` cookie entry changes while the update is in
  * flight (a local redeploy) still has the reads of the canister it wrote to
- * invalidated, and not those of the one the cookie names now.
+ * invalidated, and not those of the one the cookie names now. From 5.89 they
+ * are kept by the method of the canister object the options were built from.
+ * Options a later render builds from the same canister object find them
+ * (`client.canister()` returns the same object for the same arguments).
+ * Ones built from another canister object of the same canister, such as one
+ * with another `timeoutMs`, resolve both again when their `mutationFn` runs.
  */
 export interface CanisterMutationOptions<V, D, E> {
   /**
@@ -429,7 +434,9 @@ export interface CanisterMutationOptions<V, D, E> {
    * method of this one), this function calls at its own canister. It
    * resolves that canister, and the reads its options invalidate, when it is
    * first called for the run, and the `onSettled` of its options finds them
-   * by the same context. Once a write of such a run has failed with
+   * by the same context. Two options built for one method of one canister
+   * object share what a run resolved, the reads it refreshes included: give
+   * them the same `invalidates`. Once a write of such a run has failed with
    * `mayHaveExecuted: true`, every write the run still makes is refused,
    * whichever options it goes through: that `retried_write` names the method
    * and the canister of the write that may have executed, which
@@ -446,9 +453,12 @@ export interface CanisterMutationOptions<V, D, E> {
    * a call by hand when an `onMutate` of the app's replaced this one.
    *
    * It finds that run through `context`, which TanStack Query passes from
-   * 5.89 on. When `onMutate` resolved nothing for that context (an
-   * `onMutate` of the app's replaced this one), it resolves the run when it
-   * starts and keeps it for `onSettled`, which gets the same context.
+   * 5.89 on, among the runs of this method of the canister object the
+   * options were built from. When nothing was resolved there for that
+   * context (an `onMutate` of the app's replaced this one, or a later render
+   * built the options of a pending run from another canister object of the
+   * same canister), it resolves the run when it starts and keeps it for
+   * `onSettled`, which gets the same context.
    * Without a context (TanStack Query before 5.89, a direct call) it
    * resolves the canister when it starts. Before 5.89 that leaves a gap: a
    * `{ name }` whose cookie entry is rewritten between `onMutate` and

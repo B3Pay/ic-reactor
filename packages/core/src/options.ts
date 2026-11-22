@@ -697,11 +697,12 @@ export function createBuilders(
       vars: unknown,
       context?: unknown
     ) {
-      // A run found here was resolved for this method of this canister, by
-      // our onMutate or by an earlier call of this function: of these
-      // options, or of the ones an earlier render built (TanStack hands a
-      // pending mutation the options of a later render only when their
-      // mutationKey is the same; another key detaches the observer instead).
+      // A run found here was resolved for this method of this canister
+      // object, by our onMutate or by an earlier call of this function: of
+      // these options, or of the ones an earlier render built from the same
+      // canister object (TanStack hands a pending mutation the options of a
+      // later render only when their mutationKey is the same; another key
+      // detaches the observer instead).
       let run = keptRun(context)
       const key = runKey(context)
       if (run === undefined && key !== undefined) {
@@ -709,9 +710,10 @@ export function createBuilders(
         // of the app's replaced ours, or a mutationFn of the app's handed
         // this one the context of a run that other options started (those
         // of another canister, or of another method of this one), whose
-        // write goes to their canister and whose reads are theirs. Resolve
-        // ours now, and keep them for our onSettled, which gets the same
-        // context.
+        // write goes to their canister and whose reads are theirs, or a
+        // later render built these options from another canister object of
+        // the canister the run started on. Resolve ours now, and keep them
+        // for our onSettled, which gets the same context.
         run = resolveRun()
         prepared.runs.set(key, run)
       }
