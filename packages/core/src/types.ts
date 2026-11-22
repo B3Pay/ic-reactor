@@ -421,10 +421,29 @@ export interface CanisterMutationOptions<V, D, E> {
    * `onMutate` read, on the client's own `queryClient` too, whose
    * `MutationCache` reads the caller only of a run whose `mutationFn` is
    * this one. So with an `onMutate` of the app's that replaced this one as
-   * well, the write is refused. Handed no context, it is a call by hand.
-   * The context stands for the run of the options `onMutate` was called
-   * for: handed the context of a run that other options started, this
-   * function calls its method at the canister resolved for that run.
+   * well, the write is refused. A call that resolved holds back no later
+   * one: when a later step of the app's function fails and a `retry` runs
+   * that function again, the write is sent again. The context stands for the
+   * run, and not for one canister or method: handed the context of a run
+   * that other options started (those of another canister, or of another
+   * method of this one), this function calls at its own canister. It
+   * resolves that canister, and the reads its options invalidate, when it is
+   * first called for the run, and the `onSettled` of its options finds them
+   * by the same context. Once a write of such a run has failed with
+   * `mayHaveExecuted: true`, every write the run still makes is refused,
+   * whichever options it goes through: that `retried_write` names the method
+   * and the canister of the write that may have executed, which
+   * `isReactorError(error, canister, method)` matches it for, and not those
+   * of the call it holds back.
+   *
+   * Handed no context by such a function, it does not know the run. From
+   * 5.89 on the call is then one by hand. Before 5.89, which has no context
+   * to hand on, no function of the app's keeps both rules: the call is
+   * refused when TanStack called this `onMutate` (the options object it is
+   * called on is not the run's); it goes by that options object when an
+   * `onMutate` of the app's called this one on it, which keeps the caller
+   * and does not know an argument made anew for a retried attempt; and it is
+   * a call by hand when an `onMutate` of the app's replaced this one.
    *
    * It finds that run through `context`, which TanStack Query passes from
    * 5.89 on. When `onMutate` resolved nothing for that context (an

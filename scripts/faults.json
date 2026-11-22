@@ -5815,7 +5815,7 @@
     "testName": "sends a write whose reply was lost once, whatever retry asks for",
     "why": "an attempt that may have executed is not kept for its run, so the attempt after it finds nothing and is sent (#1037)",
     "file": "src/options.ts",
-    "search": "        if (kept !== undefined && mayHaveRun(error)) {",
+    "search": "        if (kept && mayHaveRun(error)) {",
     "replace": "        if (false) {"
   },
   {
@@ -5825,8 +5825,8 @@
     "testName": "still sends the retry after an attempt that was turned away before the canister saw it",
     "why": "every failed attempt is kept as one that may have executed, so a retry after a failure proving nothing ran is refused and a retry policy is of no use anywhere (#1037)",
     "file": "src/options.ts",
-    "search": "        if (kept !== undefined && mayHaveRun(error)) {",
-    "replace": "        if (kept !== undefined) {"
+    "search": "        if (kept && mayHaveRun(error)) {",
+    "replace": "        if (kept) {"
   },
   {
     "id": "1037-retry-refused-after-err",
@@ -5835,8 +5835,8 @@
     "testName": "still sends the retry after the canister answered Err, which is its answer",
     "why": "an attempt is kept by what invalidates reads, which a canister's Err does too, so a retry after an Err, the canister's own answer, is refused as an unknown outcome (#1037)",
     "file": "src/options.ts",
-    "search": "        if (kept !== undefined && mayHaveRun(error)) {",
-    "replace": "        if (kept !== undefined && mayHaveChanged(error)) {"
+    "search": "        if (kept && mayHaveRun(error)) {",
+    "replace": "        if (kept && mayHaveChanged(error)) {"
   },
   {
     "id": "1037-refusal-says-nothing-ran",
@@ -5845,8 +5845,8 @@
     "testName": "does not send the retry after",
     "why": "the refusal of a retried attempt says mayHaveExecuted: false because that attempt was not sent, though the attempt before it may have run: the app reads the write as not executed and its reads are not refreshed (#1037)",
     "file": "src/errors.ts",
-    "search": "      mayHaveExecuted: true,\n      code: \"retried_write\",\n",
-    "replace": "      mayHaveExecuted: false,\n      code: \"retried_write\",\n"
+    "search": "        mayHaveExecuted: true,\n        code: \"retried_write\",\n",
+    "replace": "        mayHaveExecuted: false,\n        code: \"retried_write\",\n"
   },
   {
     "id": "1037-refusal-loses-expiry",
@@ -6144,6 +6144,93 @@
     "file": "src/options.ts",
     "search": "          if (!internals.mutationCallers.has(key)) {\n            internals.mutationCallers.set(key, caller)\n          }\n",
     "replace": ""
+  },
+  {
+    "id": "1037-run-kept-for-every-canister",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "writes to its own canister when a mutationFn of the app's hands it the context of a run that the options of another canister started",
+    "why": "what a run resolved is kept for the run's context alone, as in 4.3.0, and not by the method of the canister it was resolved for, so the mutationFn of another canister's options that a function of the app's own hands that context calls its method on the canister of the run: a transfer meant for one ledger is booked on the other (#1037)",
+    "edits": [
+      {
+        "file": "src/canister.ts",
+        "search": "const RECORDS = new WeakMap<object, CanisterRecord>()\n",
+        "replace": "const RECORDS = new WeakMap<object, CanisterRecord>()\nconst SHARED_RUNS = new WeakMap<object, MutationRun>()\n"
+      },
+      {
+        "file": "src/canister.ts",
+        "search": "            { ...prepareMethod(method), runs: new WeakMap() },\n",
+        "replace": "            { ...prepareMethod(method), runs: SHARED_RUNS },\n"
+      }
+    ]
+  },
+  {
+    "id": "1037-run-kept-for-every-canister-settles-elsewhere",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refreshes the reads of each canister such a run wrote to",
+    "why": "what a run resolved is kept for the run's context alone and not by the method of the canister it was resolved for, so the onSettled of another canister's options, which an onSettled of the app's calls, finds what the first canister resolved and refreshes its reads a second time, and the reads of the canister it wrote to stay stale (#1037)",
+    "edits": [
+      {
+        "file": "src/canister.ts",
+        "search": "const RECORDS = new WeakMap<object, CanisterRecord>()\n",
+        "replace": "const RECORDS = new WeakMap<object, CanisterRecord>()\nconst SHARED_RUNS = new WeakMap<object, MutationRun>()\n"
+      },
+      {
+        "file": "src/canister.ts",
+        "search": "            { ...prepareMethod(method), runs: new WeakMap() },\n",
+        "replace": "            { ...prepareMethod(method), runs: SHARED_RUNS },\n"
+      }
+    ]
+  },
+  {
+    "id": "1037-run-kept-for-every-method",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refreshes the reads each options names, when such a run wrote through two methods of one canister",
+    "why": "what a run resolved is kept by the canister for all its methods and not by each method, so the options of a second method that a function of the app's own writes through in the same run find what the first method's options resolved: their onSettled, which an onSettled of the app's calls, refreshes the first options' reads a second time, and the reads they name themselves stay stale (#1037)",
+    "edits": [
+      {
+        "file": "src/canister.ts",
+        "search": "    let methods: ReadonlyMap<string, CanisterMethod>\n",
+        "replace": "    let methods: ReadonlyMap<string, CanisterMethod>\n    const runs = new WeakMap<object, MutationRun>()\n"
+      },
+      {
+        "file": "src/canister.ts",
+        "search": "            { ...prepareMethod(method), runs: new WeakMap() },\n",
+        "replace": "            { ...prepareMethod(method), runs },\n"
+      }
+    ]
+  },
+  {
+    "id": "1037-run-kept-by-each-options",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "sends such a write to the canister resolved when it started, when a later render handed the waiting run new options",
+    "why": "what a run resolved is kept by the options object that resolved it and not by the method of its canister, so the mutationFn of the options a later render handed the waiting run finds nothing for it and resolves the canister again: a { name } write that waited offline while a local redeploy moved the name goes to the new canister, and the reads of the one named when it started are left as they were (#1037)",
+    "file": "src/options.ts",
+    "search": "    const prepared = methodOf(record, method, call)\n    const invalidates = readInvalidates(canister, options)\n",
+    "replace": "    const prepared = {\n      ...methodOf(record, method, call),\n      runs: new WeakMap<object, MutationRun>(),\n    }\n    const invalidates = readInvalidates(canister, options)\n"
+  },
+  {
+    "id": "1037-refusal-names-held-back-method",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "names the write that may have run, and not the one it holds back, when the retry of a function of the app's own reaches another method first",
+    "why": "the refusal of a retried attempt takes only the canister from the attempt that may have run and the method from the call it holds back, so in a function of the app's own that writes through two methods it names a write that nothing says ran: `note`, where `address` is the one whose outcome is open (#1037)",
+    "file": "src/call.ts",
+    "search": "    typeof method === \"string\" && typeof canisterId === \"string\"\n      ? { method, canisterId }\n      : where,\n",
+    "replace": "    typeof canisterId === \"string\" ? { ...where, canisterId } : where,\n"
+  },
+  {
+    "id": "1037-refusal-marked-with-held-back-canister",
+    "package": "core",
+    "test": "tests/retried-write.test.ts",
+    "testName": "names the canister of the write that may have run, whose re-send it offers, when such a retry reaches the write to another canister first",
+    "why": "the refusal of a retried attempt is marked with the canister object of the call it holds back and not with that of the attempt that may have run, so in a function of the app's own that writes to two canisters isReactorError(error, canister, method) matches the ledger whose transfer went through and not the one whose outcome is open, while resendOf offers the write only for the other (#1037)",
+    "file": "src/errors.ts",
+    "search": "    (earlier as { readonly [CANISTER]?: object })[CANISTER]\n",
+    "replace": "    undefined\n"
   },
   {
     "id": "894-view-write-caller-unread",

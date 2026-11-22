@@ -31,8 +31,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { RECONCILE_DELAYS_MS } from "../src/call.js"
 import { isReactorError, type ReactorError } from "../src/index.js"
 import { createTestClient } from "../src/testing/index.js"
-import { LEDGER } from "./canister-helpers.js"
+import { ARCHIVE, LEDGER, SHAPES } from "./canister-helpers.js"
 import * as icrc1 from "./fixtures/icrc1.js"
+import * as shapes from "./fixtures/shapes.js"
 
 const BOB = principal("aaaaa-aa")
 const AS_VIEW = Symbol.for("ic-reactor.client.as")
@@ -891,6 +892,96 @@ describe("a mutation given retry", () => {
       }
     }
   )
+
+  it("names the write that may have run, and not the one it holds back, when the retry of a function of the app's own reaches another method first", async ({
+    skip,
+  }) => {
+    if (!(await sharesRunContext())) {
+      skip("this TanStack Query hands a mutationFn no context to pass on")
+    }
+    const t = setup()
+    t.mock<shapes.Actor>(shapes.actor, SHAPES, {
+      note: () => undefined,
+      address: ([seed]) => seed,
+    })
+    const book = t.client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const options = t.client.mutationOptions(book, "note")
+    const addressOptions = t.client.mutationOptions(book, "address")
+    const observer = new MutationObserver(t.client.queryClient, {
+      ...options,
+      // Two writes in one run, each through the client's function for its
+      // method, with the context of the run. The reply to the second is lost.
+      mutationFn: async (seed: string, context?: unknown) => {
+        await options.mutationFn(seed, context)
+        await addressOptions.mutationFn(seed, context)
+      },
+      retry: 1,
+      retryDelay: 0,
+    })
+    t.dropNextReply({ method: "address" })
+
+    const error = await rejection(observer.mutate("x"))
+
+    // The retry ran the function again, and the client held back its first
+    // write, `note`, because of what `address` left.
+    const lost = { ...lostReply, method: "address", canisterId: SHAPES }
+    expect(error).toMatchObject({ ...retriedWrite, ...lost, cause: lost })
+    expect(isReactorError(error, book, "address")).toBe(true)
+    expect(isReactorError(error, book, "note")).toBe(false)
+    const calls = (method: string) =>
+      new Set(
+        t.requests
+          .filter(
+            ({ endpoint, methodName }) =>
+              endpoint === "call" && methodName === method
+          )
+          .map(({ requestId }) => requestId)
+      ).size
+    expect([calls("note"), calls("address")]).toEqual([1, 1])
+  })
+
+  it("names the canister of the write that may have run, whose re-send it offers, when such a retry reaches the write to another canister first", async ({
+    skip,
+  }) => {
+    if (!(await sharesRunContext())) {
+      skip("this TanStack Query hands a mutationFn no context to pass on")
+    }
+    const t = setup()
+    t.mock<icrc1.Actor>(icrc1.actor, ARCHIVE, {
+      icrc1_transfer: () => ({ tag: "Ok", value: 7n }),
+    })
+    const archive = t.client.canister<icrc1.Actor>(icrc1.actor, { id: ARCHIVE })
+    const options = retrying(t, 1)
+    const archiveOptions = t.client.mutationOptions(archive, "icrc1_transfer")
+    const observer = new MutationObserver(t.client.queryClient, {
+      ...options,
+      // Two transfers in one run: on the ledger, then on the archive, whose
+      // reply is lost.
+      mutationFn: async (arg: icrc1.TransferArg, context?: unknown) => {
+        await options.mutationFn(arg, context)
+        return archiveOptions.mutationFn(arg, context)
+      },
+    })
+    t.dropNextReply({ canister: ARCHIVE })
+    const arg = transfer()
+
+    const error = await rejection(observer.mutate(arg))
+
+    // Held back on the retry: the ledger's transfer, because of the
+    // archive's.
+    const lost = { ...lostReply, canisterId: ARCHIVE }
+    expect(error).toMatchObject({ ...retriedWrite, ...lost, cause: lost })
+    expect(isReactorError(error, archive, "icrc1_transfer")).toBe(true)
+    expect(isReactorError(error, t.ledger, "icrc1_transfer")).toBe(false)
+    expect(
+      t.client.resendOf(error, t.ledger, "icrc1_transfer", { dedupedBy })
+    ).toBeUndefined()
+    expect(
+      t.client.resendOf(error, archive, "icrc1_transfer", { dedupedBy })
+    ).toMatchObject({ arg })
+    expect(t.signed()).toBe(2)
+    expect(t.ran()).toBe(1n)
+  })
 
   it("sends the re-send a function of the app's own makes after a step of its own failed: that failure is not the write's", async () => {
     const t = setup()

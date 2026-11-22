@@ -84,12 +84,27 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   TanStack Query passes from 5.89 on (`@ic-reactor/react` always has it).
   Before 5.89 it reads TanStack's own record of the run on
   `client.queryClient` and goes by the options object on another
-  `QueryClient`, with three limits that
+  `QueryClient`, with four limits that
   [Writes](docs/src/content/docs/guides/writes.mdx#a-retried-attempt) names.
   Migration: none for an app that kept `retry: false`. An app that set `retry`
   on a write gets `retried_write` where the write was sent again: take the
   `retry` off, and handle the error as any `outcome_unknown`. `error.code`
   has one more value.
+- A `mutationFn` of your own that writes to two canisters, and hands the
+  context TanStack Query gave it to the client's `mutationFn` of both options,
+  now has each write go to its own canister (#1037). In 4.3.0 the client kept
+  the canister a run resolved under that context alone, so the `mutationFn`
+  of the second options called its method on the canister of the first: a
+  transfer meant for one ledger was sent to the other. Each method of a
+  canister now keeps what a run resolved for it. The `onSettled` of each
+  options, called from yours, refreshes the reads those options name, also
+  when the two writes went through two methods of one canister, where 4.3.0
+  refreshed the reads of the first options twice. With a `retry` of yours on
+  such a mutation, the `retried_write` that holds a write back names the write
+  that may have executed, by its `method`, its `canisterId` and the canister
+  that `isReactorError(error, canister, method)` matches, also when the write
+  it holds back is the other one. A mutation that uses the client's
+  `mutationFn` as the options return it is not affected.
 
 ## core, react, vite-plugin, mcp 4.3.0
 

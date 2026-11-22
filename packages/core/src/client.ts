@@ -49,6 +49,7 @@ import {
   keepSigned,
   keptUnknown,
   retriedWrite,
+  slotOf,
   type CallRequest,
 } from "./call.js"
 import { readTarget, recordOf } from "./canister.js"
@@ -1942,7 +1943,7 @@ export function createClientWith(
             ).resolve()
             const where = {
               method: String(method),
-              canisterId: target.ok ? target.id : target.slot,
+              canisterId: slotOf(target),
             }
             // An attempt after one of the same run that may have executed
             // is refused as that, as the client's own function refuses it,

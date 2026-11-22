@@ -473,24 +473,31 @@ export const resendDidNotRun = (
  * request and run the write a second time. `earlier`, what that attempt
  * rejected with, is the `cause`. The write's outcome is as open as that
  * attempt left it: `outcome_unknown` with `mayHaveExecuted: true`, and
- * `expiresAt`, the latest of the write's sends.
+ * `expiresAt`, the latest of the write's sends. It is marked with the
+ * canister `earlier` is marked with ({@link fromCanister}), if any: the error
+ * is that write's, also when the attempt it holds back is a call on another
+ * canister object, which a `mutationFn` of the app's own makes that writes
+ * through the options of two.
  */
 export const retriedWriteError = (
   where: { readonly method: string; readonly canisterId: string },
   earlier: unknown,
   expiresAt: bigint | undefined
 ): ReactorError =>
-  withExpiry(
-    build({
-      ...where,
-      kind: "outcome_unknown",
-      mayHaveExecuted: true,
-      code: "retried_write",
-      reason:
-        "an earlier attempt of this write may have executed; it was not sent again",
-      cause: earlier,
-    }),
-    expiresAt
+  fromCanister(
+    withExpiry(
+      build({
+        ...where,
+        kind: "outcome_unknown",
+        mayHaveExecuted: true,
+        code: "retried_write",
+        reason:
+          "an earlier attempt of this write may have executed; it was not sent again",
+        cause: earlier,
+      }),
+      expiresAt
+    ),
+    (earlier as { readonly [CANISTER]?: object })[CANISTER]
   ) as ReactorError
 
 /**

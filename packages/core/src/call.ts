@@ -214,6 +214,10 @@ export type ResolvedTarget =
   | { readonly ok: true; readonly id: string }
   | { readonly ok: false; readonly slot: string; readonly message: string }
 
+/** The canisterId segment of `target`: its id, or the key segment of an unresolved name. */
+export const slotOf = (target: ResolvedTarget): string =>
+  target.ok ? target.id : target.slot
+
 /** One call. */
 export interface CallRequest {
   readonly method: PreparedMethod
@@ -349,9 +353,14 @@ export const keptUnknown = (
  * what an earlier attempt of the same run rejected with, says that attempt
  * may have executed ({@link retriedWriteError}): TanStack Query makes such an
  * attempt for a mutation given `retry`, and it would go out as a new request,
- * which the canister runs as a second write. It names the canister the
- * earlier attempt went to, `where` saying only the method and the canister
- * of an attempt that left no such record (one read back from a persister).
+ * which the canister runs as a second write. It names the method and the
+ * canister of the earlier attempt, the write that may have run, and is marked
+ * with that attempt's canister object: `where`, the method and the canister
+ * of the attempt held back, is said only for an attempt that left no such
+ * record (one read back from a persister that kept no field of it). The two
+ * differ when a `mutationFn` of the app's own writes through the options of
+ * two methods or two canisters in one run, and the retry reaches another
+ * write first.
  * The write that attempt sent stays kept for it in {@link UNKNOWN_WRITES}, so
  * that `client.resendOf()` offers it from this error as from the first. The
  * refusal of an attempt before this one is thrown again as it is, so the
@@ -365,9 +374,14 @@ export const retriedWrite = (
     return earlier as ReactorError
   }
   const sent = UNKNOWN_WRITES.get(earlier as object)
-  const { canisterId } = earlier as { readonly canisterId?: unknown }
+  const { method, canisterId } = earlier as {
+    readonly method?: unknown
+    readonly canisterId?: unknown
+  }
   const refused = retriedWriteError(
-    typeof canisterId === "string" ? { ...where, canisterId } : where,
+    typeof method === "string" && typeof canisterId === "string"
+      ? { method, canisterId }
+      : where,
     earlier,
     sent && firstOf(sent).expiresAt
   )
@@ -426,7 +440,7 @@ async function run(
   if (internals.disposed()) {
     throw createReactorError("cancelled", {
       method: name,
-      canisterId: target.ok ? target.id : target.slot,
+      canisterId: slotOf(target),
       code: "client_disposed",
       reason: "the call was made on a disposed client; nothing was sent",
     })

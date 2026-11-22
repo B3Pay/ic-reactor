@@ -23,6 +23,47 @@ import {
 import { unresolvedSlot } from "./keys.js"
 import { resolveCanisterId, type CanisterIdTarget } from "./network.js"
 
+/**
+ * What one run of a mutation resolved, in one synchronous step when it
+ * started: the canister it writes to, and the canisterId segments (and
+ * method) of every read it invalidates. A `{ name }` is resolved from the
+ * `ic_env` cookie, which a local redeploy can rewrite while an update is in
+ * flight; resolving once keeps the write and its invalidation on the same
+ * canister. (Who started the run is read in the same step, and kept by the
+ * run's context or its options: `callerOf` in `options.ts`.)
+ */
+export interface MutationRun {
+  /**
+   * The options object the client's `onMutate` was called on with no run
+   * context (TanStack Query before 5.89), where it counted the run in
+   * (`callersByOptions`), until `onSettled` counts the run out.
+   */
+  options?: object
+  readonly target: ResolvedTarget
+  readonly invalidates: readonly {
+    readonly slots: readonly string[]
+    readonly method?: string
+  }[]
+}
+
+/** A method of a canister object: what a call needs of it, and what the runs of the mutations that write through it resolved. */
+export interface CanisterMethod extends PreparedMethod {
+  /**
+   * What was resolved for each run of a mutation that writes through this
+   * method of this canister, by the function context TanStack Query (5.89 and
+   * later) creates for the run and passes to `onMutate`, `mutationFn` and
+   * `onSettled` alike: how `mutationFn` finds what `onMutate` resolved, and
+   * `onSettled` what `mutationFn` wrote to, even when an `onMutate` of the
+   * app's replaced the client's, and whichever render's options TanStack
+   * calls (it hands a pending run later options only when their mutationKey,
+   * so their canister and method, is the same). Kept by the method of the
+   * canister and not by the client: a `mutationFn` of the app's own may hand
+   * one run's context to the `mutationFn` of other options, whose write goes
+   * to their canister, and whose `onSettled` refreshes the reads they name.
+   */
+  readonly runs: WeakMap<object, MutationRun>
+}
+
 /** What the builders know about a canister object. */
 export interface CanisterRecord {
   /** The internals of the client that made it. */
@@ -31,7 +72,7 @@ export interface CanisterRecord {
   readonly certified: boolean
   /** How long each call through the canister waits for its answer (`CanisterTarget.timeoutMs`). */
   readonly timeoutMs?: number
-  readonly methods: ReadonlyMap<string, PreparedMethod>
+  readonly methods: ReadonlyMap<string, CanisterMethod>
   /**
    * The canister id now, or the key segment of a `{ name }` the cookie does
    * not resolve and why. Read again for each call and each key: the cookie is
@@ -90,7 +131,7 @@ export function methodOf(
   record: CanisterRecord,
   method: unknown,
   call: string
-): PreparedMethod {
+): CanisterMethod {
   const prepared =
     typeof method === "string" ? record.methods.get(method) : undefined
   if (prepared === undefined) {
@@ -187,11 +228,14 @@ export function canisterFactory(
       fixed = { ok: true, id: target.id }
     }
 
-    let methods: ReadonlyMap<string, PreparedMethod>
+    let methods: ReadonlyMap<string, CanisterMethod>
     try {
       methods = new Map(
         [...serviceMethods(service as AnyFieldSchema).values()].map(
-          (method) => [method.name, prepareMethod(method)]
+          (method) => [
+            method.name,
+            { ...prepareMethod(method), runs: new WeakMap() },
+          ]
         )
       )
     } catch (cause) {

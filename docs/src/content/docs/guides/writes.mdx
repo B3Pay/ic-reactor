@@ -251,7 +251,7 @@ The client knows the attempts of one run by the function context TanStack
 Query passes each of them, from 5.89 on. Before 5.89 there is none. On
 `client.queryClient` the client then reads TanStack's own record of the run,
 and on another `QueryClient` it goes by the options object the client's
-`onMutate` started the run with. Three limits follow before 5.89:
+`onMutate` started the run with. Four limits follow before 5.89:
 
 - Pending runs of one observer with the same argument cannot be told apart.
   On `client.queryClient` none of them is sent while one waits to retry an
@@ -263,9 +263,12 @@ and on another `QueryClient` it goes by the options object the client's
 - On another `QueryClient`, a run that a later render gave new options
   before its retry is not sent, but it is refused as `caller_changed`, which
   says nothing ran (see [Who signs](#who-signs)).
+- A `mutationFn` of your own has no context to hand the client's, which
+  then cannot know the run it is called for, and a retried attempt of it can
+  be sent (see [Adding your own callbacks](#adding-your-own-callbacks)).
 
 `@ic-reactor/react` needs a TanStack Query that passes the context, so none
-of the three applies to a `useMutation` of an app that uses it.
+of the four applies to a `useMutation` of an app that uses it.
 
 A mutation restored from a persister after a failed attempt comes with that
 failure as the persister stored it, and the client goes by that copy (it
@@ -604,14 +607,30 @@ address book, in `src/optimistic-contacts.ts`.
 step of your own before the write, call it from yours with the context
 TanStack Query handed yours, `options.mutationFn(variables, context)`. The
 context, passed from TanStack Query 5.89 on, is how the client knows the run.
-The write then goes out as whoever started the run, or not at all, and after
-an attempt of the run that may have executed the client sends no other,
-whatever argument your function makes for it.
+The write then goes out as whoever started the run, or not at all, and once a
+write of the run has failed with `mayHaveExecuted: true` the client sends no
+other for it, whatever argument your function makes.
 
-The context stands for the one write that the options you spread started, to
-the canister their `onMutate` resolved. Hand it to the `mutationFn` of those
-same options and to no other: the `mutationFn` of other options, given this
-context, calls its method on that canister.
+Make the write the last step of your function. The client holds back a write
+after one that failed, not after one that succeeded: when a step of yours
+after the write fails and a `retry` of yours runs the function again, the
+write goes out a second time.
+
+The context stands for the run, and not for one canister or method. A function
+that makes two writes, to two canisters or through two methods of one, hands
+it to the `mutationFn` of both options, and each write goes to its own
+canister as whoever started the run. The second write is a step after the
+first, so such a function is one more reason to leave `retry` off. With a
+`retry`, once either write has failed with `mayHaveExecuted: true` the client
+holds back whichever write the function reaches first: that `retried_write`
+error names the write that may have run, by its `method`, its `canisterId`
+and its error as the `cause`, and not the write it held back.
+
+The reads the mutation refreshes are those of the options you spread: name
+what both writes change in their `invalidates`
+([What a write refreshes](#what-a-write-refreshes)). Or call the `onSettled`
+of both options from one of your own, and each refreshes the reads its own
+options name.
 
 ```tsx
 import { useClient } from "@ic-reactor/react"
@@ -645,9 +664,20 @@ Without the context the client cannot tell which run a call is for. From 5.89
 on, a call with the argument alone is a new call every time your function
 runs, as a direct call on the canister is: it goes out as whoever is signed in
 by then, and a `retry` of yours sends it again after an attempt that may have
-executed. Before 5.89 TanStack Query has no context to hand on, and the client
-refuses the call (`caller_changed`) once TanStack has run the client's
-`onMutate` for the method.
+executed.
+
+Before 5.89 TanStack Query has no context to hand on, and no `mutationFn` of
+your own keeps both rules there. Do the step before you call `mutate()`, or
+move to 5.89 or newer. What the client does with the call depends on the
+`onMutate` next to your function:
+
+- the client's: it refuses the write (`caller_changed`);
+- one of yours that calls the client's: the write goes out as whoever started
+  the run, or not at all, but a `retry` sends it again when your function made
+  a new argument for the attempt;
+- one of yours in the client's place: a call by hand, as above, until the
+  client's `onMutate` has run for the method in another mutation, and refused
+  (`caller_changed`) from then on.
 
 ## Outside React
 
