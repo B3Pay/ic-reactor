@@ -7,7 +7,7 @@ prev: true
 
 > **ReactorErrorKind** = `"invalid_args"` \| `"unauthenticated"` \| `"not_delivered"` \| `"outcome_unknown"` \| `"rejected"` \| `"invalid_reply"` \| `"canister_err"` \| `"cancelled"`
 
-Defined in: [core/src/errors.ts:54](https://github.com/B3Pay/ic-reactor/blob/a16a8290dbac0d1fb62564dafe278f23db93f026/packages/core/src/errors.ts#L54)
+Defined in: [core/src/errors.ts:57](https://github.com/B3Pay/ic-reactor/blob/15758feace38203b78adee7d96140ddac7dddf49/packages/core/src/errors.ts#L57)
 
 What kind of failure a [ReactorError](/docs/ic-reactor/libs/type-aliases/reactorerror/) reports.
 
@@ -28,7 +28,10 @@ What kind of failure a [ReactorError](/docs/ic-reactor/libs/type-aliases/reactor
   or turned away: the write it re-sends may have run all the same. Its
   `code`, `httpStatus` and `rejectCode` say why the re-send did not run
   (such as `caller_changed`, `target_changed` or `arg_changed`), and its
-  `cause` is the re-send's own error.
+  `cause` is the re-send's own error. An attempt of a mutation that
+  TanStack Query makes for a `retry`, after an attempt that may have
+  executed, has this kind too: it is not sent (`retried_write`), and its
+  `cause` is that attempt's error.
 - `rejected`: the IC or the canister rejected the call; `rejectCode` says which.
 - `invalid_reply`: a reply arrived but did not decode as the method's result.
 - `canister_err`: the canister ran the call and replied with the `Err` arm of

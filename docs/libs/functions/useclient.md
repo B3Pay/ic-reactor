@@ -7,7 +7,7 @@ prev: true
 
 > **useClient**(): [`Client`](/docs/ic-reactor/libs/interfaces/client/)
 
-Defined in: [react/src/index.tsx:582](https://github.com/B3Pay/ic-reactor/blob/a16a8290dbac0d1fb62564dafe278f23db93f026/packages/react/src/index.tsx#L582)
+Defined in: [react/src/index.tsx:582](https://github.com/B3Pay/ic-reactor/blob/15758feace38203b78adee7d96140ddac7dddf49/packages/react/src/index.tsx#L582)
 
 The client of the nearest [ReactorProvider](/docs/ic-reactor/libs/functions/reactorprovider/): the one object that
 builds canister handles and query options, and that signs users in and out.
