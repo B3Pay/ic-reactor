@@ -18,6 +18,36 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+Nothing yet.
+
+## core, react, vite-plugin, mcp 4.5.0
+
+Prepared on 2026-11-23. 4.5.0 is a minor because two peer floors of
+`@ic-reactor/core` rise: `@tanstack/query-core` to 5.89 and `@icp-sdk/core`
+to 6.1.1. Its changes are in core. What a write showed no longer outlives its
+caller: a sign-in, a sign-out, an expired session or a switch of account
+resets it, also on a screen that React's `<Activity>` hid (#920). On a device
+whose clock is minutes off, a signed-in caller's first read and
+`client.time()` answer, and a clock changed while the page stays open no
+longer needs a reload. A write is still never signed twice by the client: one
+the IC refuses for its expiry rejects `not_delivered`, with nothing run, and
+goes through when it is sent again. On a local page, copies of the `ic_env`
+cookie that carry different environments are believed for nothing, and the
+refusal says to clear the site's cookies. The code that served TanStack Query
+before 5.89 is gone. `@ic-reactor/react` changes only its version, and the
+Vite plugin's optional peer and the MCP server's dependency `@icp-sdk/core`
+move to 6.1.1 with core's. The release adds or removes no `@ic-reactor/*`
+export (core 13, `@ic-reactor/core/testing` 2, react 4, vite-plugin 2; mcp
+has nothing to import), the Meant peers stay `@meantjs/schema` 0.6.0 and
+`@meantjs/cli` 0.5.1, and committed modules do not change.
+
+An app on 4.4.0 with a `@tanstack/query-core` older than 5.89, or with
+`@icp-sdk/core` 6.1.0, updates them; one that uses `@ic-reactor/react` already
+has a TanStack Query that new. A function of the app's own that calls the
+client's `onMutate` or `mutationFn` passes on the context it got, and a local
+page that now refuses its cookies clears them and loads again. Each entry
+below has the rest.
+
 ### @ic-reactor/core
 
 #### Changed
@@ -97,7 +127,6 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   first read: 11 of 19 cases failed until a reload before (7 of 11 for a
   signed-in caller, 4 of 8 with no one signed in), and every one answers
   now. Core is 141 B larger for this, gzipped.
-
 - Peer `@icp-sdk/core` at `^6.1.1`, where it was `^6.1.0`. 6.1.1 is the
   release npm installs, while the lockfile held 6.1.0, so core's tests and
   the lowest-peers run had not run on what an app gets; they run on 6.1.1
