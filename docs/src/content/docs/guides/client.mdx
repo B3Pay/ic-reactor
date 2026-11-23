@@ -104,10 +104,13 @@ Identity URL is taken over `http:` only on a local page.
 
 A page can receive more than one `ic_env` cookie. An asset canister sets it
 with no `Path`, so the browser keeps a copy for each directory a page was
-loaded from, and lists them all. Copies that are the same are believed. Off a
-local page, copies that differ are believed for nothing: a `{ name }` target
-is refused with the reason `untrusted_host`, and neither their root key nor
-their Internet Identity is taken. A local page reads the first, as before.
+loaded from, and lists them all. Copies that carry the same environment are
+believed, even when they differ in their encoding or in the order of their
+entries. Copies that differ are believed for nothing, on a local page too: a
+`{ name }` target is refused with the reason `untrusted_host` and a message
+that says so, and neither their root key nor their Internet Identity is taken.
+On a local page a redeploy often leaves an older copy behind, and clearing the
+site's cookies drops it.
 
 Canisters named in the cookie are called by name: `{ name: "backend" }` reads
 `PUBLIC_CANISTER_ID:backend` from the cookie. See

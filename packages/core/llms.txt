@@ -85,11 +85,13 @@ Deploying to mainnet (`icp deploy -e ic`) or to a cloud engine: with
 `"env"`, a canister's own `<id>.icp0.io` (or `<id>.raw.icp0.io`) page, and a
 cloud engine app's `<id>.icp.net` page, believes its cookie's canister
 ids (a public suffix: no sibling can set it) and nothing else: never its root
-key or its `INTERNET_IDENTITY_PROVIDER` (sign-in stays mainnet's). Off a local
-page, when the page receives more than one `ic_env` cookie and they differ,
-none is believed (`{ name }` gets `untrusted_host`). On `<id>.ic0.app` and
-custom domains `{ name }` does not resolve. For a mainnet app, which should not
-depend on the cookie, and a page that works everywhere, name canisters
+key or its `INTERNET_IDENTITY_PROVIDER` (sign-in stays mainnet's). When the
+page receives more than one `ic_env` cookie and they carry different
+environments, none is believed, on a local page too (`{ name }` gets
+`untrusted_host`; clearing the site's cookies drops an old copy).
+On `<id>.ic0.app` and custom domains `{ name }` does not resolve. For a
+mainnet app, which should not depend on the cookie, and a page that works
+everywhere, name canisters
 `{ id: import.meta.env.VITE_BACKEND_ID }`,
 with the local id in `.env.development` and the mainnet id
 (`icp canister status backend -e ic -i`) in `.env.production`. Never set

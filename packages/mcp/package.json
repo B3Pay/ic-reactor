@@ -46,7 +46,7 @@
   "homepage": "https://ic-reactor.b3pay.net/v4/packages/mcp/",
   "dependencies": {
     "@ic-reactor/core": "workspace:*",
-    "@icp-sdk/core": "^6.1.0",
+    "@icp-sdk/core": "^6.1.1",
     "@meantjs/cli": "0.5.1",
     "@meantjs/schema": "0.6.0",
     "@modelcontextprotocol/server": "^2.3.1",

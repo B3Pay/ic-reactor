@@ -38,7 +38,7 @@
  */
 
 import { IC_ROOT_KEY } from "@icp-sdk/core/agent"
-import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
+import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { Principal } from "@icp-sdk/core/principal"
 import { isServer } from "./runtime.js"
 
@@ -596,29 +596,29 @@ const refuseSharedParent = (allowEnvConfig: boolean | undefined): void => {
 
 /**
  * Entry `key` of the `ic_env` cookie, as `@icp-sdk/core` reads it, or `null`
- * when a page that is not local receives more than one `ic_env` cookie and
- * they differ. A browser keeps one for each path or domain a cookie was set
- * for, and `@icp-sdk/core` reads the first it lists, which need not be the
- * one the frontend's canister set last, so differing copies are believed for
- * nothing. A local page reads the first, as before: a redeploy there often
- * leaves an older copy at another path, and only the machine itself can set
- * one. Only ever called for a trusted page.
+ * when the page receives more than one `ic_env` cookie and they carry
+ * different environments. A browser keeps one for each path or domain a
+ * cookie was set for, and nothing tells which is the one the frontend's
+ * canister set last, so `@icp-sdk/core` refuses them all
+ * (`ConflictingCanisterEnvErrorCode`), on a local page too, where a redeploy
+ * often leaves an older copy at another path. Copies that differ only in
+ * their encoding or in the order of their entries are one environment.
+ * Only ever called for a trusted page.
  */
 const cookieEntry = (key: string): unknown => {
   try {
-    return !pageIsLocal() &&
-      new Set(
-        document.cookie
-          .split(";")
-          .map((cookie) => cookie.trim())
-          .filter((cookie) => cookie.startsWith("ic_env="))
-      ).size > 1
+    return getCanisterEnv()[key]
+  } catch (error) {
+    return (error as { code?: { name?: unknown } }).code?.name ===
+      "ConflictingCanisterEnvErrorCode"
       ? null
-      : safeGetCanisterEnv()?.[key]
-  } catch {
-    return undefined
+      : undefined
   }
 }
+
+/** Why a page whose `ic_env` cookies differ reads nothing from them ({@link cookieEntry}). */
+const COOKIES_DIFFER =
+  "the page's ic_env cookies differ (clear this site's cookies to drop the old copies)"
 
 /** The root key the cookie carries, or `undefined` when it carries none. */
 const cookieRootKey = (): Uint8Array | undefined => {
@@ -765,8 +765,8 @@ export const agentOptionsFor = (net: ResolvedNetwork): AgentNetworkOptions => ({
  *
  * - `no_browser`: there is no page, so no cookie jar to read.
  * - `untrusted_host`: the cookie is there to read but not trusted for this
- *   network, so it was not read; or a page that is not local holds more
- *   than one `ic_env` cookie and they differ, so none is believed.
+ *   network, so it was not read; or the page holds more than one `ic_env`
+ *   cookie and they carry different environments, so none is believed.
  * - `absent`: the cookie was read and has no usable entry under that name.
  *   An entry that is not principal text counts as absent.
  */
@@ -815,7 +815,7 @@ export const resolveCanisterId = (
     return fail(
       "untrusted_host",
       net.trustsEnv
-        ? `the page's ic_env cookies differ. Use { id } (bake the id in at build time).`
+        ? `${COOKIES_DIFFER}. Use { id } (bake the id in at build time).`
         : `the ic_env cookie is not trusted for this network (agent host ${net.host}` +
             // The agent host is often the library's mainnet fallback rather
             // than anywhere the reader recognises, so name the page too.
@@ -1011,7 +1011,9 @@ export const authNetworkFor = (
 
   if (network === "env" && pageIsLocal()) {
     const why = net.trustsEnv
-      ? `whose ic_env cookie names no INTERNET_IDENTITY_PROVIDER`
+      ? cookieEntry("") === null
+        ? `where ${COOKIES_DIFFER}`
+        : `whose ic_env cookie names no INTERNET_IDENTITY_PROVIDER`
       : `with allowEnvConfig: false, so no INTERNET_IDENTITY_PROVIDER is read from the ic_env cookie`
     return {
       network: { agentOptions },

@@ -41,7 +41,7 @@ Install the CLI at the version above: without a version, npm installs the
 newest CLI, and when that one pairs with another schema, npm stops with
 `ERESOLVE`.
 
-`@icp-sdk/core` 6.1 or later is an optional peer: the plugin loads it only to
+`@icp-sdk/core` 6.1.1 or later is an optional peer: the plugin loads it only to
 fetch a `.did` from a live canister, and an app on `@ic-reactor/core` has it
 installed already.
 

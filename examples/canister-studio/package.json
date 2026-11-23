@@ -19,7 +19,7 @@
     "@ic-reactor/core": "^4.4.0",
     "@ic-reactor/react": "^4.4.0",
     "@icp-sdk/auth": "^11.2.0",
-    "@icp-sdk/core": "^6.1.0",
+    "@icp-sdk/core": "^6.1.1",
     "@noble/curves": "^2.2.0",
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-router": "^1.170.42",

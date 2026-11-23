@@ -115,7 +115,7 @@ describe("the pins", () => {
     // overridden: an override would move every copy to one version.
     assert.deepEqual(overrides, {
       "@meantjs/cli": PLUGIN_MANIFEST.peerDependencies["@meantjs/cli"],
-      "@icp-sdk/core": "6.1.0",
+      "@icp-sdk/core": "6.1.1",
     })
   })
 

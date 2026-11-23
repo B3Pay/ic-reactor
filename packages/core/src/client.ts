@@ -424,8 +424,8 @@ export interface Client {
    * - `no_browser`: there is no page, so no cookie to read (a server render,
    *   a web worker).
    * - `untrusted_host`: the cookie is not trusted for this network, so it was
-   *   not read; or a page that is not local holds more than one `ic_env`
-   *   cookie and they differ, so none is believed.
+   *   not read; or the page holds more than one `ic_env` cookie and they
+   *   carry different environments, so none is believed.
    * - `absent`: the cookie was read and has no principal text under that
    *   name.
    *
