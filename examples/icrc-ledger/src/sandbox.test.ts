@@ -182,7 +182,7 @@ describe("the mocked ICRC-1 ledger", () => {
   it("answers the same transfer, created_at_time included, with Duplicate", async () => {
     const sandbox = setup()
     const arg = transferArg({
-      created_at_time: BigInt(Date.now()) * 1_000_000n,
+      created_at_time: await sandbox.client.time(sandbox.ledger),
     })
 
     await expect(sandbox.ledger.icrc1_transfer(arg)).resolves.toBe(0n)
@@ -201,13 +201,15 @@ describe("deduplication on the mocked ledger, as the page's transfers meet it", 
     return read.arg
   }
 
-  it("executes two transfers of the same amount made in the same millisecond, and answers a re-send Duplicate of the first one's block", async () => {
+  it("executes two transfers of the same amount stamped with the same time, and answers a re-send Duplicate of the first one's block", async () => {
     const sandbox = setup()
-    // One clock reading for both, as two presses of Send in one millisecond.
-    const nowMs = Date.now()
+    // One reading of the IC's time for both: it moves about once a second,
+    // so two presses of Send within that second are stamped alike, and only
+    // their memos tell them apart.
+    const created_at_time = await sandbox.client.time(sandbox.ledger)
     const form = { to: SEED_2, amount: "1.5", fee: "" }
-    const first = arg(readTransferForm(form, DECIMALS, nowMs))
-    const second = arg(readTransferForm(form, DECIMALS, nowMs))
+    const first = { ...arg(readTransferForm(form, DECIMALS)), created_at_time }
+    const second = { ...arg(readTransferForm(form, DECIMALS)), created_at_time }
 
     // The first one runs (block 0), but its reply is lost.
     sandbox.arm("lost-reply")
@@ -233,7 +235,7 @@ describe("deduplication on the mocked ledger, as the page's transfers meet it", 
 
   it("takes no memo and an empty memo for two transfers", async () => {
     const sandbox = setup()
-    const created_at_time = BigInt(Date.now()) * 1_000_000n
+    const created_at_time = await sandbox.client.time(sandbox.ledger)
 
     await expect(
       sandbox.ledger.icrc1_transfer(transferArg({ created_at_time }))
@@ -250,7 +252,7 @@ describe("the faults the page arms, as the client reports them", () => {
   it("a lost reply is outcome_unknown, may have executed, and the re-read shows the debit", async () => {
     const sandbox = setup()
     const arg = transferArg({
-      created_at_time: BigInt(Date.now()) * 1_000_000n,
+      created_at_time: await sandbox.client.time(sandbox.ledger),
     })
 
     const { before, after, error } = await transferAsThePageDoes(

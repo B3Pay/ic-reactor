@@ -1,9 +1,14 @@
 // Scenario 5, the part without React: typed text to an `icrc1_transfer`
-// argument or the reason it is refused before anything is sent, and what each
-// `Err` of the ledger means.
+// argument or the reason it is refused before anything is sent, the time a
+// transfer is stamped with as it is sent, and what each `Err` of the ledger
+// means.
 import { isPrincipal, principal } from "@meantjs/schema"
-import { parseUnits } from "@ic-reactor/core"
-import type { TransferArg, Icrc1TransferError } from "./canisters/ledger.ts"
+import { parseUnits, type Canister, type Client } from "@ic-reactor/core"
+import type {
+  Actor as Ledger,
+  TransferArg,
+  Icrc1TransferError,
+} from "./canisters/ledger.ts"
 import { showAmount, type Token } from "./token.ts"
 
 export interface TransferForm {
@@ -29,19 +34,19 @@ export type ReadTransfer =
  *   refused here, and nothing reaches the ledger.
  * - `fee` is the fee the person was shown. Had the ledger's fee changed since,
  *   it answers `BadFee` instead of charging the new one silently.
- * - `created_at_time` (`nowMs`, in nanoseconds) makes the transfer
- *   deduplicated: the same argument sent again by the same account is
- *   answered `Duplicate`, and pays nothing twice.
+ * - `created_at_time` is left empty: `stamped` sets it as the transfer is
+ *   sent, and with it the transfer is deduplicated. The same argument sent
+ *   again by the same account is answered `Duplicate`, and pays nothing
+ *   twice.
  * - `memo` is this transfer's own, 16 random bytes: the ledger takes two
  *   arguments for one only when every field matches, so two different
- *   transfers of the same amount made in the same millisecond are not taken
+ *   transfers of the same amount stamped with the same time are not taken
  *   for each other's `Duplicate`. Read the form once per transfer, and re-send
- *   the argument it gave, memo included.
+ *   the argument that was sent, memo and time included.
  */
 export function readTransferForm(
   form: TransferForm,
   token: Pick<Token, "decimals" | "fee">,
-  nowMs: number = Date.now(),
   memo: Uint8Array = newMemo()
 ): ReadTransfer {
   const to = form.to.trim()
@@ -74,9 +79,30 @@ export function readTransferForm(
       fee: token.fee,
       memo,
       from_subaccount: null,
-      created_at_time: BigInt(nowMs) * 1_000_000n,
+      created_at_time: null,
     },
   }
+}
+
+/**
+ * `arg` as it is sent. A new transfer gets the IC's time in
+ * `created_at_time`: `client.time(ledger)` reads it from a certificate, so
+ * the stamp comes from the clock the ledger checks it against, and not from
+ * this computer's, which may be wrong. That time moves about once a second,
+ * which is why each transfer has a memo of its own as well.
+ *
+ * A transfer that has its time is one sent again. It is returned as it is,
+ * the same object: only the same argument is the same transfer to the
+ * ledger, and to `client.resendOf`.
+ */
+export async function stamped(
+  client: Pick<Client, "time">,
+  ledger: Canister<Ledger>,
+  arg: TransferArg
+): Promise<TransferArg> {
+  return arg.created_at_time === null
+    ? { ...arg, created_at_time: await client.time(ledger) }
+    : arg
 }
 
 /** A memo of its own for one transfer: 16 bytes from `crypto.getRandomValues`. */

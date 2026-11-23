@@ -266,15 +266,18 @@ export function createSandbox(options: { latencyMs?: number } = {}): Sandbox {
     arm(fault) {
       if (fault === "reject-4") armedReject = 4
       else if (fault === "reject-2") armedReject = 2
-      else if (fault === "lost-reply") test.dropNextReply()
       else {
-        // Aimed at the transfer, so a balance read the page makes meanwhile
-        // is answered.
-        test.refuseNext(429, {
-          method: "icrc1_transfer",
-          canister: SANDBOX_LEDGER,
-          times: fault === "http-429" ? 1 : 3,
-        })
+        // Aimed at the transfer, so that whatever the page reads meanwhile is
+        // answered: a balance, or the deposit address, which goes out as a
+        // call and would otherwise use up a lost reply.
+        const aimed = { method: "icrc1_transfer", canister: SANDBOX_LEDGER }
+        if (fault === "lost-reply") test.dropNextReply(aimed)
+        else {
+          test.refuseNext(429, {
+            ...aimed,
+            times: fault === "http-429" ? 1 : 3,
+          })
+        }
       }
     },
   }

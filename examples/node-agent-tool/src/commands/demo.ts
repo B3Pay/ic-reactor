@@ -98,7 +98,7 @@ export async function demo(out: Output): Promise<number> {
       expect: [EXIT_CODES.ok],
       check: ([seen]) =>
         expectDoc(seen, (doc) => doc.ok && doc.outcome === "sent", "sent"),
-      why: "The amount went through parseUnits at the ledger's 8 decimals, the fee is the ledger's own, and created_at_time is set. Four reads ran in parallel, then one call.",
+      why: "The amount went through parseUnits at the ledger's 8 decimals, the fee is the ledger's own, created_at_time is the IC's time (client.time(ledger), not this machine's clock), and the transfer has a memo of its own. Four reads and the time ran in parallel, then one call.",
     },
     {
       title: "The ledger says no",
@@ -340,7 +340,7 @@ export async function demo(out: Output): Promise<number> {
       },
       ledger: ledgerFrom(ledgerFlag),
       out: output,
-      now: () => BigInt(Date.now()) * 1_000_000n,
+      memo: () => crypto.getRandomValues(new Uint8Array(16)),
       onInterrupt: () => () => {},
     }
   }

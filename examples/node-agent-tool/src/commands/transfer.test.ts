@@ -5,7 +5,14 @@ import type { TestHandlers } from "@ic-reactor/core/testing"
 import { describe, expect, it } from "vitest"
 import { Account, TransferArg, type TransferError } from "../canisters/icrc1.ts"
 import { LEDGERS } from "../ledgers.ts"
-import { createCli, generatePem, NOW, type TestClient } from "../test-kit.ts"
+import {
+  createCli,
+  generatePem,
+  MEMO,
+  MEMO_HEX,
+  NOW,
+  type TestClient,
+} from "../test-kit.ts"
 import { DEDUP_WINDOW_NS } from "./transfer.ts"
 
 const sender = generatePem("ed25519")
@@ -23,7 +30,7 @@ const calls = (run: { requests: readonly { endpoint: string }[] }) =>
   run.requests.filter((r) => r.endpoint === "call")
 
 describe("a transfer", () => {
-  it("sends the amount in base units, the ledger's fee and created_at_time", async () => {
+  it("sends the amount in base units, the ledger's fee, the IC's time and a memo of its own", async () => {
     const { cli, ledger } = setup()
     const result = await cli(["transfer", TO, "1.5", ...PEM])
     expect(result.exitCode).toBe(0)
@@ -35,8 +42,10 @@ describe("a transfer", () => {
           to: { owner: TO, subaccount: null },
           amount: 150_000_000n,
           fee: 10_000n,
-          memo: null,
+          memo: MEMO,
           from_subaccount: null,
+          // What `client.time(ledger)` answered, which in these tests is not
+          // what this machine's clock says.
           created_at_time: NOW,
         },
       },
@@ -44,6 +53,70 @@ describe("a transfer", () => {
     expect(
       ledger.balanceOf({ owner: sender.principal, subaccount: null })
     ).toBe(849_990_000n)
+  })
+
+  it("makes two runs of one command two transfers, though the IC's time is the same for both", async () => {
+    // The IC's time moves about once a second: two runs within that second
+    // are stamped alike, and only their memos tell them apart.
+    let run = 0
+    const { cli, ledger } = createCli({
+      files: { "me.pem": sender.pem },
+      ledger: { balances: [[sender.principal, 1_000_000_000n]] },
+      memo: () => new Uint8Array(16).fill(++run),
+    })
+    const argv = ["transfer", TO, "1", "--json", ...PEM]
+
+    const first = await cli(argv)
+    const second = await cli(argv)
+
+    expect([first.docs[0], second.docs[0]]).toMatchObject([
+      { outcome: "sent", block: "0", createdAtTime: String(NOW) },
+      { outcome: "sent", block: "1", createdAtTime: String(NOW) },
+    ])
+    expect(
+      ledger.balanceOf({ owner: sender.principal, subaccount: null })
+    ).toBe(1_000_000_000n - 2n * (100_000_000n + 10_000n))
+  })
+
+  it("sends the argument as typed with --created-at-time, and adds no memo to it", async () => {
+    // How a transfer is sent again: the same argument, or the ledger takes
+    // it for a new one. A memo added here would make it one.
+    const { cli, ledger } = setup()
+    const typed = String(NOW - 60_000_000_000n)
+    const argv = ["transfer", TO, "1", "--created-at-time", typed, "--json"]
+
+    const first = await cli([...argv, ...PEM])
+    const again = await cli([...argv, ...PEM])
+
+    expect(ledger.received.map(({ arg }) => arg)).toEqual([
+      expect.objectContaining({ memo: null, created_at_time: BigInt(typed) }),
+      expect.objectContaining({ memo: null, created_at_time: BigInt(typed) }),
+    ])
+    expect([first.docs[0], again.docs[0]]).toMatchObject([
+      { outcome: "sent", block: "0" },
+      { outcome: "duplicate", block: "0" },
+    ])
+  })
+
+  it("keeps a memo typed with --memo, with the IC's time", async () => {
+    const { cli, ledger } = setup()
+    const result = await cli(["transfer", TO, "1", "--memo", "0a0b", ...PEM])
+    expect(result.exitCode).toBe(0)
+    expect(ledger.received[0]?.arg).toMatchObject({
+      memo: new Uint8Array([0x0a, 0x0b]),
+      created_at_time: NOW,
+    })
+  })
+
+  it("prints the memo in the command that sends an unknown outcome again", async () => {
+    const { cli } = setup()
+    const lost = await cli(["transfer", TO, "2", ...PEM], {
+      before: (test) => test.dropNextReply(),
+    })
+    expect(lost.exitCode).toBe(6)
+    expect(lost.stderr.join("\n")).toContain(
+      `node src/cli.ts transfer ${TO} 2 --fee 0.0001 --created-at-time ${NOW} --memo ${MEMO_HEX}`
+    )
   })
 
   it("answers --json with the outcome, bigints as text", async () => {

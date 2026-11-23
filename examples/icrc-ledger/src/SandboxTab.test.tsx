@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // The Sandbox tab as a person uses it: rendered, clicked, and read back from
 // the page, over the same in-memory replica the browser runs.
+import type { Client } from "@ic-reactor/core"
 import {
   act,
   cleanup,
@@ -10,7 +11,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react"
-import { Activity, StrictMode } from "react"
+import { Activity, StrictMode, useState } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   SEED_1,
@@ -72,6 +73,59 @@ const send = (fault: string) => {
   })
   fireEvent.click(screen.getByRole("button", { name: /^Send as/ }))
 }
+
+/** The IC's time as the page reads it: `client.time`. */
+type ReadTime = Client["time"]
+
+/**
+ * A sandbox on a page that reads the IC's time through `time`. A real client
+ * is frozen, so the page's client is an object over the sandbox's, which
+ * answers everything else, and the sandbox an object over the one made.
+ */
+async function renderSandboxWithTime(
+  time: (real: ReadTime) => ReadTime
+): Promise<Sandbox> {
+  const real = createSandbox({ latencyMs: 0 })
+  const client = Object.create(real.client, {
+    time: { value: time((canister) => real.client.time(canister)) },
+  }) as Client
+  const sandbox = Object.create(real, { client: { value: client } }) as Sandbox
+  render(
+    <StrictMode>
+      <SandboxTab sandbox={sandbox} />
+    </StrictMode>
+  )
+  await screen.findByText("10 ICP", {}, patiently)
+  return sandbox
+}
+
+/** A time read that waits until `release()` is called. */
+function heldTime() {
+  let release = () => {}
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const time =
+    (real: ReadTime): ReadTime =>
+    async (canister) => {
+      await gate
+      return real(canister)
+    }
+  return { time, release: () => release() }
+}
+
+/** Every `icrc1_transfer` the sandbox's replica was sent. */
+const transfersOf = (sandbox: Sandbox) =>
+  sandbox.requests.filter(
+    (r) => r.endpoint === "call" && r.methodName === "icrc1_transfer"
+  )
+
+/** Nothing the page started is still on its way. */
+const settledOn = (sandbox: Sandbox) =>
+  waitFor(() => {
+    expect(sandbox.client.queryClient.isFetching()).toBe(0)
+    expect(sandbox.client.queryClient.isMutating()).toBe(0)
+  }, patiently)
 
 describe("the Sandbox tab", () => {
   it("sends a transfer and shows the new balances", async () => {
@@ -231,6 +285,137 @@ describe("the Sandbox tab", () => {
       {},
       patiently
     )
+    sandbox.client.dispose()
+  })
+
+  it("stamps a transfer with the IC's time, read as it is sent", async () => {
+    // A time this computer's clock never gives: three years back. The ledger
+    // checks a stamp against its own clock, and refuses this one.
+    const sandbox = await renderSandboxWithTime(
+      () => () => Promise.resolve(1_700_000_000_123_456_789n)
+    )
+
+    send("none")
+
+    await screen.findByText(
+      "Too old: created_at_time is outside the deduplication window.",
+      {},
+      patiently
+    )
+    await settledOn(sandbox)
+    // Refused, so nothing moved.
+    expect(screen.getByText("10 ICP")).toBeTruthy()
+    expect(screen.getByText("2.5 ICP")).toBeTruthy()
+    sandbox.client.dispose()
+  })
+
+  it("sends one transfer when Send is pressed again while the time is read", async () => {
+    const held = heldTime()
+    const sandbox = await renderSandboxWithTime(held.time)
+
+    send("none")
+
+    // The press started the mutation at once: the page says so, and Send is
+    // off before the time has come back.
+    await screen.findByText("Sending…")
+    const button = screen.getByRole("button", { name: /^Send as/ })
+    expect((button as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(button)
+    fireEvent.click(button)
+    expect(transfersOf(sandbox)).toHaveLength(0)
+
+    held.release()
+    await screen.findByText(/^Sent: block 0\./, {}, patiently)
+    await settledOn(sandbox)
+    expect(transfersOf(sandbox)).toHaveLength(1)
+    expect(screen.getByText("8.4999 ICP")).toBeTruthy()
+    expect(screen.getByText("4 ICP")).toBeTruthy()
+    sandbox.client.dispose()
+  })
+
+  it("sends one transfer when Send is pressed twice with nothing in between", async () => {
+    const sandbox = createSandbox({ latencyMs: 0 })
+    // A parent that can render again. Once it has, React holds nothing over
+    // for the page: only what the press itself sets draws the button again
+    // before the second press.
+    let renderAgain = () => {}
+    function Parent() {
+      const [, setCount] = useState(0)
+      renderAgain = () => setCount((count) => count + 1)
+      return <SandboxTab sandbox={sandbox} />
+    }
+    render(
+      <StrictMode>
+        <Parent />
+      </StrictMode>
+    )
+    await screen.findByText("10 ICP", {}, patiently)
+    act(() => renderAgain())
+
+    const button = screen.getByRole("button", { name: /^Send as/ })
+    fireEvent.click(button)
+    // No timer has run since the press, so TanStack Query has not told React
+    // of the mutation yet: the page's own state turned the button off.
+    expect((button as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(button)
+
+    await screen.findByText(/^Sent: block 0\./, {}, patiently)
+    await settledOn(sandbox)
+    expect(transfersOf(sandbox)).toHaveLength(1)
+    expect(screen.getByText("8.4999 ICP")).toBeTruthy()
+    expect(screen.getByText("4 ICP")).toBeTruthy()
+    sandbox.client.dispose()
+  })
+
+  it("sends the same transfer again with the time it was first sent with, however the IC's time has moved", async () => {
+    // A second later at each reading, as the IC's time moves.
+    const start = BigInt(Date.now()) * 1_000_000n
+    let reads = 0
+    const sandbox = await renderSandboxWithTime(
+      () => () => Promise.resolve(start + BigInt(reads++) * 1_000_000_000n)
+    )
+    const again = { name: "Send the same transfer again" }
+
+    send("lost-reply")
+    fireEvent.click(await screen.findByRole("button", again, patiently))
+
+    // The ledger knows it by its memo and its time. Stamped again, it would
+    // have been a new transfer, paid in full.
+    await screen.findByText(/^Duplicate of block 0:/, {}, patiently)
+    await settledOn(sandbox)
+    expect(reads).toBe(1)
+    expect(transfersOf(sandbox)).toHaveLength(2)
+    expect(screen.getByText("8.4999 ICP")).toBeTruthy()
+    expect(screen.getByText("4 ICP")).toBeTruthy()
+    sandbox.client.dispose()
+  })
+
+  it("sends nothing when the account changes while the time is read", async () => {
+    const held = heldTime()
+    const sandbox = await renderSandboxWithTime(held.time)
+
+    send("none")
+    await screen.findByText("Sending…")
+    // Seed 2 takes over before the transfer has its time. Signed by seed 2,
+    // it would leave seed 2's account.
+    act(() => {
+      sandbox.auth.switchTo(2)
+    })
+    held.release()
+
+    await waitFor(
+      () =>
+        expect(
+          document.querySelector('.outcome[data-phase="error"] [role="alert"]')
+            ?.textContent
+        ).toContain("caller_changed"),
+      patiently
+    )
+    await settledOn(sandbox)
+    expect(screen.getByText("Certainly not executed.")).toBeTruthy()
+    expect(transfersOf(sandbox)).toHaveLength(0)
+    expect(screen.getByText("10 ICP")).toBeTruthy()
+    expect(screen.getByText("2.5 ICP")).toBeTruthy()
     sandbox.client.dispose()
   })
 

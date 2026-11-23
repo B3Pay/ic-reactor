@@ -304,6 +304,26 @@ second is answered `Duplicate` without running. Most methods do not
 deduplicate. For them a second send
 can run the write twice, so read the state back instead.
 
+In a form, read that time as a step of the mutation function (`mutationFn`,
+under [Adding your own callbacks](#adding-your-own-callbacks)), and leave an
+argument that has its time as it is: that one is being sent again. The press
+has called `mutate()` by then, so the mutation is pending while the time is
+read. Awaited in the submit handler instead, before `mutate()`, the read
+leaves a moment in which nothing is pending and the button is still on: a
+second press builds a second transfer, with a memo of its own, and both are
+paid.
+
+A button disabled while `isPending` is off a moment after the press, not at
+once. `isPending` is what the last render saw, and TanStack Query tells React
+about a new mutation from a timer, after `mutate()` has returned. A second
+press that arrives before that timer starts a second mutation. So the submit
+handler asks the cache first, which knows at once, and sends nothing while
+`client.queryClient.isMutating({ mutationKey: options.mutationKey })` is above
+zero. It counts the runs under that key that have not ended: with the options
+`useClient()` builds, this caller's runs of that method.
+[Build an ICRC-1 wallet](/v4/build/icrc1-wallet/#6-send) has the few lines the
+two take.
+
 `client.resendOf(error, canister, method, { dedupedBy })` offers that re-send.
 `dedupedBy` states what the canister deduplicates on, read from the
 argument. The client cannot check it: name only a field the canister really

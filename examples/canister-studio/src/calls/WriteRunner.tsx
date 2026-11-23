@@ -318,6 +318,15 @@ export function WriteRunner(
     setNotice(undefined)
     let call = submitted
     if (shape !== undefined && dedupe) {
+      // The browser's clock, where the Safety lab and the other examples
+      // read `client.time()`. This runner sends any method's argument as it
+      // was typed and has no memo of its own to add, so the stamp alone
+      // tells a new write from an identical one sent just before it: this
+      // clock moves every millisecond, the IC's time about once a second.
+      // And the stamp is made in the handler of the press, so the review
+      // shows the bytes at once. The price is a clock that is wrong: the
+      // ledger refuses such a time with CreatedInFuture or TooOld, and
+      // nothing moves.
       const stamped = stampCreatedAtTime(method, shape, submitted, nowNanos())
       if (stamped === undefined) {
         setNotice(

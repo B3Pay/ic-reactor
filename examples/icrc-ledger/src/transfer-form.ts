@@ -1,9 +1,10 @@
-// Turns what a person typed into an ICRC-1 transfer, or refuses it. Nothing
-// here guesses: a principal must be canonical text, and an amount must be a
-// plain decimal the token's decimals can hold exactly.
+// Turns what a person typed into an ICRC-1 transfer, or refuses it, and
+// gives a transfer its time as it is sent. Nothing here guesses: a principal
+// must be canonical text, and an amount must be a plain decimal the token's
+// decimals can hold exactly.
 import { isPrincipal, principal } from "@meantjs/schema"
-import { parseUnits } from "@ic-reactor/core"
-import type { TransferArg } from "./canisters/icrc1.ts"
+import { parseUnits, type Canister, type Client } from "@ic-reactor/core"
+import type { Actor, TransferArg } from "./canisters/icrc1.ts"
 
 export interface TransferForm {
   /** The recipient's principal. */
@@ -48,19 +49,20 @@ function readAmount(
 
 /**
  * The `icrc1_transfer` argument for `form`, or the first field that is
- * refused. `nowMs` becomes `created_at_time`, so that sending the same
- * argument twice is answered `Duplicate` instead of moving the funds twice.
+ * refused. `created_at_time` is left empty: `stamped` sets it as the transfer
+ * is sent, and with it sending the same argument twice is answered
+ * `Duplicate` instead of moving the funds twice.
  *
  * `memo` is this transfer's own, 16 random bytes: the ledger takes two
  * arguments for one only when every field matches, so two different transfers
- * of the same amount to the same account made in the same millisecond are not
+ * of the same amount to the same account stamped with the same time are not
  * taken for each other's `Duplicate`. Read the form once per transfer, and
- * send the argument it gave again, memo included, to re-send that transfer.
+ * send the argument that was sent again, memo and time included, to re-send
+ * that transfer.
  */
 export function readTransferForm(
   form: TransferForm,
   decimals: number,
-  nowMs: number = Date.now(),
   memo: Uint8Array = newMemo()
 ): ReadTransfer {
   const to = form.to.trim()
@@ -86,9 +88,29 @@ export function readTransferForm(
       fee,
       memo,
       from_subaccount: null,
-      created_at_time: BigInt(nowMs) * 1_000_000n,
+      created_at_time: null,
     },
   }
+}
+
+/**
+ * `arg` as it is sent. A new transfer gets the IC's time in
+ * `created_at_time`: `client.time(ledger)` reads it from a certificate, so
+ * the stamp comes from the clock the ledger checks it against, and not from
+ * this computer's, which may be wrong. That time moves about once a second,
+ * which is why each transfer has a memo of its own as well.
+ *
+ * A transfer that has its time is one sent again. It is returned as it is,
+ * the same object: only the same argument is the same transfer to the ledger.
+ */
+export async function stamped(
+  client: Pick<Client, "time">,
+  ledger: Canister<Actor>,
+  arg: TransferArg
+): Promise<TransferArg> {
+  return arg.created_at_time === null
+    ? { ...arg, created_at_time: await client.time(ledger) }
+    : arg
 }
 
 /** A memo of its own for one transfer: 16 bytes from `crypto.getRandomValues`. */

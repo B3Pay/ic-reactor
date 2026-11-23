@@ -10,6 +10,12 @@
 //    sender and argument (created_at_time included) it has seen within its
 //    window, about 24 hours: it answers `Duplicate { duplicate_of }` and moves
 //    nothing. That is what makes re-sending the very same argument safe.
+//    A new transfer is stamped with the IC's time, `client.time(ledger)`,
+//    the clock the ledger checks the stamp against, and not with this
+//    machine's, which may be wrong. That time moves about once a second, so
+//    a new transfer also gets a memo of its own: two runs of the same
+//    command within that second are then two transfers, not one and its
+//    `Duplicate`.
 // 3. It is sent once, as a direct call. No retry loop: the client re-sends by
 //    itself only after a failure that proves the first attempt never got in
 //    (HTTP 429, reject code 2), at most twice.
@@ -75,6 +81,8 @@ interface Sending {
   readonly from: Account
   readonly decimals: number
   readonly symbol: string
+  /** The transfer's `created_at_time`. */
+  readonly createdAtTime: bigint
   /** The sender's balance before the transfer was sent. */
   readonly before: bigint
   readonly resendUnknown: boolean
@@ -96,25 +104,36 @@ export async function transfer(
     input.fromSubaccount === undefined
       ? null
       : subaccountArg(input.fromSubaccount, "--from-subaccount")
-  const memo = input.memo === undefined ? null : hexArg(input.memo, "--memo")
-  const createdAtTime =
+  // With --created-at-time the argument is the one typed, and nothing is
+  // added to it: that is how a transfer is sent again. Without it this is a
+  // new transfer, which gets the IC's time below and a memo of its own.
+  const typedTime =
     input.createdAtTime === undefined
-      ? ctx.now()
+      ? undefined
       : nanosArg(input.createdAtTime, "--created-at-time")
+  const memo =
+    input.memo !== undefined
+      ? hexArg(input.memo, "--memo")
+      : typedTime === undefined
+        ? ctx.memo()
+        : null
   const from: Account = {
     owner: principal(ctx.client.caller()),
     subaccount: fromSubaccount,
   }
 
-  // 2. What the amount means on this ledger, and the balance to compare with
-  //    afterwards: four reads in parallel.
+  // 2. What the amount means on this ledger, the balance to compare with
+  //    afterwards, and the IC's time for a new transfer: four reads and the
+  //    time in parallel.
   const ledger = ledgerOn(ctx.client, ctx.ledger.id)
-  const [decimals, symbol, ledgerFee, before] = await Promise.all([
-    ledger.icrc1_decimals(),
-    ledger.icrc1_symbol(),
-    ledger.icrc1_fee(),
-    ledger.icrc1_balance_of(from),
-  ])
+  const [decimals, symbol, ledgerFee, before, createdAtTime] =
+    await Promise.all([
+      ledger.icrc1_decimals(),
+      ledger.icrc1_symbol(),
+      ledger.icrc1_fee(),
+      ledger.icrc1_balance_of(from),
+      typedTime ?? ctx.client.time(ledger),
+    ])
   const fee =
     input.fee === undefined
       ? ledgerFee
@@ -135,6 +154,7 @@ export async function transfer(
     from,
     decimals,
     symbol,
+    createdAtTime,
     before,
     resendUnknown: input.resendUnknown,
   }
@@ -247,9 +267,7 @@ async function failed(
   // argument (only if asked to, and only once), or say exactly how to.
   const after = await rereadBalance(s)
   const resend = resendArgv(s)
-  const until = isoOfNanos(
-    (s.arg.created_at_time ?? s.ctx.now()) + DEDUP_WINDOW_NS
-  )
+  const until = isoOfNanos(s.createdAtTime + DEDUP_WINDOW_NS)
   if (s.resendUnknown && first === undefined) {
     s.ctx.out.note(
       `${failure.kind}: the transfer may have executed. ${balanceLine(s, after)}`

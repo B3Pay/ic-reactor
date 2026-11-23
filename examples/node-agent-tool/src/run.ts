@@ -24,8 +24,8 @@ export interface Runtime {
   readonly io: Io
   /** Builds the run's client: `createClient` in the CLI, a test client in the tests. */
   readonly connect: (options: ClientOptions) => Client
-  /** The time now, in nanoseconds since the epoch. */
-  readonly now: () => bigint
+  /** A memo of its own for a new transfer: 16 random bytes in the CLI. */
+  readonly memo: () => Uint8Array
   readonly readFile: (path: string) => string
   /** Calls `stop` on Ctrl-C. Returns a function that stops listening. */
   readonly onInterrupt: (stop: () => void) => () => void
@@ -62,7 +62,7 @@ export async function run(rt: Runtime): Promise<number> {
       network,
       ledger,
       out,
-      now: rt.now,
+      memo: rt.memo,
       onInterrupt: rt.onInterrupt,
     })
   } catch (error) {

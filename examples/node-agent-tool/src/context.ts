@@ -13,8 +13,8 @@ export interface Context {
   readonly network: NetworkChoice
   readonly ledger: LedgerChoice
   readonly out: Output
-  /** The time now, in nanoseconds since the epoch: a transfer's `created_at_time`. */
-  readonly now: () => bigint
+  /** A memo of its own for a new transfer: 16 random bytes. */
+  readonly memo: () => Uint8Array
   /** Calls `stop` on Ctrl-C (SIGINT). Returns a function that stops listening. */
   readonly onInterrupt: (stop: () => void) => () => void
 }
