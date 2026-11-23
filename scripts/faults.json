@@ -4938,8 +4938,8 @@
     "testName": "counts the wait for the caller's identity, and sends nothing once the bound passed",
     "why": "client.time() starts its timeoutMs only once the caller's identity arrives, so a slow identity waits past the bound",
     "file": "src/options.ts",
-    "search": "    const read = readTime(where, () => timedOut)\n",
-    "replace": "    await internals.agentFor(internals.current().principal, where)\n    const read = readTime(where, () => timedOut)\n"
+    "search": "    const once = () => readTime(where, () => timedOut)\n",
+    "replace": "    await internals.agentFor(internals.current().principal, where)\n    const once = () => readTime(where, () => timedOut)\n"
   },
   {
     "id": "973-time-sent-after-timeout",
@@ -7178,5 +7178,65 @@
     "file": "src/options.ts",
     "search": "const TIME_SLACK = 300_000_000_000n\n",
     "replace": "const TIME_SLACK = 0n\n"
+  },
+  {
+    "id": "clock-refused-expiry-final-for-a-direct-read",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a signed read that is the first request",
+    "why": "a read the replica refused for its ingress expiry is final again, so on a device whose clock is minutes off a signed-in caller's first direct read rejects not_delivered, though the agent has read the IC's time and the same read asked again is answered",
+    "file": "src/errors.ts",
+    "search": "      : make(\"not_delivered\", false, reason, !update)\n",
+    "replace": "      : make(\"not_delivered\", false, reason)\n"
+  },
+  {
+    "id": "clock-refused-expiry-final-for-a-query",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read made with queryOptions in a browser page",
+    "why": "a read the replica refused for its ingress expiry is not marked retryable, so TanStack Query does not ask a queryOptions read again and a signed-in user's first read shows an error on a device whose clock is minutes off",
+    "file": "src/errors.ts",
+    "search": "      : make(\"not_delivered\", false, reason, !update)\n",
+    "replace": "      : make(\"not_delivered\", false, reason)\n"
+  },
+  {
+    "id": "clock-refused-write-marked-retryable",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "does not retry a write the replica refused for its ingress expiry",
+    "why": "a write the replica refused for its ingress expiry is marked retryable as a read is, so an app's own query around a direct write signs it again while the refused request can still become valid: two requests for one intent",
+    "file": "src/errors.ts",
+    "search": "      : make(\"not_delivered\", false, reason, !update)\n",
+    "replace": "      : make(\"not_delivered\", false, reason, true)\n"
+  },
+  {
+    "id": "clock-time-not-read-again",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "resolves client.time() as the first signed request",
+    "why": "client.time() does not read once more after the replica refused its read_state for the ingress expiry, so on a device whose clock is minutes off a signed-in caller's first client.time() rejects not_delivered and the transfer it would stamp is not sent",
+    "file": "src/options.ts",
+    "search": "      if (isRetryable(error)) return once()\n",
+    "replace": ""
+  },
+  {
+    "id": "clock-time-read-again-after-its-bound",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "sends no second read once the bound has passed",
+    "why": "the second read of client.time() does not check the canister object's timeoutMs, so a read_state is sent after the call rejected with code timeout",
+    "file": "src/options.ts",
+    "search": "    const once = () => readTime(where, () => timedOut)\n",
+    "replace": "    const once = () => readTime(where, () => false)\n"
+  },
+  {
+    "id": "clock-refused-read-resent-without-end",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "sends a signed read three times at most",
+    "why": "a direct read's re-sends have no limit, so a read the replica keeps refusing (a device whose clock changed after the agent read the IC's time) is sent again without end",
+    "file": "src/call.ts",
+    "search": "            : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))\n",
+    "replace": "            : isRetryable(error))\n"
   }
 ]

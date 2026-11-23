@@ -53,6 +53,7 @@ import {
   createReactorError,
   fromCanister,
   isReactorError,
+  isRetryable,
   retryQuery,
   timedOutError,
 } from "./errors.js"
@@ -886,7 +887,15 @@ export function createBuilders(
     const where = { method, canisterId: target.id }
     const ms = record.timeoutMs
     let timedOut = false
-    const read = readTime(where, () => timedOut)
+    // Read once more after a failure another attempt can change. The one
+    // this is for: a signed-in caller on a host whose clock is minutes off,
+    // whose first read_state the replica refuses for its ingress expiry. The
+    // agent has read the IC's time by then, and the second is signed by it.
+    const once = () => readTime(where, () => timedOut)
+    const read = once().catch((error: unknown) => {
+      if (isRetryable(error)) return once()
+      throw error
+    })
     if (ms === undefined) return read
     // The canister object's timeoutMs bounds the wait from here, as it bounds
     // a call through it: when it passes, the time rejects `cancelled` (code
