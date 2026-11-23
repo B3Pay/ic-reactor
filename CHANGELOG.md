@@ -98,6 +98,39 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   signed-in caller, 4 of 8 with no one signed in), and every one answers
   now. Core is 141 B larger for this, gzipped.
 
+- Peer `@icp-sdk/core` at `^6.1.1`, where it was `^6.1.0`. 6.1.1 is the
+  release npm installs, while the lockfile held 6.1.0, so core's tests and
+  the lowest-peers run had not run on what an app gets; they run on 6.1.1
+  now. Its reader of the `ic_env` cookie, which the client uses, refuses
+  copies of the cookie that carry different environments (the next entry).
+  Its agent signs a refused write again only when the refused request had
+  already expired: on a device whose clock is minutes ahead of the IC's, a
+  signed-in caller's write that is the agent's first signed request rejects
+  `not_delivered` once, with `mayHaveExecuted: false`, where 6.1.0 signed it
+  again by the IC's time. Sending it again goes through. With the peers
+  included, an app's bundle grows by 618 B gzipped for `{ createClient }` and
+  by 624 B with the React bindings, of which 591 B and 616 B are the agent's
+  own. Migration: an app on `@icp-sdk/core` 6.1.0 updates it. Installing
+  core, npm updates it where the app's range allows it and stops with
+  `ERESOLVE` where the app pins it; pnpm and yarn warn. A floor rises only in
+  a minor, so this ships in one.
+- On a local page, copies of the `ic_env` cookie that carry different
+  environments are believed for nothing, as on any other page: a `{ name }`
+  target is refused `untrusted_host`, their root key is not taken (the agent
+  asks the local replica for it), and neither is their Internet Identity.
+  Before, a local page read the first copy, which need not be the one the
+  frontend's canister set last: a redeploy often leaves an older copy at
+  another path, with other canister ids. The refusal says that the page's
+  `ic_env` cookies differ and that clearing the site's cookies drops the old
+  copies, on any page, and on a local page the development warning that
+  sign-in cannot work says the cookies differ, where it said the cookie names
+  no `INTERNET_IDENTITY_PROVIDER`. Migration: on a local page that now
+  refuses its cookies, clear the site's cookies and load it again.
+- Copies of the `ic_env` cookie that carry one environment but differ in
+  their encoding (`_` or `%5F`) or in the order of their entries are believed.
+  Before, a page that is not local refused them as differing. Migration:
+  none.
+
 #### Fixed
 
 - What a write showed no longer outlives its caller (#920). When the caller
@@ -128,6 +161,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   hidden screen that React shows again without rendering it. Migration: none,
   unless an app relied on a result staying on screen across a change of
   caller: keep it in the app's own state, from the callbacks in the options.
+
+### @ic-reactor/vite-plugin
+
+#### Changed
+
+- Optional peer `@icp-sdk/core` at `^6.1.1`, where it was `^6.1.0`, as
+  core's. The plugin loads it only to fetch a `.did` from a live canister.
+  Migration: as for core.
+
+### @ic-reactor/mcp
+
+#### Changed
+
+- Depends on `@icp-sdk/core` `^6.1.1`, where it was `^6.1.0`, since the core
+  it installs requires it. Migration: none.
 
 ### Docs
 
@@ -171,6 +219,13 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 - The Auth guide's example of a wallet that signs each call names
   `await client.time(ledger)` as the source of `created_at_time`, where its
   comment named `Date.now()`.
+- The client guide says that copies of the `ic_env` cookie that carry one
+  environment are believed however they are encoded or ordered, that copies
+  that differ are believed for nothing on a local page too, and that
+  clearing the site's cookies drops an old copy. The consumer guide
+  (`packages/core/llms.txt`) says the same. The support table, the core and
+  Vite plugin pages, the Vite plugin guide and its README name
+  `@icp-sdk/core` 6.1.1.
 
 ### Examples (not published)
 
@@ -204,6 +259,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 - `icrc-ledger`'s sandbox aims its "lost reply" fault at the transfer, as its
   HTTP 429 faults were, so that a call the page makes while the time is read
   does not use it up.
+- The five examples depend on `@icp-sdk/core` `^6.1.1`, where they had
+  `^6.1.0`. Their code does not change.
+
+### CI (not published)
+
+- The lockfile resolves `@icp-sdk/core` 6.1.1, where it resolved 6.1.0, so
+  the package tests, the e2e app and the size checks run on it, and the
+  lowest-peers run tests core's new floor. Nothing else in the lockfile
+  moves.
 
 ## core, react, vite-plugin, mcp 4.4.0
 

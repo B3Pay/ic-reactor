@@ -11,7 +11,7 @@
     "@meantjs/schema": "0.6.0",
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/react": "workspace:*",
-    "@icp-sdk/core": "^6.1.0",
+    "@icp-sdk/core": "^6.1.1",
     "@noble/curves": "^2.2.0",
     "@tanstack/query-core": "^5.102.8",
     "@tanstack/react-query": "^5.102.8",

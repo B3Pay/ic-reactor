@@ -182,10 +182,9 @@ that by reading the IC's time, and signs by it from then on.
   refused can still become valid later, and two requests for one intent could
   both run. The write rejects `not_delivered`: the canister ran nothing.
   Sending it again goes through, because the agent has read the IC's time by
-  then.
-  `@icp-sdk/core` 6.1.0 signs the write again itself, so there it goes
-  through at once; from 6.1.1 it does that only when the refused request had
-  already expired, which is a clock that was behind.
+  then. The agent signs the write again itself only when the refused request
+  had already expired, which is a clock that was behind, so there it goes
+  through at once.
 
 A write meets that refusal only when nothing signed went before it. In most
 apps a read as the caller comes first, or `await client.time(canister)` for a

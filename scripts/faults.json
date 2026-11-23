@@ -7053,21 +7053,51 @@
     "package": "core",
     "test": "tests/env-cookie-copies.test.ts",
     "file": "src/network.ts",
-    "id": "differing-env-cookies-believed",
+    "id": "differing-env-cookies-read-as-absent",
     "testName": "name no canister on a canister's icp0.io page, for \"env\" and \"ic\": the frontend's listed last",
-    "why": "copies of the ic_env cookie that differ are read as the first one listed, which need not be the one the frontend's canister set",
-    "search": "      ).size > 1\n",
-    "replace": "      ).size > 2\n"
+    "why": "copies of the ic_env cookie that differ taken for a cookie that names nothing, so { name } is refused as absent and the message sends the developer to the project config instead of the old copy",
+    "search": "  } catch (error) {\n    return (error as { code?: { name?: unknown } }).code?.name ===\n      \"ConflictingCanisterEnvErrorCode\"\n      ? null\n      : undefined\n  }\n",
+    "replace": "  } catch {\n    return undefined\n  }\n"
   },
   {
     "package": "core",
     "test": "tests/env-cookie-copies.test.ts",
     "file": "src/network.ts",
-    "id": "differing-env-cookies-refused-locally",
-    "testName": "leave the first believed, as before",
-    "why": "a local page refuses copies of the ic_env cookie that differ, which a redeploy there often leaves at another path",
-    "search": "    return !pageIsLocal() &&\n",
-    "replace": "    return !false &&\n"
+    "id": "differing-env-cookies-not-refused-locally",
+    "testName": "name no canister, and say how to drop the old copy: the frontend's listed first",
+    "why": "a local page does not refuse copies of the ic_env cookie that differ: { name } is refused as absent, and the message sends the developer to the project config instead of the old copy a redeploy left",
+    "search": "      ? null\n      : undefined\n",
+    "replace": "      ? pageIsLocal()\n        ? undefined\n        : null\n      : undefined\n"
+  },
+  {
+    "package": "core",
+    "test": "tests/env-cookie-copies.test.ts",
+    "file": "src/network.ts",
+    "id": "differing-env-cookies-no-hint",
+    "testName": "name no canister, and say how to drop the old copy: the frontend's listed last",
+    "why": "the refusal of ic_env cookies that differ does not say that clearing the site's cookies drops the old copy, so a developer on a local page is left with only an id to bake in",
+    "search": " (clear this site's cookies to drop the old copies)\"",
+    "replace": "\""
+  },
+  {
+    "package": "core",
+    "test": "tests/env-cookie-copies.test.ts",
+    "file": "src/network.ts",
+    "id": "differing-env-cookies-sign-in-gap-unexplained",
+    "testName": "name no sign-in, and the reason given for that says they differ",
+    "why": "on a local page whose ic_env cookies differ, the sign-in warning says the cookie names no INTERNET_IDENTITY_PROVIDER, which sends the developer to the cookie instead of the old copy",
+    "search": "      ? cookieEntry(\"\") === null\n",
+    "replace": "      ? false\n"
+  },
+  {
+    "package": "core",
+    "test": "tests/env-cookie-copies.test.ts",
+    "file": "src/network.ts",
+    "id": "same-env-cookies-compared-as-text",
+    "testName": "are believed on a local page though their entries are encoded or ordered differently",
+    "why": "copies of the ic_env cookie compared by their text, so copies that carry one environment but write _ as %5F, or list their entries in another order, are refused as differing",
+    "search": "    return getCanisterEnv()[key]\n",
+    "replace": "    return new Set(\n      document.cookie\n        .split(\";\")\n        .map((cookie) => cookie.trim())\n        .filter((cookie) => cookie.startsWith(\"ic_env=\"))\n    ).size > 1\n      ? null\n      : getCanisterEnv()[key]\n"
   },
   {
     "id": "mcp-approve-without-tick",

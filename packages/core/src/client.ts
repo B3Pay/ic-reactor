@@ -433,8 +433,8 @@ export interface Client {
    * - `no_browser`: there is no page, so no cookie to read (a server render,
    *   a web worker).
    * - `untrusted_host`: the cookie is not trusted for this network, so it was
-   *   not read; or a page that is not local holds more than one `ic_env`
-   *   cookie and they differ, so none is believed.
+   *   not read; or the page holds more than one `ic_env` cookie and they
+   *   carry different environments, so none is believed.
    * - `absent`: the cookie was read and has no principal text under that
    *   name.
    *
@@ -975,8 +975,8 @@ export interface ClientInternals {
    * `read_state` (`client.time()`) it sends again as it was signed. The
    * classifier marks the refusal retryable for a read, so the call path,
    * `retryQuery` and `client.time()` ask again. A write the agent signs
-   * again in 6.1.0, and from 6.1.1 only when the refused request's expiry
-   * had already passed; the call path never signs one again itself.
+   * again only when the refused request's expiry had already passed; the
+   * call path never signs one again itself.
    *
    * The agent reads the IC's time once: on that first refusal, or for the
    * first certificate whose time is minutes from the host's, and never for
