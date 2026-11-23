@@ -80,10 +80,45 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   through. A visitor who is not signed in was not affected, and an app has
   nothing to change.
 
+#### Fixed
+
+- What a write showed no longer outlives its caller (#920). When the caller
+  changes (a sign-in, a sign-out, an expired session, a switch of account),
+  the client starts over every mutation under its mutation keys before it
+  tells its listeners: each observer of one is reset, so a `useMutation` is
+  idle again, and the mutation leaves the cache of `client.queryClient`, at
+  once when it has settled and otherwise when it settles. An observer nobody
+  listens to then is reset as well, so a screen hidden with React's
+  `<Activity>` renders nothing of the last account's write when it comes back,
+  on every supported TanStack Query. Before, the last account's argument,
+  result or error (an `InsufficientFunds` error carries a balance) stayed on
+  screen and in `useMutationState` for the next account, because a mutation
+  key of the client's own names no caller. Built from `useClient()`, whose key
+  ends with the caller, it stayed for the first render after the change, since
+  `useMutation` takes new options in an effect, and for good where a component
+  kept the options past their render. A write still running keeps running, and
+  reports to the callbacks in its options and to the promise `mutateAsync`
+  returned, not to the screen or to the callbacks passed to `mutate()`. A
+  write under the client's keys that is refused because the render it was
+  pressed from showed another caller (`caller_changed`) leaves the cache as it
+  settles. The client reaches each observer through a `WeakRef` and keeps none
+  alive. A runtime with no `WeakRef`, which every browser has had since 2021,
+  gets the cache cleared and no observer reset. Not covered, as before: a
+  mutation given a `mutationKey` of your own, a mutation on another
+  `QueryClient`, and what a component keeps in its own state. The Auth guide's
+  "Switching accounts" shows the `key={principal}` that covers those, and a
+  hidden screen that React shows again without rendering it. Migration: none,
+  unless an app relied on a result staying on screen across a change of
+  caller: keep it in the app's own state, from the callbacks in the options.
+
 ### Docs
 
 - The Writes guide no longer lists what differs on TanStack Query before
   5.89, and the support table names `@tanstack/query-core` 5.89.0.
+- The Auth guide says what a change of caller does to a write, and has a
+  recipe for switching accounts (#920). The Vite wallet's README and docs
+  page say that its Internet Identity button, pressed while someone is signed
+  in, switches accounts with no reload.
 - The Errors guide has a section on a device whose clock is off, and the
   classification table gives `IngressExpiryInvalid` a row of its own. The
   Writes guide no longer says that no call works on such a device until its

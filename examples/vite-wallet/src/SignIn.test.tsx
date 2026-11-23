@@ -2,7 +2,7 @@
 // own auth (wallet-auth.ts), with Internet Identity stood in for by the
 // sign-in of `createTestClient()` (an AuthClient's surface, borrowed from a
 // test client that is never used).
-import { createClient, type Client } from "@ic-reactor/core"
+import { createClient, type AuthLike, type Client } from "@ic-reactor/core"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { ReactorProvider } from "@ic-reactor/react"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
@@ -15,7 +15,7 @@ import {
 } from "./auth/dev-accounts.ts"
 import { createWalletAuth } from "./auth/wallet-auth.ts"
 import { SignIn } from "./SignIn.tsx"
-import { SEED_1 } from "./test/test-wallet.tsx"
+import { SEED_1, SEED_2 } from "./test/test-wallet.tsx"
 
 const memoryStorage = (): AccountStorage => {
   const map = new Map<string, string>()
@@ -34,7 +34,12 @@ afterEach(() => {
 function renderSignIn(devAccounts: DevAccounts | undefined) {
   const unused = createTestClient({ signedIn: false })
   unused.client.dispose()
-  const internetIdentity = unused.auth
+  /** Which of the person's accounts the next sign-in comes back as. */
+  const window = { account: 1 }
+  const internetIdentity: AuthLike = {
+    ...unused.auth,
+    signIn: () => unused.auth.signIn(window.account),
+  }
   client = createClient({
     network: "env",
     auth: () => createWalletAuth({ internetIdentity, devAccounts }),
@@ -50,6 +55,7 @@ function renderSignIn(devAccounts: DevAccounts | undefined) {
       </ReactorProvider>
     </StrictMode>
   )
+  return window
 }
 
 const who = () => screen.getByTestId("who").textContent
@@ -94,6 +100,20 @@ describe("the sign-in panel", () => {
     click("Sign out")
     await screen.findByText("nobody", { selector: "[data-testid=who]" })
     expect(principal()).toBe("2vxsx-fae")
+  })
+
+  it("comes back from Internet Identity as another of the person's accounts, with no reload", async () => {
+    const internetIdentity = renderSignIn(undefined)
+    click("Sign in with Internet Identity")
+    await screen.findByText(SEED_1, { selector: "[data-testid=principal]" })
+    expect(who()).toBe("Internet Identity")
+
+    // Signed in, the button runs the sign-in again, and in its window the
+    // person picks their second account.
+    internetIdentity.account = 2
+    click("Sign in with Internet Identity")
+    await screen.findByText(SEED_2, { selector: "[data-testid=principal]" })
+    expect(who()).toBe("Internet Identity")
   })
 
   it("offers no dev account on a page that is not local", () => {
