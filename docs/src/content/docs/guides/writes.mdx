@@ -283,9 +283,12 @@ network's root key, rather than the host's clock. A node can answer with an
 old certificate, which still verifies, so a time more than five minutes
 before one the client read already rejects `not_delivered`, as a certificate
 that does not verify does. Its request is signed with an ingress expiry
-taken from the host's clock, as every request is: a host
-clock so far off that the IC refuses its requests cannot read the time
-either, and no call works until that clock is fixed. That time moves about once a second, so
+taken from the host's clock, as every request is, and on a host whose clock
+is minutes off the IC refuses a signed-in caller's request for that expiry.
+The agent then reads the IC's time and signs by it, and `client.time()` reads
+once more, so it answers all the same, and the transfer sent after it is
+signed by the IC's time. [A device whose clock is off](/v4/guides/errors/#a-device-whose-clock-is-off)
+has the rest. That time moves about once a second, so
 two transfers stamped in the same second need their own `memo` each, or the
 second is answered `Duplicate` without running. Most methods do not
 deduplicate. For them a second send

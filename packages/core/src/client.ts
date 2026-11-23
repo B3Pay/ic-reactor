@@ -820,8 +820,12 @@ export interface Client {
    * `memo` as well.
    *
    * Its request carries an ingress expiry from the host's clock, as every
-   * request does: a host clock so far off that the IC refuses its requests
-   * gets `not_delivered` here too.
+   * request does. On a host whose clock is minutes off, the IC refuses a
+   * signed-in caller's request for that expiry. The agent then reads the
+   * IC's time and signs by it, and the time is read once more, so it
+   * resolves all the same, and a write after it is signed by the IC's time.
+   * It is read once more after any other failure that another attempt can
+   * change, too, such as a lost connection or an HTTP 408, 429 or 5xx.
    *
    * The certificate is verified against the network's root key, as every
    * reply is; its age is not compared with the host's clock, which may be the
@@ -960,8 +964,17 @@ export interface ClientInternals {
    *   which a read classifies as a retryable `not_delivered`, so a browser
    *   read is asked again through `retryQuery` without a clock sync.
    *
-   * Recovery from a refused ingress expiry (the agent syncs its clock once
-   * and sends again) does not depend on `retryTimes` and still happens.
+   * A refused ingress expiry (a host whose clock is minutes off) makes the
+   * agent read the IC's time whatever `retryTimes` says, once per agent, and
+   * sign by it from then on. What becomes of the request that was refused is
+   * the agent's own doing. A query it signs again, but it reads the subnet's
+   * node keys with the `read_state` it signed before, which the replica
+   * refuses again, so a signed read fails on that first request; a
+   * `read_state` (`client.time()`) it sends again as it was signed. The
+   * classifier marks the refusal retryable for a read, so the call path,
+   * `retryQuery` and `client.time()` ask again. A write the agent signs
+   * again in 6.1.0, and from 6.1.1 only when the refused request's expiry
+   * had already passed; the call path never signs one again itself.
    */
   agentFor(principal: string, context: AgentContext): Promise<HttpAgent>
 }

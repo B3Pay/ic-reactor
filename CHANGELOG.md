@@ -58,6 +58,27 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   or `mutationFn` passes on the context it got, as the Writes guide says:
   `options.onMutate(variables, context)` and
   `options.mutationFn(variables, context)`.
+- On a device whose clock is minutes off, a signed-in caller's first read
+  and first `client.time()` no longer fail. An agent signs every request with
+  an ingress expiry four to five minutes after the device's clock. The IC
+  accepts an expiry between its own time and five and a half minutes after
+  it, and checks that on every update and on a read whose caller is signed
+  in, so on such a device it refuses the first request a signed-in caller's
+  agent sends. The agent then reads the IC's time and signs by it, but the
+  request that met the refusal failed, and for a read the client took that
+  as final. Measured on mainnet with the clock 3, 6 and 10 minutes ahead and
+  6 and 10 minutes behind: the first `icrc1_balance_of` as a signed-in caller
+  and the first `client.time()` rejected `not_delivered` ("the replica
+  refused the request's ingress expiry"), and the second answered. Now a read
+  refused that way is asked again: the client sends a direct call again (its
+  usual two re-sends at most), TanStack Query asks a `queryOptions` read
+  again in a browser, and `client.time()` reads once more, as it now does
+  after any failure another attempt can change. All of them answered on the
+  first call in the same measurements. A write is still never signed a second
+  time by the client: one the IC refuses for its expiry rejects
+  `not_delivered` (the canister ran nothing), and sending it again goes
+  through. A visitor who is not signed in was not affected, and an app has
+  nothing to change.
 
 #### Fixed
 
@@ -98,6 +119,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   recipe for switching accounts (#920). The Vite wallet's README and docs
   page say that its Internet Identity button, pressed while someone is signed
   in, switches accounts with no reload.
+- The Errors guide has a section on a device whose clock is off, and the
+  classification table gives `IngressExpiryInvalid` a row of its own. The
+  Writes guide no longer says that no call works on such a device until its
+  clock is fixed: the agent corrects itself after the first refusal. The
+  reference of `client.time()` says what it does there.
 
 ## core, react, vite-plugin, mcp 4.4.0
 
