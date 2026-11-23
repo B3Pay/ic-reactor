@@ -243,7 +243,9 @@ age. So a session can end before `expiresAtMs`:
   status turns `"expired"`.
 
 Either way, the client drops the user's agent, removes their reads from the
-cache and tells its listeners. A call that needed a new delegation from an
+cache, starts their writes over (see
+[When the caller changes](#when-the-caller-changes)) and tells its listeners.
+A call that needed a new delegation from an
 ended session is refused before it is sent, with `kind: "not_delivered"`,
 `mayHaveExecuted: false` and the auth's `SessionGoneError` as its `cause`. An
 update the IC had already taken, whose answer needed a new delegation to read,
@@ -260,7 +262,7 @@ after 7 days unused. `maxTimeToLive` and `maxTimeToIdle` ask for less, as
 this device out together. When it cannot end the session there, offline for
 example, it rejects once the device is signed out, and does not go to
 `returnTo`. The device is signed out all the same, and the client has removed
-the user's reads. The session itself lasts until it runs out or idles out, or
+the user's reads and started their writes over. The session itself lasts until it runs out or idles out, or
 until the user ends it from Internet Identity's settings: tell the user that,
 rather than that the sign-out failed.
 
@@ -908,6 +910,24 @@ another identity. What that means in practice:
   persist only the anonymous reads, with a
   `dehydrateOptions.shouldDehydrateQuery` that checks that the key's caller
   (its third segment) is `2vxsx-fae`.
+- **What a write showed.** A sign-in, a sign-out, an expired session or a
+  switch also starts over every mutation under the client's mutation keys,
+  before your components re-render. A `useMutation` that showed the last
+  caller's argument, result or error (an `InsufficientFunds` error carries a
+  balance) is idle again, on a screen that is hidden then (React's
+  `<Activity>`) too, and the mutation is gone from the client's cache, so
+  `useMutationState` does not list it. A write still running keeps
+  running, and leaves the cache when it settles. Its outcome reaches the
+  callbacks in its options and the promise `mutateAsync` returned, and
+  neither the screen nor the callbacks passed to `mutate()`: an app that must
+  show it after the change keeps it in its own state. A write that waits
+  (offline, or behind its `scope`) stays in the cache, and in a persister
+  that saved it, until it runs: it is refused then, as above, and leaves the
+  cache. The client reaches a `useMutation` through a `WeakRef`, so that it
+  keeps none alive. A runtime with no `WeakRef`, which every browser has had
+  since 2021, gets the cache cleared, and a `useMutation` there keeps what it
+  shows. What the client does not hold is yours to clear: see
+  [Switching accounts](#switching-accounts).
 
 A read that waits for a user uses `skipToken` (see
 [Reads](/v4/guides/reads/)):
@@ -937,6 +957,70 @@ export function MyBalance() {
   return <p>{balance.data?.toString() ?? "…"}</p>
 }
 ```
+
+### Switching accounts
+
+Internet Identity lets a person keep several accounts for one app, and a
+wallet may share several. With an `AuthClient`, `signIn()` called while
+someone is signed in runs the sign-in again, and the user can come back as
+another account. The client takes that as one step, with no signed-out state
+in between:
+
+```tsx
+import { useAuth } from "@ic-reactor/react"
+import { Fragment, type ReactNode } from "react"
+
+export function Account({ children }: { children: ReactNode }) {
+  const { status, principal, signIn, signOut } = useAuth()
+  if (status !== "signed-in") {
+    return (
+      <button onClick={() => signIn().catch(console.error)}>Sign in</button>
+    )
+  }
+  return (
+    <>
+      <p>Signed in as {principal}</p>
+      <button onClick={() => signIn().catch(console.error)}>
+        Switch account
+      </button>
+      <button onClick={() => signOut().catch(console.error)}>Sign out</button>
+      {/* What the account's sections keep in their own state goes with it. */}
+      <Fragment key={principal}>{children}</Fragment>
+    </>
+  )
+}
+```
+
+When the user comes back as another account, all of this is done before a
+component renders for it:
+
+- the last account's reads are out of the client's cache, and the new
+  account's keys are empty until they load;
+- every mutation under the client's keys has started over, so no
+  `useMutation` shows what the last account wrote;
+- a call made as the last account and not sent yet is cancelled
+  (`caller_changed`), and nothing is sent as the new one in its place.
+
+The client cannot reach what it does not hold:
+
+- state a component keeps itself: the text in a form, a result or an error
+  copied into `useState`;
+- a mutation given a `mutationKey` of your own, and a mutation whose function
+  calls a canister method directly;
+- queries and mutations on a `QueryClient` other than `client.queryClient`.
+
+The `key={principal}` above covers what those show: React mounts the
+account's sections again for each caller, so nothing they held is on screen
+for the next one. The [Vite wallet](/v4/examples/vite-wallet/) is built this
+way. A cache of your own still holds what it held: remove it there when the
+caller changes (`client.subscribe`), as the client does in its own.
+
+The key also covers a section React keeps hidden (`<Activity mode="hidden">`).
+A hidden section does not follow the client. When React shows it again
+without rendering it, it appears as it was hidden, with the last account's
+reads and writes, until React renders it right after. Under the key, React
+replaces the section while it is hidden, provided the component that sets the
+key is shown itself, as `Account` is.
 
 ## Identity attributes
 

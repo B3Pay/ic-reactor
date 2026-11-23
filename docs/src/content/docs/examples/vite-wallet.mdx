@@ -21,7 +21,9 @@ backend canister of the example's own.
   `(network) => new AuthClient(network)` from the network the client hands it
   (the local II on a local page), and a "dev account" of the app's own, an
   `AuthLike` holding an Ed25519 key, offered only on a local page. Switching
-  accounts shows the next account nothing of the last.
+  accounts shows the next account nothing of the last, and needs no reload:
+  signed in, the Internet Identity button runs the sign-in again, and the
+  wallet follows the account it comes back as.
 - **Reads and writes:** the balance with `skipToken` while signed out and a
   `refetchInterval`, so a top-up from the example's faucet shows by itself;
   ICP transfers with `parseUnits`, the fee, deduplication by `created_at_time`

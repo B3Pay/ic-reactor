@@ -350,6 +350,13 @@ export interface CanisterMutationOptions<V, D, E> {
    * `['ic-reactor', network, canisterId, method]`, and then the caller for
    * the options of a view `useClient()` returned: a prefix match on the
    * shorter key finds both.
+   *
+   * A mutation under this key on the client's own `queryClient` is the
+   * caller's who made it. When the caller changes (a sign-in, a sign-out, an
+   * expired session, a switch of account), the client resets every observer
+   * that shows it, so a `useMutation` is idle again, and removes it from the
+   * cache: at once when it has settled, else when it settles. A mutation
+   * given another `mutationKey` is left alone.
    */
   readonly mutationKey: MutationKey
   /**
