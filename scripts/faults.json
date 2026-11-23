@@ -675,7 +675,7 @@
     "testName": "invalidates the canister a { name } write went to when the cookie moves the name before the write settles",
     "why": "onSettled resolves a { name } from the ic_env cookie again when the write settles, so after a local redeploy mid-write it invalidates the canister the cookie names now and leaves the reads of the one written to stale",
     "file": "src/options.ts",
-    "search": "        const run = keptRun(context) ?? started ?? resolveRun()",
+    "search": "        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()",
     "replace": "        const run = resolveRun()"
   },
   {
@@ -685,8 +685,8 @@
     "testName": "keeps a { name } write and its invalidation on one canister when an onMutate of the app's replaces the given one",
     "why": "onSettled looks for the run only in what onMutate returned, not by the run's function context, so under an onMutate of the app's that replaces the given one (TanStack's optimistic-update recipe) it resolves a { name } again at settlement, and a local redeploy mid-write leaves the reads of the canister written to stale",
     "file": "src/options.ts",
-    "search": "        const run = keptRun(context) ?? started ?? resolveRun()",
-    "replace": "        const run = started ?? resolveRun()"
+    "search": "        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()",
+    "replace": "        const run = runIn(onMutateResult) ?? resolveRun()"
   },
   {
     "id": "ir2t-name-write-sent-where-resolved-late",
@@ -1848,8 +1848,8 @@
       },
       {
         "file": "src/call.ts",
-        "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-        "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+        "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+        "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
       }
     ]
   },
@@ -2940,8 +2940,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "a mutation given an offered argument sends it as whoever is the caller when it runs, so another account pays the same transfer again",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key)",
-    "replace": "      const caller = callerOf(this, key)"
+    "search": "      const caller =\n        again?.caller ??\n        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "      const caller = key\n        ? internals.mutationCallers.get(key)\n        : internals.current()\n"
   },
   {
     "id": "ir850-send-as-whoever",
@@ -4938,8 +4938,8 @@
     "testName": "counts the wait for the caller's identity, and sends nothing once the bound passed",
     "why": "client.time() starts its timeoutMs only once the caller's identity arrives, so a slow identity waits past the bound",
     "file": "src/options.ts",
-    "search": "    const read = readTime(where, () => timedOut)\n",
-    "replace": "    await internals.agentFor(internals.current().principal, where)\n    const read = readTime(where, () => timedOut)\n"
+    "search": "    const once = () => readTime(where, () => timedOut)\n",
+    "replace": "    await internals.agentFor(internals.current().principal, where)\n    const once = () => readTime(where, () => timedOut)\n"
   },
   {
     "id": "973-time-sent-after-timeout",
@@ -5178,8 +5178,8 @@
     "testName": "still waiting for its caller's identity",
     "why": "the wait for the caller's agent not ended by the timeout, so a call whose identity never arrives waits forever",
     "file": "src/call.ts",
-    "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-    "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+    "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
   },
   {
     "id": "875-timeout-direct-call-ignores-target",
@@ -5238,8 +5238,8 @@
     "testName": "a read aborted while it waits for its caller's identity",
     "why": "the wait for the caller's agent not ended by a read's abort signal, so an aborted read keeps waiting for an identity that may never come",
     "file": "src/call.ts",
-    "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-    "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+    "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
   },
   {
     "id": "875-timeout-resend-loses-unknown",
@@ -5608,8 +5608,8 @@
     "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
     "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
     "file": "src/client.ts",
-    "search": "            const again = internals.offered.get(vars as object)\n            throw fromCanister(",
-    "replace": "            const again = internals.offered.get(vars as object)\n            throw ((error: unknown, _canister: object) => error)("
+    "search": "            const again = internals.offered.get(vars as object)\n            const refused = fromCanister(",
+    "replace": "            const again = internals.offered.get(vars as object)\n            const refused = ((error: unknown, _canister: object) => error)("
   },
   {
     "id": "893-write-caller-read-when-sent-offline",
@@ -5618,8 +5618,8 @@
     "testName": "refuses a write paused offline when the account is switched before it is sent, and sends nothing",
     "why": "a write TanStack paused offline goes out as whoever is signed in when it resumes, not as the caller current when mutate() was called (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key)",
-    "replace": "      const caller = again?.caller ?? internals.current()"
+    "search": "      const caller =\n        again?.caller ??\n        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "      const caller = again?.caller ?? internals.current()\n"
   },
   {
     "id": "893-write-caller-read-when-sent-scope",
@@ -5628,18 +5628,8 @@
     "testName": "refuses a write queued behind its scope when the account is switched before its turn, and sends nothing",
     "why": "a write queued behind its mutation scope goes out as whoever is signed in at its turn (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key)",
-    "replace": "      const caller = again?.caller ?? internals.current()"
-  },
-  {
-    "id": "893-write-caller-no-context-fallback",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "refuses a write whose mutationFn gets no run context",
-    "why": "without a run context (TanStack before 5.89), a run whose onMutate read no caller for its options is sent as whoever is current, not refused (#893)",
-    "file": "src/options.ts",
-    "search": "      return startedMethods.has(prepared) ? undefined : internals.current()",
-    "replace": "      return internals.current()"
+    "search": "      const caller =\n        again?.caller ??\n        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "      const caller = again?.caller ?? internals.current()\n"
   },
   {
     "id": "893-write-caller-retry-read-when-sent",
@@ -5648,8 +5638,8 @@
     "testName": "refuses the retry of a write when the account is switched after the first attempt failed",
     "why": "an app's TanStack retry of a write goes out as whoever is signed in when it retries (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key)",
-    "replace": "      const caller = again?.caller ?? internals.current()"
+    "search": "      const caller =\n        again?.caller ??\n        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "      const caller = again?.caller ?? internals.current()\n"
   },
   {
     "id": "893-write-caller-replaced-onmutate-sent-as-current",
@@ -5660,13 +5650,13 @@
     "edits": [
       {
         "file": "src/client.ts",
-        "search": "          mutationCallers.set(context, caller)\n",
+        "search": "          mutationCallers.set(context, current())\n",
         "replace": ""
       },
       {
         "file": "src/options.ts",
-        "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
-        "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
+        "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+        "replace": "        ((key && internals.mutationCallers.get(key)) ?? internals.current())\n"
       }
     ]
   },
@@ -5677,7 +5667,7 @@
     "testName": "sends a write paused offline as its caller when an onMutate of the app's replaces the given one",
     "why": "the client's MutationCache no longer reads the caller of each run, so a write whose onMutate the app replaced is refused though nobody switched (#893)",
     "file": "src/client.ts",
-    "search": "          mutationCallers.set(context, caller)\n",
+    "search": "          mutationCallers.set(context, current())\n",
     "replace": ""
   },
   {
@@ -5687,8 +5677,8 @@
     "testName": "refuses a write TanStack restored from a persister",
     "why": "a mutation restored from a persister, for which TanStack runs no onMutate, goes out as whoever is signed in when it resumes (#893)",
     "file": "src/options.ts",
-    "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
-    "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
+    "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "        ((key && internals.mutationCallers.get(key)) ?? internals.current())\n"
   },
   {
     "id": "893-write-caller-own-fn-sent-as-current",
@@ -5704,8 +5694,8 @@
       },
       {
         "file": "src/options.ts",
-        "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
-        "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
+        "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+        "replace": "        ((key && internals.mutationCallers.get(key)) ?? internals.current())\n"
       }
     ]
   },
@@ -5716,37 +5706,47 @@
     "testName": "refuses a write whose mutationFn and onMutate are both the app's own",
     "why": "a run nothing read the caller of (its mutationFn is the app's own, so the client's MutationCache does not read it, and its onMutate replaced the given one) falls back to the caller current when it is sent, so a write held back across an account switch would go out as the new account (#893)",
     "file": "src/options.ts",
-    "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
-    "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
+    "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "        ((key && internals.mutationCallers.get(key)) ?? internals.current())\n"
   },
   {
-    "id": "893-write-caller-leftover-taken",
+    "id": "floor-589-call-by-hand-refused",
     "package": "core",
     "test": "tests/options.test.ts",
-    "testName": "never sends a write with no run context as the caller of a run whose mutationFn never ran",
-    "why": "without a run context, the caller our onMutate read is kept by method instead of by the run's options object, so a run goes out as the caller of an abandoned one (#893)",
+    "testName": "takes a call with no run context for one by hand",
+    "why": "a call of mutationFn with no run context is refused as a write nobody started, though it is a call by hand, which goes out as the caller current when it is made",
+    "file": "src/options.ts",
+    "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "        (key ? internals.mutationCallers.get(key) : undefined)\n"
+  },
+  {
+    "id": "floor-589-runs-of-one-observer-share-caller",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "tells the pending runs of one observer apart by their contexts",
+    "why": "who started a run is kept by the options object, which every run of one observer shares, and not by the run's context, so a write held back offline goes out as whoever started the observer's latest run",
     "edits": [
       {
-        "file": "src/options.ts",
-        "search": "            const kept = callersByOptions.get(this)\n            callersByOptions.set(\n              this,\n",
-        "replace": "            const kept = callersByOptions.get(prepared)\n            if (kept === undefined) callersByOptions.set(prepared, { caller, runs: 1 })\n            else callersByOptions.set(\n              {},\n"
+        "file": "src/client.ts",
+        "search": "          mutationCallers.set(context, current())\n",
+        "replace": "          mutationCallers.set(mutation.options, current())\n"
       },
       {
         "file": "src/options.ts",
-        "search": "          ? callersByOptions.get(options)",
-        "replace": "          ? callersByOptions.get(prepared)"
+        "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+        "replace": "        (key\n          ? internals.mutationCallers.get(this as object)\n          : internals.current())\n"
       }
     ]
   },
   {
-    "id": "893-write-caller-other-client-takes-own-run",
+    "id": "floor-589-old-tanstack-run-sent",
     "package": "core",
     "test": "tests/options.test.ts",
-    "testName": "never sends a run on another QueryClient (no run context) as the caller of a run of the client's own cache",
-    "why": "without a run context, a run on another QueryClient is matched to a pending run of the client's own cache by anything but its options object, and goes out as that run's caller (#893)",
-    "file": "src/options.ts",
-    "search": "              mutation.options === options &&\n              mutation.state.status === \"pending\"\n",
-    "replace": "              mutation.state.status === \"pending\"\n"
+    "testName": "fails a run of its options before anything is sent when TanStack Query hands the client's MutationCache no run context",
+    "why": "on a TanStack Query older than the peer range, which passes no run context, a mutate() run is not stopped: its mutationFn takes it for a call by hand, so the write goes out as whoever is current by then and a retry sends it again",
+    "file": "src/client.ts",
+    "search": "        if (typeof context !== \"object\" || context === null) {\n          throw new TypeError(",
+    "replace": "        if (false) {\n          throw new TypeError("
   },
   {
     "id": "893-mutation-cache-reads-every-caller",
@@ -5757,46 +5757,6 @@
     "file": "src/client.ts",
     "search": "        if (typeof fn !== \"function\" || !ownMutationFns.has(fn)) return",
     "replace": "        if (typeof fn !== \"function\") return"
-  },
-  {
-    "id": "893-shared-options-settled-run-counted",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "never sends a write with no run context as the caller of a settled run that shares its options (one observer, TanStack before 5.89)",
-    "why": "a run of the client's own cache that already settled still counts among those a mutationFn called on its observer's shared options may run for, so the pending run's own caller is refused",
-    "file": "src/options.ts",
-    "search": "              mutation.options === options &&\n              mutation.state.status === \"pending\"\n",
-    "replace": "              mutation.options === options\n"
-  },
-  {
-    "id": "893-shared-options-own-runs-not-told-apart",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "refuses a write with no run context whose observer's pending runs started as different callers (TanStack before 5.89)",
-    "why": "pending runs of one observer that started as different callers share one options object, and mutationFn sends as the first one's caller",
-    "file": "src/options.ts",
-    "search": "          ? first\n          : undefined",
-    "replace": "          ? first\n          : first"
-  },
-  {
-    "id": "893-shared-options-other-runs-not-told-apart",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)",
-    "why": "on another QueryClient, a later run's onMutate replaces the caller kept for options an earlier pending run shares, so the earlier run is sent as the later caller",
-    "file": "src/options.ts",
-    "search": "                    caller: sameCaller(kept.caller, caller)\n                      ? caller\n                      : undefined,",
-    "replace": "                    caller,"
-  },
-  {
-    "id": "893-shared-options-never-counted-out",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)",
-    "why": "onSettled no longer counts a settled run out of its options, so once two callers shared an observer every later write of it is refused",
-    "file": "src/options.ts",
-    "search": "        if (kept) {",
-    "replace": "        if (false) {"
   },
   {
     "id": "1037-retried-attempt-sent",
@@ -5815,8 +5775,8 @@
     "testName": "sends a write whose reply was lost once, whatever retry asks for",
     "why": "an attempt that may have executed is not kept for its run, so the attempt after it finds nothing and is sent (#1037)",
     "file": "src/options.ts",
-    "search": "        if (kept && mayHaveRun(error)) {",
-    "replace": "        if (false) {"
+    "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+    "replace": "        if (false) unknownAttempts.set(key, error)\n"
   },
   {
     "id": "1037-retry-refused-after-nothing-ran",
@@ -5825,8 +5785,8 @@
     "testName": "still sends the retry after an attempt that was turned away before the canister saw it",
     "why": "every failed attempt is kept as one that may have executed, so a retry after a failure proving nothing ran is refused and a retry policy is of no use anywhere (#1037)",
     "file": "src/options.ts",
-    "search": "        if (kept && mayHaveRun(error)) {",
-    "replace": "        if (kept) {"
+    "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+    "replace": "        if (key) unknownAttempts.set(key, error)\n"
   },
   {
     "id": "1037-retry-refused-after-err",
@@ -5835,8 +5795,8 @@
     "testName": "still sends the retry after the canister answered Err, which is its answer",
     "why": "an attempt is kept by what invalidates reads, which a canister's Err does too, so a retry after an Err, the canister's own answer, is refused as an unknown outcome (#1037)",
     "file": "src/options.ts",
-    "search": "        if (kept && mayHaveRun(error)) {",
-    "replace": "        if (kept && mayHaveChanged(error)) {"
+    "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+    "replace": "        if (key && mayHaveChanged(error)) unknownAttempts.set(key, error)\n"
   },
   {
     "id": "1037-refusal-says-nothing-ran",
@@ -5863,17 +5823,17 @@
     "package": "core",
     "test": "tests/retried-write.test.ts",
     "testName": "sends the next run of the mutation, with the same argument too",
-    "why": "an attempt that may have executed is kept by the options object and the argument on every TanStack version, not by the run, so the user's next mutate() with that argument is refused as a retry (#1037)",
+    "why": "an attempt that may have executed is kept by the options object its mutationFn was called on, not by the run, so the user's next mutate() through the same observer is refused as a retry (#1037)",
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(key ?? vars)\n",
-        "replace": "  const kept = unknownAttempts.get(options as object)?.get(vars)\n"
+        "search": "  const kept = unknownAttempts.get(key)\n",
+        "replace": "  const kept = unknownAttempts.get(options as object)\n"
       },
       {
         "file": "src/options.ts",
-        "search": "        key ?? (callersByOptions.has(this as object) ? this : undefined)\n",
-        "replace": "        this\n"
+        "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+        "replace": "        if (mayHaveRun(error)) unknownAttempts.set(this as object, error)\n"
       }
     ]
   },
@@ -5915,7 +5875,7 @@
     "why": "a retried attempt is refused as one only while its caller is current, so after an account switch the run ends cancelled (caller_changed) with mayHaveExecuted: false, though its first attempt may have executed (#1037)",
     "file": "src/options.ts",
     "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
-    "replace": "      if (earlier !== undefined && sameCaller(caller, internals.current())) {\n        return Promise.reject("
+    "replace": "      if (\n        earlier !== undefined &&\n        caller?.principal === internals.current().principal\n      ) {\n        return Promise.reject("
   },
   {
     "id": "1037-switched-retry-leaves-reads",
@@ -5925,7 +5885,7 @@
     "why": "a run retried after an account switch ends on an error that says nothing ran, so the reads of the canister are not invalidated though the write may have changed them (#1037)",
     "file": "src/options.ts",
     "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
-    "replace": "      if (earlier !== undefined && sameCaller(caller, internals.current())) {\n        return Promise.reject("
+    "replace": "      if (\n        earlier !== undefined &&\n        caller?.principal === internals.current().principal\n      ) {\n        return Promise.reject("
   },
   {
     "id": "1037-disposed-retry-says-nothing-ran",
@@ -5944,47 +5904,17 @@
     "testName": "sends another run of the same observer with the same argument while the first waits to retry",
     "why": "TanStack's record of a pending run is read for a run the client saw start with its own context too, so a second mutate() with the same argument is taken for the retry of the first and refused (#1037)",
     "file": "src/options.ts",
-    "search": "  if (kept !== undefined || (key !== undefined && started)) return kept\n",
+    "search": "  if (kept !== undefined || started) return kept\n",
     "replace": "  if (kept !== undefined) return kept\n"
-  },
-  {
-    "id": "1037-no-context-own-run-not-read",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "refuses an attempt with no run context while a run of its options with its argument waits to retry",
-    "why": "without a run context (TanStack before 5.89) TanStack's own record of the run is not read, so a retried attempt of a run whose options a later render replaced is sent (#1037)",
-    "file": "src/options.ts",
-    "search": "  if (kept !== undefined || (key !== undefined && started)) return kept\n",
-    "replace": "  if (kept !== undefined || key === undefined || started) return kept\n"
   },
   {
     "id": "1037-refusal-wraps-refusal",
     "package": "core",
     "test": "tests/retried-write.test.ts",
-    "testName": "keeps the first failure as the cause when TanStack's record of the run holds a refusal",
+    "testName": "keeps the first failure as the cause when TanStack's record of a restored run holds a refusal",
     "why": "a refusal found as the earlier failure is wrapped in a new refusal, so the cause of the error the mutation ends with is another refusal and not the failure that says why the outcome is open (#1037)",
     "file": "src/call.ts",
     "search": "  if (isReactorError(earlier) && earlier.code === \"retried_write\") {\n    return earlier as ReactorError\n  }\n",
-    "replace": ""
-  },
-  {
-    "id": "1037-no-context-run-not-kept",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "refuses a retried attempt with no run context on another QueryClient, until the next run of its options with its argument",
-    "why": "without a run context an attempt that may have executed is not kept for the options its run started with, so on another QueryClient the retried attempt is sent (#1037)",
-    "file": "src/options.ts",
-    "search": "        key ?? (callersByOptions.has(this as object) ? this : undefined)\n",
-    "replace": "        key\n"
-  },
-  {
-    "id": "1037-options-record-outlives-run",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "refuses a retried attempt with no run context on another QueryClient, until the next run of its options with its argument",
-    "why": "the record kept under an observer's options is not removed when the next run with that argument starts, so every later mutate() of the observer with it is refused (#1037)",
-    "file": "src/options.ts",
-    "search": "            unknownAttempts.get(this)?.delete(_vars)\n",
     "replace": ""
   },
   {
@@ -5992,10 +5922,19 @@
     "package": "core",
     "test": "tests/retried-write.test.ts",
     "testName": "leaves a call of mutationFn by hand alone",
-    "why": "an attempt is kept under whatever object mutationFn is called on, so a second call by hand with the same argument, which is the app's own decision, is refused as a retry (#1037)",
-    "file": "src/options.ts",
-    "search": "        key ?? (callersByOptions.has(this as object) ? this : undefined)\n",
-    "replace": "        key ?? this\n"
+    "why": "an attempt of a call with no run context is kept under the object mutationFn is called on, so a second call by hand, which is the app's own decision, is refused as a retry (#1037)",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "  if (key === undefined) return undefined\n  const kept = unknownAttempts.get(key)\n",
+        "replace": "  const kept = unknownAttempts.get(key ?? (options as object))\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+        "replace": "        if (mayHaveRun(error)) {\n          unknownAttempts.set(key ?? (this as object), error)\n        }\n"
+      }
+    ]
   },
   {
     "id": "1037-restored-run-says-nothing-ran",
@@ -6004,7 +5943,7 @@
     "testName": "refuses a run TanStack restored from a persister with an attempt that may have run",
     "why": "TanStack's record is not read for a run the client did not see start, so a run restored from a persister after an attempt that may have executed is refused caller_changed with mayHaveExecuted: false (#1037)",
     "file": "src/options.ts",
-    "search": "  if (kept !== undefined || (key !== undefined && started)) return kept\n",
+    "search": "  if (kept !== undefined || started) return kept\n",
     "replace": "  if (kept !== undefined || key !== undefined) return kept\n"
   },
   {
@@ -6028,93 +5967,34 @@
     "replace": ""
   },
   {
-    "id": "1037-settled-run-record-kept",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "keeps nothing of a run with no run context once it settled",
-    "why": "what an attempt left under an observer's options is not removed when the last pending run of those options settles, so on TanStack before 5.89 a long-lived observer holds the argument, the error and the signed request of every write whose outcome was unknown (#1037)",
-    "file": "src/options.ts",
-    "search": "          if (kept.runs === 1) unknownAttempts.delete(counted)\n",
-    "replace": ""
-  },
-  {
-    "id": "1037-settled-run-counted-by-options",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "keeps nothing of a run with no run context once it settled, when an onSettled of the app's calls the client's",
-    "why": "a settled run is counted out of the options onSettled is called on, not of the options its onMutate counted it in for, so with an onSettled of the app's that calls the client's as the guide says nothing is counted out and what the run left is kept (#1037)",
-    "file": "src/options.ts",
-    "search": "        const counted = started?.options\n",
-    "replace": "        const counted = started && (this as object)\n"
-  },
-  {
-    "id": "1037-settled-sibling-drops-record",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "still refuses the retry of a run with no run context after another run of its options settled",
-    "why": "the records under an observer's options are removed when any run of those options settles, so the retry of a run that still waits finds nothing and the write goes out again as a new request (#1037)",
-    "file": "src/options.ts",
-    "search": "          if (kept.runs === 1) unknownAttempts.delete(counted)\n",
-    "replace": "          unknownAttempts.delete(counted)\n"
-  },
-  {
-    "id": "1037-run-counted-out-twice",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "still refuses the retry of a run with no run context after onSettled was called twice for another run",
-    "why": "a run is counted out of its options every time onSettled is called for it, so a second call counts out a run that still waits to retry: what it left is removed, and its retry is refused caller_changed, which says nothing ran (#1037)",
-    "file": "src/options.ts",
-    "search": "          started.options = undefined\n",
-    "replace": ""
-  },
-  {
-    "id": "1037-settling-without-run-counts-out",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "still refuses the retry of a run with no run context after a run the client's onMutate did not start settled",
-    "why": "a settling that hands onSettled no run of the client's counts a run out of the options it is called on, as a run whose onMutate threw would, so a run that still waits to retry loses what it left and its retry is refused caller_changed, which says nothing ran (#1037)",
-    "edits": [
-      {
-        "file": "src/options.ts",
-        "search": "        const counted = started?.options\n",
-        "replace": "        const counted = started?.options ?? (this as object)\n"
-      },
-      {
-        "file": "src/options.ts",
-        "search": "          started.options = undefined\n",
-        "replace": "          if (started) started.options = undefined\n"
-      }
-    ]
-  },
-  {
     "id": "1037-cloned-failure-says-nothing-ran",
     "package": "core",
     "test": "tests/retried-write.test.ts",
     "testName": "refuses a restored run whose persister kept no field of its failure as a retried write",
     "why": "a failure counts as one that may have executed only when it says so, and a persister that stores a structured clone (IndexedDB) keeps no field of an error, so a run restored after an attempt that may have executed is refused caller_changed, which tells the app to call mutate() again (#1037)",
     "file": "src/options.ts",
-    "search": "    !known) !== false\n",
-    "replace": "    false) !== false\n"
+    "search": "  (reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted !== false\n",
+    "replace": "  (reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted === true\n"
   },
   {
     "id": "1037-app-failure-refuses-known-run",
     "package": "core",
     "test": "tests/retried-write.test.ts",
     "testName": "sends the re-send a function of the app's own makes after a step of its own failed",
-    "why": "a failure TanStack kept that does not say whether its attempt may have executed counts as one that may have for a run whose starter the client knows too, where it is the failure of a step of the app's own before the write was sent, so the client refuses a write it would send, retried_write, though no attempt of the run went out (#1037)",
+    "why": "TanStack's record of a pending run is read for a run the client saw start too, where a failure that does not say whether its attempt may have executed is the failure of a step of the app's own before the write was sent, so the client refuses a write it would send, retried_write, though nothing of it ran (#1037)",
     "file": "src/options.ts",
-    "search": "        mayHaveRun(state.failureReason, started)\n",
-    "replace": "        mayHaveRun(state.failureReason)\n"
+    "search": "  if (kept !== undefined || started) return kept\n",
+    "replace": "  if (kept !== undefined) return kept\n"
   },
   {
     "id": "1037-wrapped-fn-context-ignored",
     "package": "core",
     "test": "tests/retried-write.test.ts",
     "testName": "knows the run of a write that a function of the app's own calls with both arguments",
-    "why": "the client's mutationFn looks for an earlier attempt without the run context it was handed, so when a function of the app's own calls it with both arguments, as the guide says, it finds nothing under the options it is called on and the retry goes out as a new request (#1037)",
+    "why": "the client's mutationFn looks for an earlier attempt without the run context it was handed, so when a function of the app's own calls it with both arguments, as the guide says, the attempt is taken for a call by hand and the retry goes out as a new request (#1037)",
     "file": "src/options.ts",
-    "search": "        vars,\n        context,\n        caller !== undefined\n",
-    "replace": "        vars,\n        undefined,\n        caller !== undefined\n"
+    "search": "      const earlier = earlierAttempt(this, vars, context, caller !== undefined)\n",
+    "replace": "      const earlier = earlierAttempt(\n        this,\n        vars,\n        undefined,\n        caller !== undefined\n      )\n"
   },
   {
     "id": "1037-run-record-kept-by-argument",
@@ -6125,13 +6005,13 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(key ?? vars)\n",
-        "replace": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(vars)\n"
+        "search": "  const kept = unknownAttempts.get(key)\n",
+        "replace": "  const kept = (\n    unknownAttempts.get(key) as Map<unknown, unknown> | undefined\n  )?.get(vars)\n"
       },
       {
         "file": "src/options.ts",
-        "search": "          byArgument.set(key ?? vars, error)\n",
-        "replace": "          byArgument.set(vars, error)\n"
+        "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+        "replace": "        if (key && mayHaveRun(error)) {\n          unknownAttempts.set(key, new Map([[vars, error]]))\n        }\n"
       }
     ]
   },
@@ -6971,6 +6851,195 @@
     "replace": "          caller !== state.principal,\n"
   },
   {
+    "id": "920-finished-write-still-shown",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "starts a finished write over for whoever shows it, and keeps it out of the cache, after a switch of account",
+    "why": "a change of caller resets no observer, so a useMutation goes on showing the last account's argument, result or error (an InsufficientFunds error carries its balance) to the next one",
+    "file": "src/client.ts",
+    "search": "      existing((observer) => {\n        if ((shows.get(observer) as number) < callerChanges) {\n          // It shows nothing after this, and stays held by its one `WeakRef`.\n          shows.set(observer, undefined)\n          observer.reset()\n        }\n      })\n",
+    "replace": ""
+  },
+  {
+    "id": "920-finished-write-kept-in-cache",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "starts a finished write over for whoever shows it, and keeps it out of the cache, after a sign-out",
+    "why": "a change of caller leaves the last caller's settled mutations in the client's cache, where useMutationState lists them for the next one",
+    "file": "src/client.ts",
+    "search": "          if (mutation.state.status === \"pending\") left.add(mutation)\n          else mutationCache.remove(mutation)\n",
+    "replace": "          if (mutation.state.status === \"pending\") left.add(mutation)\n"
+  },
+  {
+    "id": "920-writes-cleared-after-listeners",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "has done so before a listener hears of the change",
+    "why": "the writes are started over after the listeners were told, so the render a listener starts for the next caller still shows the last caller's write",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "      callerChanges++\n",
+        "replace": "      callerChanges++\n      queueMicrotask(() => {\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "          observer.reset()\n        }\n      })\n",
+        "replace": "          observer.reset()\n        }\n      })\n      })\n"
+      }
+    ]
+  },
+  {
+    "id": "920-pending-write-removed-at-once",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "starts a write still in flight over at once, keeps it in the cache while it runs, and removes it when it settles",
+    "why": "a pending mutation is removed from the cache when the caller changes: TanStack then never continues one that waits offline or behind its scope, so its promise never settles",
+    "file": "src/client.ts",
+    "search": "          if (mutation.state.status === \"pending\") left.add(mutation)\n          else mutationCache.remove(mutation)\n",
+    "replace": "          mutationCache.remove(mutation)\n"
+  },
+  {
+    "id": "920-settled-write-kept-in-cache",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "leaves a write that waits offline in the cache until it runs, refused and then removed, with nothing sent",
+    "why": "a mutation that was pending when the caller changed stays in the cache after it settles, with the last caller's argument and outcome, until TanStack collects it",
+    "file": "src/client.ts",
+    "search": "      type === \"updated\" &&\n      mutation.state.status !== \"pending\" &&\n",
+    "replace": "      false &&\n      mutation.state.status !== \"pending\" &&\n"
+  },
+  {
+    "id": "920-unheard-observer-keeps-last-write",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "starts over an observer nobody listens to, at the change and not when someone listens again",
+    "why": "the client forgets an observer as TanStack detaches it, so one that nobody listened to when the caller changed (a hidden Activity) keeps the last caller's write and renders it when its screen comes back; a TanStack Query before 5.102 never attaches it again",
+    "file": "src/client.ts",
+    "search": "    } else if (\n      type === \"updated\" &&\n",
+    "replace": "    } else if (type === \"observerRemoved\") {\n      shows.delete(event.observer)\n    } else if (\n      type === \"updated\" &&\n"
+  },
+  {
+    "id": "920-listener-write-started-over",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "leaves alone a write that a listener starts for the next caller while the last one's are started over",
+    "why": "every observer of one of the client's mutations is started over, also one that attached after the change: a write a listener starts for the next caller, while the others are being reset, is taken from its observer",
+    "file": "src/client.ts",
+    "search": "        if ((shows.get(observer) as number) < callerChanges) {\n",
+    "replace": "        if (shows.get(observer) !== undefined) {\n"
+  },
+  {
+    "id": "920-observer-told-again",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "tells whoever listens once for each change, however often the observer wrote",
+    "why": "an observer that was started over keeps the count of its last write, so every later change of caller resets it again and tells its listeners of nothing",
+    "file": "src/client.ts",
+    "search": "          // It shows nothing after this, and stays held by its one `WeakRef`.\n          shows.set(observer, undefined)\n",
+    "replace": ""
+  },
+  {
+    "id": "920-observer-held-twice",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "holds an observer through the one WeakRef still, after the caller has changed and it writes again",
+    "why": "an observer that was started over is dropped from the map while its reference stays, so its next write holds it through one more, and the references to a screen that stays grow with every change of caller",
+    "file": "src/client.ts",
+    "search": "          shows.set(observer, undefined)\n",
+    "replace": "          shows.delete(observer)\n"
+  },
+  {
+    "id": "920-observer-kept-alive",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "holds each observer through a WeakRef alone, and forgets one that is gone",
+    "why": "the client holds every observer itself, so each useMutation that ever wrote stays in memory with what it shows, for as long as the client lives",
+    "file": "src/client.ts",
+    "search": "        observers.add(new WeakRef(observer))\n",
+    "replace": "        observers.add({ deref: () => observer })\n"
+  },
+  {
+    "id": "920-observer-kept-alive-collection",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "keeps no observer alive: one the app lets go of is collected",
+    "why": "the client holds every observer itself, so a real garbage collection never frees one the app let go of",
+    "file": "src/client.ts",
+    "search": "        observers.add(new WeakRef(observer))\n",
+    "replace": "        observers.add({ deref: () => observer })\n"
+  },
+  {
+    "id": "920-gone-observer-never-forgotten",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "holds each observer through a WeakRef alone, and forgets one that is gone",
+    "why": "the reference to an observer that was collected is never dropped, so the set of them grows with every useMutation that ever wrote",
+    "file": "src/client.ts",
+    "search": "      else observers.delete(held)\n",
+    "replace": ""
+  },
+  {
+    "id": "920-gone-observers-pile-up",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "holds each observer through a WeakRef alone, and forgets one that is gone",
+    "why": "collected observers are forgotten only when the caller changes, so a session that never changes its caller keeps a reference for every one",
+    "file": "src/client.ts",
+    "search": "        existing(() => {})\n",
+    "replace": ""
+  },
+  {
+    "id": "920-no-weakref-throws",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "clears the cache and leaves what an observer shows where the runtime has no WeakRef",
+    "why": "WeakRef is used without looking for it, so in an ES2020 runtime without one every write through an observer throws a TypeError before it is sent",
+    "file": "src/client.ts",
+    "search": "      if (typeof WeakRef === \"function\" && !shows.has(observer)) {\n",
+    "replace": "      if (!shows.has(observer)) {\n"
+  },
+  {
+    "id": "920-stale-press-kept-in-cache",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "removes the mutation of a press from a render the caller has left, once it is refused",
+    "why": "a write pressed from a render the caller has left is refused and stays in the cache, with the argument the last caller's form was pressed with",
+    "file": "src/client.ts",
+    "search": "            left.add(refused)\n",
+    "replace": ""
+  },
+  {
+    "id": "920-app-stale-press-removed",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "leaves such a press in the cache under a key of the app's own",
+    "why": "a mutation under a key of the app's own that ends with the client's caller_changed refusal is removed from the cache, so the app's own list of its mutations loses an attempt whose onError it saw",
+    "file": "src/client.ts",
+    "search": "      isOwn(mutation) &&\n",
+    "replace": ""
+  },
+  {
+    "id": "920-app-mutations-started-over",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "leaves the app's own mutations, and the writes of a caller who stays",
+    "why": "a change of caller starts over every mutation in the QueryClient, the app's own under its own keys included",
+    "file": "src/client.ts",
+    "search": "    return key?.[0] === KEY_ROOT && key[1] === network.keySegment\n",
+    "replace": "    return key !== null\n"
+  },
+  {
+    "id": "920-next-caller-write-removed",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "keeps what the next caller writes",
+    "why": "every mutation under the client's keys leaves the cache as it settles, not only one that was pending when the caller changed: the next caller's own write is gone from it at once",
+    "file": "src/client.ts",
+    "search": "      (left.has(mutation) || left.has(mutation.state.error as object))\n",
+    "replace": "      true\n"
+  },
+  {
     "package": "core",
     "test": "tests/client-auth-network.test.ts",
     "file": "src/network.ts",
@@ -7298,5 +7367,155 @@
     "file": "src/options.ts",
     "search": "const TIME_SLACK = 300_000_000_000n\n",
     "replace": "const TIME_SLACK = 0n\n"
+  },
+  {
+    "id": "clock-refused-expiry-final-for-a-direct-read",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a signed read that is the first request",
+    "why": "a read the replica refused for its ingress expiry is final again, so on a device whose clock is minutes off a signed-in caller's first direct read rejects not_delivered, though the agent has read the IC's time and the same read asked again is answered",
+    "file": "src/errors.ts",
+    "search": "      : make(\"not_delivered\", false, reason, !update)\n",
+    "replace": "      : make(\"not_delivered\", false, reason)\n"
+  },
+  {
+    "id": "clock-refused-expiry-final-for-a-query",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read made with queryOptions in a browser page",
+    "why": "a read the replica refused for its ingress expiry is not marked retryable, so TanStack Query does not ask a queryOptions read again and a signed-in user's first read shows an error on a device whose clock is minutes off",
+    "file": "src/errors.ts",
+    "search": "      : make(\"not_delivered\", false, reason, !update)\n",
+    "replace": "      : make(\"not_delivered\", false, reason)\n"
+  },
+  {
+    "id": "clock-refused-write-marked-retryable",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "does not retry a write the replica refused for its ingress expiry",
+    "why": "a write the replica refused for its ingress expiry is marked retryable as a read is, so an app's own query around a direct write signs it again while the refused request can still become valid: two requests for one intent",
+    "file": "src/errors.ts",
+    "search": "      : make(\"not_delivered\", false, reason, !update)\n",
+    "replace": "      : make(\"not_delivered\", false, reason, true)\n"
+  },
+  {
+    "id": "clock-time-not-read-again",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "resolves client.time() as the first signed request",
+    "why": "client.time() does not read once more after the replica refused its read_state for the ingress expiry, so on a device whose clock is minutes off a signed-in caller's first client.time() rejects not_delivered and the transfer it would stamp is not sent",
+    "file": "src/options.ts",
+    "search": "      if (isRetryable(error)) return once()\n",
+    "replace": ""
+  },
+  {
+    "id": "clock-time-read-again-after-its-bound",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "sends no second read once the bound has passed",
+    "why": "the second read of client.time() does not check the canister object's timeoutMs, so a read_state is sent after the call rejected with code timeout",
+    "file": "src/options.ts",
+    "search": "    const once = () => readTime(where, () => timedOut)\n",
+    "replace": "    const once = () => readTime(where, () => false)\n"
+  },
+  {
+    "id": "clock-refused-read-resent-without-end",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "leaves a read refused after its two re-sends when the time cannot be read",
+    "why": "a direct read's re-sends have no limit, so a read the replica keeps refusing (a device whose clock changed, while the IC's time cannot be read again) is sent again without end",
+    "file": "src/call.ts",
+    "search": "            : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))\n",
+    "replace": "            : isRetryable(error))\n"
+  },
+  {
+    "id": "clock-time-not-read-again-after-a-later-refusal",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a signed read, sent again once the agent has read the time again",
+    "why": "the call path does not have the agent read the IC's time again after a refused ingress expiry, and an agent reads it on its first refusal only, so once a device's clock is changed with the page open every signed request is refused until a reload",
+    "file": "src/call.ts",
+    "search": "        await resync(\n          agent as HttpAgent,\n          synced,\n          call.effective,\n          asRecord(error).cause,\n          signal\n        )\n",
+    "replace": ""
+  },
+  {
+    "id": "clock-time-not-read-again-for-client-time",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "resolves client.time() on its second read, with the IC's time",
+    "why": "client.time() does not have the agent read the IC's time again after a refused ingress expiry, so once a device's clock is changed with the page open it rejects not_delivered until a reload, and the transfer it would stamp is not sent",
+    "file": "src/options.ts",
+    "search": "      await resync(agent, synced, where.canisterId, error)\n",
+    "replace": ""
+  },
+  {
+    "id": "clock-time-read-again-on-the-first-refusal",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "is not made for an agent's first refusal",
+    "why": "the client has the agent read the IC's time after every refused ingress expiry, the first included, when the agent has just read it itself: three more requests for every signed-in session on a device whose clock is off",
+    "file": "src/call.ts",
+    "search": "      OFF_CLOCK.test(String([code.name, code.error])) &&\n      synced === agent.hasSyncedTime()\n",
+    "replace": "      OFF_CLOCK.test(String([code.name, code.error]))\n"
+  },
+  {
+    "id": "clock-write-rejects-before-the-time-is-read",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "rejects a write not_delivered once, and sends it once when it is sent again",
+    "why": "a refused write rejects while the IC's time is still being read, so the same write sent again at once is signed by the clock that is off and refused again",
+    "file": "src/call.ts",
+    "search": "        await resync(\n          agent as HttpAgent,\n",
+    "replace": "        void resync(\n          agent as HttpAgent,\n"
+  },
+  {
+    "id": "clock-time-read-outlasts-the-bound",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "leaves a refused write not_delivered when its timeoutMs passes meanwhile",
+    "why": "the read of the IC's time is awaited without the call's signal, so a write the replica refused waits for that read past its timeoutMs",
+    "file": "src/call.ts",
+    "search": "          asRecord(error).cause,\n          signal\n        )\n",
+    "replace": "          asRecord(error).cause\n        )\n"
+  },
+  {
+    "id": "clock-time-not-read-for-a-stale-answer",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read after a clock that was behind is set right",
+    "why": "the client does not have the agent read the IC's time when a query's answer is signed more than five minutes before the agent's time, and the agent reads no time for that, so with no one signed in every read fails until a reload once a clock that was behind is set right",
+    "file": "src/call.ts",
+    "search": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime|synced/\n",
+    "replace": "const OFF_CLOCK = /IngressExpiry|CertificateTime|synced/\n"
+  },
+  {
+    "id": "clock-time-not-read-for-a-certificate-before-the-agents-time",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read of another canister after a clock that was behind is set right, when the certificate is checked first",
+    "why": "the client does not have the agent read the IC's time when a certificate is more than five minutes before the agent's time, which an agent that has read the time throws as final, so with no one signed in a read of a canister whose node keys the agent has yet to read fails until a reload",
+    "file": "src/call.ts",
+    "search": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime|synced/\n",
+    "replace": "const OFF_CLOCK = /IngressExpiry|Outdated|synced/\n"
+  },
+  {
+    "id": "clock-time-not-read-for-a-certificate-after-the-agents-time",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read of another canister after a clock that was ahead is set right",
+    "why": "the client does not have the agent read the IC's time when a certificate is more than five minutes after the agent's time, which an agent that has read the time throws as an unexpected error, so with no one signed in a read of a canister whose node keys the agent has yet to read fails until a reload once a clock that was ahead is set right",
+    "file": "src/call.ts",
+    "search": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime|synced/\n",
+    "replace": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime/\n"
+  },
+  {
+    "id": "clock-time-not-read-by-an-agent-that-read-none",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read after the clock moved ahead, though the agent had read no time",
+    "why": "the client has the agent read the IC's time only when the agent had read it before, and an agent reads no time for a query's answer that is signed too long ago, so with no one signed in a read fails once the clock moves ahead with the page open",
+    "file": "src/call.ts",
+    "search": "      synced === agent.hasSyncedTime()\n",
+    "replace": "      synced\n"
   }
 ]

@@ -30,15 +30,9 @@ import { resolveCanisterId, type CanisterIdTarget } from "./network.js"
  * `ic_env` cookie, which a local redeploy can rewrite while an update is in
  * flight; resolving once keeps the write and its invalidation on the same
  * canister. (Who started the run is read in the same step, and kept by the
- * run's context or its options: `callerOf` in `options.ts`.)
+ * run's context: `ClientInternals.mutationCallers`.)
  */
 export interface MutationRun {
-  /**
-   * The options object the client's `onMutate` was called on with no run
-   * context (TanStack Query before 5.89), where it counted the run in
-   * (`callersByOptions`), until `onSettled` counts the run out.
-   */
-  options?: object
   readonly target: ResolvedTarget
   readonly invalidates: readonly {
     readonly slots: readonly string[]
@@ -50,9 +44,9 @@ export interface MutationRun {
 export interface CanisterMethod extends PreparedMethod {
   /**
    * What was resolved for each run of a mutation that writes through this
-   * method of this canister, by the function context TanStack Query (5.89 and
-   * later) creates for the run and passes to `onMutate`, `mutationFn` and
-   * `onSettled` alike: how `mutationFn` finds what `onMutate` resolved, and
+   * method of this canister, by the function context TanStack Query creates
+   * for the run and passes to `onMutate`, `mutationFn` and `onSettled`
+   * alike: how `mutationFn` finds what `onMutate` resolved, and
    * `onSettled` what `mutationFn` wrote to, even when an `onMutate` of the
    * app's replaced the client's, and whichever render built the options
    * TanStack calls, when it built them from this canister object. (TanStack

@@ -39,8 +39,10 @@ import {
   type DehydratedState,
 } from "@tanstack/react-query"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import * as React from "react"
 import {
   Component,
+  Fragment,
   StrictMode,
   Suspense,
   lazy,
@@ -66,6 +68,15 @@ const CANISTER = "rdmx6-jaaaa-aaaaa-aaadq-cai"
 const REACT_18 = Number(version.split(".")[0]) < 19
 /** What an empty slot of React Compiler's cache holds (`react-compiler-runtime`'s `$empty`). */
 const EMPTY = Symbol.for("react.memo_cache_sentinel")
+/** `React.Activity` exists from React 19.2; the peer range starts at 18. */
+const Activity = (
+  React as unknown as {
+    Activity?: ComponentType<{
+      mode: "visible" | "hidden"
+      children: ReactNode
+    }>
+  }
+).Activity
 
 /** One query that answers with who called it. */
 const WHO = c.service({
@@ -702,6 +713,207 @@ describe("useClient()", () => {
     await screen.findByRole("button", { name: `written by ${second}` })
     expect(stamps().map(({ caller }) => caller)).toEqual([second])
   })
+
+  // #920: the client starts a write over when the caller changes, before
+  // it tells React. The key alone did so one commit late: `useMutation`
+  // takes the new options in an effect, so the first render for the next
+  // caller still showed the last caller's result.
+  it("shows the next caller nothing of the last caller's write, from the first render for them on", async () => {
+    const test = replica({ seed: 1 })
+    const renders: string[] = []
+    function Stamp() {
+      const client = useClient()
+      const who = client.canister<Who>(WHO, { id: CANISTER })
+      const stamp = useMutation(client.mutationOptions(who, "stamp"))
+      renders.push(`${client.caller()}: ${stamp.data ?? stamp.status}`)
+      return (
+        <button onClick={() => stamp.mutate()}>{stamp.data ?? "Stamp"}</button>
+      )
+    }
+    render(
+      <ReactorProvider client={() => test.client}>
+        <Stamp />
+      </ReactorProvider>
+    )
+    const first = test.auth.getPrincipal()?.toText()
+    fireEvent.click(screen.getByRole("button", { name: "Stamp" }))
+    await screen.findByRole("button", { name: `written by ${first}` })
+
+    renders.length = 0
+    act(() => {
+      test.auth.switchTo(2)
+    })
+    const second = test.auth.getPrincipal()?.toText()
+    for (let tick = 0; tick < 3; tick++) await act(macrotask)
+
+    expect(renders.length).toBeGreaterThan(0)
+    expect(new Set(renders)).toEqual(new Set([`${second}: idle`]))
+    // Nor does `useMutationState`, which lists what the cache holds.
+    expect(test.client.queryClient.getMutationCache().getAll()).toEqual([])
+  })
+
+  // #920: options kept past their render (see `useClient`) still name the
+  // caller they were built for. What they wrote goes when that caller does.
+  it("starts over a write whose options a component kept past the render, when the caller changes", async () => {
+    const test = replica({ seed: 1 })
+    function Stamp() {
+      const client = useClient()
+      // The mistake under test: no `client` in the dependencies.
+      const options = useMemo(() => {
+        const who = client.canister<Who>(WHO, { id: CANISTER })
+        return client.mutationOptions(who, "stamp")
+      }, [])
+      const stamp = useMutation(options)
+      return (
+        <button onClick={() => stamp.mutate()}>
+          {stamp.data ?? stamp.status}
+        </button>
+      )
+    }
+    render(
+      <ReactorProvider client={() => test.client}>
+        <Stamp />
+      </ReactorProvider>
+    )
+    const first = test.auth.getPrincipal()?.toText()
+    fireEvent.click(screen.getByRole("button", { name: "idle" }))
+    await screen.findByRole("button", { name: `written by ${first}` })
+
+    act(() => {
+      test.auth.switchTo(2)
+    })
+
+    expect(screen.getByRole("button").textContent).toBe("idle")
+    for (let tick = 0; tick < 3; tick++) await act(macrotask)
+    expect(screen.getByRole("button").textContent).toBe("idle")
+  })
+
+  // #920: a screen hidden with `<Activity>` stops listening to its
+  // `useMutation`, and when it comes back a render reads what the observer
+  // holds before anything listens to it again. TanStack starts an observer
+  // over by its key only in an effect, after that render is committed, so
+  // the client has done it by then: when the caller changed.
+  it.skipIf(Activity === undefined).each([
+    ["the client", false],
+    ["useClient()", true],
+  ])(
+    "renders nothing of the last caller's write when a hidden screen built from %s is rendered again",
+    async (_, fromHook) => {
+      const Hideable = Activity as NonNullable<typeof Activity>
+      const test = replica({ seed: 1 })
+      /** What each commit of the screen showed. */
+      const commits: string[] = []
+      function FromHook() {
+        return <Stamp client={useClient()} />
+      }
+      function Stamp({ client }: { client: Client }) {
+        const who = client.canister<Who>(WHO, { id: CANISTER })
+        const stamp = useMutation(client.mutationOptions(who, "stamp"))
+        const text = stamp.data ?? stamp.status
+        useLayoutEffect(() => {
+          commits.push(text)
+        })
+        return <button onClick={() => stamp.mutate()}>{text}</button>
+      }
+      const tree = (mode: "visible" | "hidden") => (
+        <ReactorProvider client={() => test.client}>
+          <Hideable mode={mode}>
+            {fromHook ? <FromHook /> : <Stamp client={test.client} />}
+          </Hideable>
+        </ReactorProvider>
+      )
+      const view = render(tree("visible"))
+      const first = test.auth.getPrincipal()?.toText()
+      fireEvent.click(screen.getByRole("button", { name: "idle" }))
+      await screen.findByRole("button", { name: `written by ${first}` })
+      view.rerender(tree("hidden"))
+      await act(macrotask)
+      act(() => {
+        test.auth.switchTo(2)
+      })
+      await act(macrotask)
+      commits.length = 0
+
+      view.rerender(tree("visible"))
+      for (let tick = 0; tick < 3; tick++) await act(macrotask)
+
+      expect(commits.length).toBeGreaterThan(0)
+      expect([...new Set(commits)]).toEqual(["idle"])
+      expect(screen.getByRole("button").textContent).toBe("idle")
+    }
+  )
+
+  // A hidden screen that React shows again without rendering it (its props
+  // did not change) appears as it was hidden, with the last caller's reads
+  // and writes, until React notices right after that the stores changed.
+  // That is React's `<Activity>` for any store. The Auth guide's
+  // `key={principal}`, set by a component that is shown, replaces the screen
+  // while it is hidden.
+  it.skipIf(Activity === undefined)(
+    "replaces a hidden screen while it is hidden, under a key of the account",
+    async () => {
+      const Hideable = Activity as NonNullable<typeof Activity>
+      const test = replica({ seed: 1 })
+      const commits: string[] = []
+      function Screen() {
+        const client = useClient()
+        const who = client.canister<Who>(WHO, { id: CANISTER })
+        const stamp = useMutation(client.mutationOptions(who, "stamp"))
+        const read = useQuery(client.queryOptions(who, "whoami"))
+        const text = `${stamp.data ?? stamp.status}, ${read.data ?? read.status}`
+        useLayoutEffect(() => {
+          commits.push(text)
+        })
+        return <button onClick={() => stamp.mutate()}>{text}</button>
+      }
+      /** Shown itself, it follows the account; what it hides does not. */
+      function Tabs({ children }: { children: ReactNode }) {
+        const [mode, setMode] = useState<"visible" | "hidden">("visible")
+        const { principal } = useAuth()
+        return (
+          <>
+            <input
+              type="checkbox"
+              onChange={() =>
+                setMode(mode === "visible" ? "hidden" : "visible")
+              }
+            />
+            <Hideable mode={mode}>
+              <Fragment key={principal}>{children}</Fragment>
+            </Hideable>
+          </>
+        )
+      }
+      // `children` is one element for every render of `Tabs`: React shows
+      // the screen again without rendering it.
+      render(
+        <ReactorProvider client={() => test.client}>
+          <Tabs>
+            <Screen />
+          </Tabs>
+        </ReactorProvider>
+      )
+      const first = test.auth.getPrincipal()?.toText()
+      await screen.findByRole("button", { name: `idle, read by ${first}` })
+      fireEvent.click(screen.getByRole("button"))
+      await screen.findByRole("button", {
+        name: `written by ${first}, read by ${first}`,
+      })
+      fireEvent.click(screen.getByRole("checkbox"))
+      await act(macrotask)
+      act(() => {
+        test.auth.switchTo(2)
+      })
+      await act(macrotask)
+      const second = test.auth.getPrincipal()?.toText()
+      commits.length = 0
+
+      fireEvent.click(screen.getByRole("checkbox"))
+      await screen.findByRole("button", { name: `idle, read by ${second}` })
+
+      expect(commits.filter((text) => text.includes(String(first)))).toEqual([])
+    }
+  )
 
   // #894: a handler that signs in and then writes presses with the options
   // of the last render React committed. The sign-in's update renders and

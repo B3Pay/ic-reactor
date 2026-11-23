@@ -843,7 +843,8 @@ const withDetail = (lead: string, detail: string): string =>
  * | reject 4 or 5 | `rejected` | true / false |
  * | reject 6, an unknown code, HTTP 408 or 5xx, a network failure, a polling timeout, a `Trust` failure | `outcome_unknown` / `not_delivered`, retryable for a query | true / false |
  * | HTTP 429 | `not_delivered`, retryable | false / false |
- * | any other HTTP 4xx, `IngressExpiryInvalid` | `not_delivered` | false / false |
+ * | `IngressExpiryInvalid` | `not_delivered`, retryable for a query | false / false |
+ * | any other HTTP 4xx | `not_delivered` | false / false |
  * | a request that could not be built or signed (CBOR or DER encoding, an invalid identity, no `fetch`, no canister id) | `not_delivered` | false / false |
  * | the signer did not sign a request (a declined prompt: {@link notSigned}) | `not_delivered` | false / false |
  *
@@ -868,6 +869,23 @@ const withDetail = (lead: string, detail: string): string =>
  * may be in the IC (see {@link ErrorContext}), they all read as
  * `outcome_unknown` with `mayHaveExecuted: true`, because a refusal that comes
  * later says nothing about the call.
+ *
+ * `IngressExpiryInvalid` is a replica refusing a request for its ingress
+ * expiry, which an agent takes from the host's clock: that clock is minutes
+ * off. A replica checks the expiry of every call, and of a query or a
+ * `read_state` whose sender is not anonymous. The agent answers the first
+ * such refusal by reading the IC's time, and signs by it from then on; after
+ * a later one the call path has it read the time again. So a read asked
+ * again is answered: it is retryable. A write is not. One signed again while
+ * the request that was refused can still become valid (an expiry too far
+ * ahead is valid later) would be two requests for one intent.
+ *
+ * An anonymous read is never refused that way. With the agent's time minutes
+ * off, it fails the agent's own check of the answer: a query's answer signed
+ * more than five minutes before the agent's time, or a certificate more than
+ * five minutes from it. Those classify as a doubt (the row of a `Trust`
+ * failure), which is retryable for a read, and the call path has the agent
+ * read the time after them as well (`resync` in `call.ts`).
  *
  * An abort during an update is `cancelled` with `mayHaveExecuted: true`: the
  * request may already have been delivered. Use
@@ -1001,9 +1019,10 @@ export function classifyError(
       "the replica refused the request's ingress expiry",
       shape.detail
     )
+    // Retryable for a read only: see the table's note on this refusal.
     return mayBeAccepted
       ? make("outcome_unknown", true, reason)
-      : make("not_delivered", false, reason)
+      : make("not_delivered", false, reason, !update)
   }
 
   if (httpStatus !== undefined) {

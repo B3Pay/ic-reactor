@@ -154,10 +154,12 @@ export interface FakeReplicaOptions {
    */
   canisters?: Record<string, FakeCanister>
   /**
-   * The time its certificates carry, in nanoseconds since the epoch: the
-   * IC's clock as an agent reads it from the `time` path. Internal, for the
-   * tests of `client.time()`; every other check the fake makes reads the
-   * host's clock.
+   * The fake's clock, in nanoseconds since the epoch: the time its
+   * certificates carry (the IC's clock as an agent reads it from the `time`
+   * path), and the time it signs a query's answer with. Internal, for the
+   * tests of `client.time()` and of a host whose clock is off. The one other
+   * time the fake checks, a delegation's expiry, it reads from the host's
+   * clock.
    *
    * @defaultValue The host's clock.
    */
@@ -873,7 +875,7 @@ export function createFakeReplica(
       caller: caller.toText(),
     })
     const outcome = await execute("query", canisterId, method_name, arg, caller)
-    const timestamp = nowNanos()
+    const timestamp = (options.now ?? nowNanos)()
     const request_id = requestIdOf(envelope.content)
     const body =
       "reply" in outcome

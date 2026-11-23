@@ -18,8 +18,130 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+#### Changed
+
+- Peer `@tanstack/query-core` at `^5.89.0`, where it was `^5.62.0`. TanStack
+  Query 5.89 is the first that passes a mutation's `onMutate`, `mutationFn`
+  and `onSettled` one function context for a run, and that context is how the
+  client knows a run: who started it, the canister it resolved, and whether
+  an earlier attempt of it may have executed. For the releases before it the
+  client went by the options object a run's functions are called on, with the
+  four limits the Writes guide listed: pending runs of one observer with the
+  same argument could not be told apart, a retried attempt could be sent on
+  another `QueryClient`, a run given new options there was refused
+  `caller_changed`, and a `mutationFn` of your own kept neither rule. The
+  limits go with the code that served them: core is 355 B smaller, gzipped.
+  `@ic-reactor/react` already needs `@tanstack/react-query` 5.90.2, so an app
+  that uses it has nothing to change. Migration: an app on a
+  `@tanstack/query-core` older than 5.89 updates it. Installing core, npm
+  updates it where the app's range allows it and stops with `ERESOLVE` where
+  the app pins it; pnpm and yarn warn. A floor rises only in a minor, so this
+  ships in one.
+- On a TanStack Query older than 5.89, a `mutate()` of the client's mutation
+  options on `client.queryClient` fails with a `TypeError` before anything is
+  sent. Such a release passes no run context, and without one the client's
+  `mutationFn` would take the run for a call by hand: sent as whoever is
+  signed in by then, and sent again for a `retry`. Migration: none on a
+  supported TanStack Query.
+- A call of the client's `mutationFn` with no context is a call by hand
+  whatever was called before it: it goes out as whoever is signed in when it
+  is made, and each call is a new one. Before, a call of the client's
+  `onMutate` with the argument alone made the client keep that caller for a
+  later call of `mutationFn` with the argument alone on the same options
+  object, refuse such a call on another options object of the method, and
+  refuse a second call with the same argument after a failure that may have
+  executed. That served TanStack Query before 5.89, which called both that
+  way. Migration: none for a mutation that TanStack Query runs with the
+  client's options. A function of your own that calls the client's `onMutate`
+  or `mutationFn` passes on the context it got, as the Writes guide says:
+  `options.onMutate(variables, context)` and
+  `options.mutationFn(variables, context)`.
+- On a device whose clock is minutes off, a signed-in caller's first read
+  and first `client.time()` no longer fail. An agent signs every request with
+  an ingress expiry four to five minutes after the device's clock. The IC
+  accepts an expiry between its own time and five and a half minutes after
+  it, and checks that on every update and on a read whose caller is signed
+  in, so on such a device it refuses the first request a signed-in caller's
+  agent sends. The agent then reads the IC's time and signs by it, but the
+  request that met the refusal failed, and for a read the client took that
+  as final. Measured on mainnet with the clock 3, 6 and 10 minutes ahead and
+  6 and 10 minutes behind: the first `icrc1_balance_of` as a signed-in caller
+  and the first `client.time()` rejected `not_delivered` ("the replica
+  refused the request's ingress expiry"), and the second answered. Now a read
+  refused that way is asked again: the client sends a direct call again (its
+  usual two re-sends at most), TanStack Query asks a `queryOptions` read
+  again in a browser, and `client.time()` reads once more, as it now does
+  after any failure another attempt can change. All of them answered on the
+  first call in the same measurements. A write is still never signed a second
+  time by the client: one the IC refuses for its expiry rejects
+  `not_delivered` (the canister ran nothing), and sending it again goes
+  through. A visitor who is not signed in was not affected, and an app has
+  nothing to change.
+- A device whose clock is changed while the page stays open no longer needs
+  a reload. An agent reads the IC's time once, on its first refused ingress
+  expiry or for the first certificate whose time is minutes off, and never
+  again. So once the clock was changed with the page open, corrected or
+  moved further off, the agent signed and checked by a clock that was off.
+  The IC then refused every request of a signed-in caller. With no one
+  signed in, where the IC checks no expiry, a read failed the agent's own
+  check of the answer instead: a query's answer signed more than five
+  minutes before the agent's time, or a certificate more than five minutes
+  from it. Either lasted until a new agent was built. Now the client has the
+  agent read the time again after such a failure: a read is asked again and
+  answers, `client.time()` reads once more and resolves, and a write rejects
+  `not_delivered` once and goes through when it is sent again. The first
+  refusal is left to the agent, so nothing more is sent for it. Measured on
+  mainnet, read-only, with the clock moved by 3 or 10 minutes after the
+  first read: 11 of 19 cases failed until a reload before (7 of 11 for a
+  signed-in caller, 4 of 8 with no one signed in), and every one answers
+  now. Core is 141 B larger for this, gzipped.
+
+#### Fixed
+
+- What a write showed no longer outlives its caller (#920). When the caller
+  changes (a sign-in, a sign-out, an expired session, a switch of account),
+  the client starts over every mutation under its mutation keys before it
+  tells its listeners: each observer of one is reset, so a `useMutation` is
+  idle again, and the mutation leaves the cache of `client.queryClient`, at
+  once when it has settled and otherwise when it settles. An observer nobody
+  listens to then is reset as well, so a screen hidden with React's
+  `<Activity>` renders nothing of the last account's write when it comes back,
+  on every supported TanStack Query. Before, the last account's argument,
+  result or error (an `InsufficientFunds` error carries a balance) stayed on
+  screen and in `useMutationState` for the next account, because a mutation
+  key of the client's own names no caller. Built from `useClient()`, whose key
+  ends with the caller, it stayed for the first render after the change, since
+  `useMutation` takes new options in an effect, and for good where a component
+  kept the options past their render. A write still running keeps running, and
+  reports to the callbacks in its options and to the promise `mutateAsync`
+  returned, not to the screen or to the callbacks passed to `mutate()`. A
+  write under the client's keys that is refused because the render it was
+  pressed from showed another caller (`caller_changed`) leaves the cache as it
+  settles. The client reaches each observer through a `WeakRef` and keeps none
+  alive. A runtime with no `WeakRef`, which every browser has had since 2021,
+  gets the cache cleared and no observer reset. Not covered, as before: a
+  mutation given a `mutationKey` of your own, a mutation on another
+  `QueryClient`, and what a component keeps in its own state. The Auth guide's
+  "Switching accounts" shows the `key={principal}` that covers those, and a
+  hidden screen that React shows again without rendering it. Migration: none,
+  unless an app relied on a result staying on screen across a change of
+  caller: keep it in the app's own state, from the callbacks in the options.
+
 ### Docs
 
+- The Writes guide no longer lists what differs on TanStack Query before
+  5.89, and the support table names `@tanstack/query-core` 5.89.0.
+- The Auth guide says what a change of caller does to a write, and has a
+  recipe for switching accounts (#920). The Vite wallet's README and docs
+  page say that its Internet Identity button, pressed while someone is signed
+  in, switches accounts with no reload.
+- The Errors guide has a section on a device whose clock is off, and the
+  classification table gives `IngressExpiryInvalid` a row of its own. The
+  Writes guide no longer says that no call works on such a device until its
+  clock is fixed: the agent corrects itself after the first refusal. The
+  reference of `client.time()` says what it does there.
 - "Build an ICRC-1 wallet" sends one transfer when Send is pressed twice. It
   awaited `client.time()` in the submit handler, before `mutate()`. While that
   read was on its way nothing was pending and the Send button stayed on, so a

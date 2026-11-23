@@ -61,7 +61,9 @@ test build that makes no passkey: choose Create, then "Create with passkey",
 name the identity, and answer its "Enter seed index" prompt with a number.
 Continue returns you to the wallet, signed in, and the session survives a
 reload. Next time, Continue as the identity it remembers and give the same
-number: the principal is the same.
+number: the principal is the same. Pressed while someone is signed in, the
+button runs the sign-in again, and the wallet follows the account it comes
+back as, with no reload.
 
 ## Test it
 

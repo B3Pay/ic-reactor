@@ -68,7 +68,7 @@
     "@meantjs/schema": "0.6.0",
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
-    "@tanstack/query-core": "^5.62.0"
+    "@tanstack/query-core": "^5.89.0"
   },
   "peerDependenciesMeta": {
     "@noble/curves": {

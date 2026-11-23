@@ -357,7 +357,17 @@ principal's cached answer is never served to another: after a sign-in,
 sign-out or switch, the new caller's key is empty (`data` is `undefined`)
 until it loads, and a read made for the previous caller never lands in it.
 A sign-out, an expired session or a switch also removes the previous
-caller's reads from the cache; the anonymous reads stay.
+caller's reads from the cache; the anonymous reads stay. Any change of
+caller also starts over every mutation under the client's mutation keys: a
+`useMutation` that showed the last caller's result or error is idle before
+the components re-render, on a hidden `<Activity>` screen too (the client
+reaches it through a `WeakRef`; in a runtime with none it only clears the
+cache), the mutation leaves `client.queryClient` (a pending one when it
+settles), and a write still running reports to the callbacks in its options
+and to `mutateAsync`'s promise only. Component
+state (a form, a copied result), a mutation under a `mutationKey` of your
+own and another `QueryClient` are not the client's to clear: mount the
+account's part of the page under `key={principal}`.
 Keep it so: build the options in render from that render's `useClient()`,
 listing it in the dependencies of any `useMemo` or effect built from it
 (React Compiler does), and add nothing that carries data across keys
@@ -443,14 +453,13 @@ export function Send({ arg }: { arg: TransferArg }) {
   back). It goes by the failure the persister stored: a structured clone
   (IndexedDB) keeps no field of an error, so there a restored mutation that
   had failed is `retried_write` whatever the failure was. On another
-  `QueryClient`, keep the
-  client's `onMutate` (spread its result into yours; before TanStack Query
-  5.89, pass it unwrapped). If nobody is signed in,
+  `QueryClient`, keep the client's `onMutate` (spread its result into
+  yours). If nobody is signed in,
   the client refuses it (`unauthenticated`) before calling anything.
 - The client's `mutationFn` is what keeps the two rules above. For a step of
   your own before a write, keep the client's `onMutate` and call the
   `mutationFn` of the same options from yours with the context TanStack Query
-  hands yours (5.89 and later): `mutationFn: (variables, context) =>
+  hands yours: `mutationFn: (variables, context) =>
   options.mutationFn(variables, context)`. Make that call the last step of
   your function: a write that succeeded is not held back when a later step
   fails and a `retry` of yours runs the function again. A function that
@@ -459,8 +468,7 @@ export function Send({ arg }: { arg: TransferArg }) {
   or with a direct call on the canister in its place, the write is a new call
   each time your function runs: it goes out as whoever is signed in by then,
   and a `retry` of yours sends it again after an attempt that may have
-  executed. Before 5.89 there is no context to hand on: do the step before
-  `mutate()` instead.
+  executed.
 - Send the same write again after `mayHaveExecuted: true` only to a method
   that runs the same argument from the same sender at most once, such as an
   ICRC-1 transfer with `created_at_time` set (it answers `Duplicate`).
@@ -546,6 +554,20 @@ since the host's clock may differ from the IC's.
 On the management canister (`aaaaa-aa`), codes 1 to 3 prove nothing: a write
 there may have executed. A query changes nothing, so a failed read never "may
 have executed".
+
+On a device whose clock is minutes off, the IC refuses the first request a
+signed-in caller's agent signs, because its ingress expiry comes from that
+clock, and the agent then signs by the IC's time. The client asks a refused
+read again and `client.time()` reads once more, so both answer. It never
+signs a refused write a second time: that write rejects `not_delivered` (the
+canister ran nothing), and sending it again goes through. A write that
+follows a read as the caller, or `await client.time(canister)`, is not the
+one refused. A visitor who is not signed in is not affected. When the clock
+is changed by minutes while the page is open, the agent's requests can fail
+again, signed in or not: the IC refuses a signed-in caller's, and with no one
+signed in a read fails the agent's own check of the answer. The client then
+has the agent read the time once more: a read answers when it is asked
+again, and a write goes through when it is sent again.
 
 How long a call waits: unless the call has a `timeoutMs` (below), neither the
 client nor the agent puts a timeout on an HTTP request (the call or query, or a `read_state` that polls), so a request
