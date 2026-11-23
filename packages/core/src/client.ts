@@ -952,8 +952,10 @@ export interface ClientInternals {
    * - A stale query signature. A query reply signed longer ago than the
    *   ingress expiry window no longer makes the agent sync its clock and ask
    *   again: it fails as a `Trust` error (`CertificateOutdatedErrorCode`),
-   *   which a read classifies as a retryable `not_delivered`, so a browser
-   *   read is asked again through `retryQuery` without a clock sync.
+   *   which a read classifies as a retryable `not_delivered`. The call path
+   *   has the agent read the IC's time after it (`resync`) and sends a
+   *   direct read again, and a browser read is asked again through
+   *   `retryQuery`.
    *
    * A refused ingress expiry (a host whose clock is minutes off) makes the
    * agent read the IC's time whatever `retryTimes` says, once per agent, and
@@ -965,9 +967,15 @@ export interface ClientInternals {
    * classifier marks the refusal retryable for a read, so the call path,
    * `retryQuery` and `client.time()` ask again. A write the agent signs
    * again in 6.1.0, and from 6.1.1 only when the refused request's expiry
-   * had already passed; the call path never signs one again itself. After a
-   * later refusal, when the host's clock was changed since, the call path
-   * and `client.time()` have the agent read the time again (`resync`).
+   * had already passed; the call path never signs one again itself.
+   *
+   * The agent reads the IC's time once: on that first refusal, or for the
+   * first certificate whose time is minutes from the host's, and never for
+   * a query's answer signed minutes before it. So once the host's clock is
+   * changed, its requests can fail again: a signed one is refused, and an
+   * anonymous read, whose expiry a replica does not check, fails the
+   * agent's own check of the answer. The call path and `client.time()` have
+   * the agent read the time then (`resync`).
    */
   agentFor(principal: string, context: AgentContext): Promise<HttpAgent>
 }

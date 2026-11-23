@@ -1848,8 +1848,8 @@
       },
       {
         "file": "src/call.ts",
-        "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-        "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+        "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+        "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
       }
     ]
   },
@@ -5178,8 +5178,8 @@
     "testName": "still waiting for its caller's identity",
     "why": "the wait for the caller's agent not ended by the timeout, so a call whose identity never arrives waits forever",
     "file": "src/call.ts",
-    "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-    "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+    "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
   },
   {
     "id": "875-timeout-direct-call-ignores-target",
@@ -5238,8 +5238,8 @@
     "testName": "a read aborted while it waits for its caller's identity",
     "why": "the wait for the caller's agent not ended by a read's abort signal, so an aborted read keeps waiting for an identity that may never come",
     "file": "src/call.ts",
-    "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-    "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+    "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
   },
   {
     "id": "875-timeout-resend-loses-unknown",
@@ -7266,8 +7266,8 @@
     "testName": "is not made for an agent's first refusal",
     "why": "the client has the agent read the IC's time after every refused ingress expiry, the first included, when the agent has just read it itself: three more requests for every signed-in session on a device whose clock is off",
     "file": "src/call.ts",
-    "search": "    synced &&\n    asRecord(asRecord(error).code).name === \"IngressExpiryInvalidErrorCode\"\n",
-    "replace": "    asRecord(asRecord(error).code).name === \"IngressExpiryInvalidErrorCode\"\n"
+    "search": "      OFF_CLOCK.test(String([code.name, code.error])) &&\n      synced === agent.hasSyncedTime()\n",
+    "replace": "      OFF_CLOCK.test(String([code.name, code.error]))\n"
   },
   {
     "id": "clock-write-rejects-before-the-time-is-read",
@@ -7288,5 +7288,45 @@
     "file": "src/call.ts",
     "search": "          asRecord(error).cause,\n          signal\n        )\n",
     "replace": "          asRecord(error).cause\n        )\n"
+  },
+  {
+    "id": "clock-time-not-read-for-a-stale-answer",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read after a clock that was behind is set right",
+    "why": "the client does not have the agent read the IC's time when a query's answer is signed more than five minutes before the agent's time, and the agent reads no time for that, so with no one signed in every read fails until a reload once a clock that was behind is set right",
+    "file": "src/call.ts",
+    "search": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime|synced/\n",
+    "replace": "const OFF_CLOCK = /IngressExpiry|CertificateTime|synced/\n"
+  },
+  {
+    "id": "clock-time-not-read-for-a-certificate-before-the-agents-time",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read of another canister after a clock that was behind is set right, when the certificate is checked first",
+    "why": "the client does not have the agent read the IC's time when a certificate is more than five minutes before the agent's time, which an agent that has read the time throws as final, so with no one signed in a read of a canister whose node keys the agent has yet to read fails until a reload",
+    "file": "src/call.ts",
+    "search": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime|synced/\n",
+    "replace": "const OFF_CLOCK = /IngressExpiry|Outdated|synced/\n"
+  },
+  {
+    "id": "clock-time-not-read-for-a-certificate-after-the-agents-time",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read of another canister after a clock that was ahead is set right",
+    "why": "the client does not have the agent read the IC's time when a certificate is more than five minutes after the agent's time, which an agent that has read the time throws as an unexpected error, so with no one signed in a read of a canister whose node keys the agent has yet to read fails until a reload once a clock that was ahead is set right",
+    "file": "src/call.ts",
+    "search": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime|synced/\n",
+    "replace": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime/\n"
+  },
+  {
+    "id": "clock-time-not-read-by-an-agent-that-read-none",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read after the clock moved ahead, though the agent had read no time",
+    "why": "the client has the agent read the IC's time only when the agent had read it before, and an agent reads no time for a query's answer that is signed too long ago, so with no one signed in a read fails once the clock moves ahead with the page open",
+    "file": "src/call.ts",
+    "search": "      synced === agent.hasSyncedTime()\n",
+    "replace": "      synced\n"
   }
 ]

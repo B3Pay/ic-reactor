@@ -13,6 +13,13 @@
  * It reads the time on that first refusal only, so when the host's clock is
  * changed later, the client has it read the time again.
  *
+ * A replica checks no expiry of an anonymous read, so with no one signed in
+ * nothing is refused. What fails then is the agent's own check of an answer:
+ * a query's answer signed more than five minutes before the agent's time, or
+ * a certificate whose time is more than five minutes from it. The agent reads
+ * the IC's time for the first such certificate only, and never for a query's
+ * answer, so the client has it read the time there as well.
+ *
  * The fake replica checks no expiry, so `offClock` checks it in front of the
  * fake, with a replica's rule and a replica's answer. The clock it moves is
  * the IC's: the host's stays the true one, and is "ahead" when the IC's time
@@ -25,6 +32,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { createClient, type Client } from "../src/client.js"
 import { createFakeReplica } from "../src/testing/fake-replica.js"
 import {
+  ANONYMOUS,
+  ARCHIVE,
   FEE,
   LEDGER,
   ledgerCanister,
@@ -42,6 +51,8 @@ const START = 1_000_000_000n
 const DEBIT = 100n + FEE
 /** The block index the fake ledger answers a transfer with. */
 const BLOCK = 7n
+/** A second ledger: an agent reads a subnet's node keys for each canister it queries. */
+const SECOND = ARCHIVE
 
 /** A request the replica was sent, and what it did with its expiry. */
 interface Seen {
@@ -59,22 +70,33 @@ afterEach(() => {
 
 /**
  * A ledger on a replica whose clock is `hostAheadMs` behind the host's, and
- * a client that calls it as an identity of its own.
+ * a client that calls it as an identity of its own, or with no one signed in
+ * (`anonymous`).
  */
-function offClock(hostAheadMs: number, options: { timeoutMs?: number } = {}) {
+function offClock(
+  hostAheadMs: number,
+  { anonymous, ...options }: { timeoutMs?: number; anonymous?: boolean } = {}
+) {
   const identity = Ed25519KeyIdentity.generate()
-  const me = principal(identity.getPrincipal().toText())
+  const me = principal(anonymous ? ANONYMOUS : identity.getPrincipal().toText())
   const payee = principal(Ed25519KeyIdentity.generate().getPrincipal().toText())
   const balances = new Map<string, bigint>([[me, START]])
   let aheadMs = hostAheadMs
   const icNowMs = () => Date.now() - aheadMs
   const replica = createFakeReplica({
-    canisters: { [LEDGER]: ledgerCanister(balances) },
+    canisters: {
+      [LEDGER]: ledgerCanister(balances),
+      [SECOND]: ledgerCanister(balances),
+    },
     now: () => BigInt(icNowMs()) * 1_000_000n,
   })
   const seen: Seen[] = []
+  /** The anonymous `read_state` requests for the `time` path alone: an agent sends three for each read of the IC's time. */
+  let timeReads = 0
   /** Runs before an anonymous `read_state` is answered: the agent's reads of the IC's time. */
   let beforeSync: (() => Promise<void>) | undefined
+  /** Runs before a query is answered. */
+  let beforeQuery: (() => Promise<void>) | undefined
   const fetch = async (
     input: RequestInfo | URL,
     init?: RequestInit
@@ -87,7 +109,11 @@ function offClock(hostAheadMs: number, options: { timeoutMs?: number } = {}) {
       endpoint === "read_state"
     ) {
       const { content } = Cbor.decode<{
-        content: { ingress_expiry: bigint | number; sender: Uint8Array }
+        content: {
+          ingress_expiry: bigint | number
+          sender: Uint8Array
+          paths?: Uint8Array[][]
+        }
       }>(new Uint8Array(await new Response(init?.body).arrayBuffer()))
       const sender = new Uint8Array(content.sender)
       const signed = !(sender.length === 1 && sender[0] === 4)
@@ -106,7 +132,18 @@ function offClock(hostAheadMs: number, options: { timeoutMs?: number } = {}) {
           { status: 400 }
         )
       }
-      if (endpoint === "read_state" && !signed) await beforeSync?.()
+      if (endpoint === "read_state" && !signed) {
+        const [path, ...others] = content.paths ?? []
+        if (
+          others.length === 0 &&
+          path?.length === 1 &&
+          new TextDecoder().decode(path[0]) === "time"
+        ) {
+          timeReads += 1
+        }
+        await beforeSync?.()
+      }
+      if (endpoint === "query") await beforeQuery?.()
     }
     return replica.fetch(input, init)
   }
@@ -116,7 +153,7 @@ function offClock(hostAheadMs: number, options: { timeoutMs?: number } = {}) {
     const client = createClient({
       network: { host: replica.host, rootKey: replica.rootKey },
       fetch,
-      identity,
+      identity: anonymous ? "anonymous" : identity,
     })
     clients.push(client)
     const ledger = client.canister<icrc1.Actor>(icrc1.actor, {
@@ -127,6 +164,11 @@ function offClock(hostAheadMs: number, options: { timeoutMs?: number } = {}) {
       client,
       ledger,
       balance: () => ledger.icrc1_balance_of(account),
+      /** The same read of the second ledger, whose node keys the agent reads apart. */
+      balanceOnSecond: () =>
+        client
+          .canister<icrc1.Actor>(icrc1.actor, { id: SECOND, ...options })
+          .icrc1_balance_of(account),
       transfer: () =>
         ledger.icrc1_transfer({
           to: { owner: payee, subaccount: null },
@@ -153,6 +195,11 @@ function offClock(hostAheadMs: number, options: { timeoutMs?: number } = {}) {
     holdSync: (wait: () => Promise<void>) => {
       beforeSync = wait
     },
+    holdQuery: (wait: () => Promise<void>) => {
+      beforeQuery = wait
+    },
+    /** How many requests the agent sent to read the IC's time: three for each read. */
+    timeReads: () => timeReads,
     /** What left the caller's account: `DEBIT` for each transfer the ledger ran. */
     moved: () => START - (balances.get(me) ?? 0n),
     /** The requests of `endpoint` the replica was sent, refused or not. */
@@ -288,10 +335,6 @@ const REFUSED_READ = {
   ),
 }
 
-/** The anonymous `read_state` requests: an agent sends three for each read of the IC's time. */
-const timeReads = (t: ReturnType<typeof offClock>) =>
-  t.sent("read_state").filter((request) => !request.signed).length
-
 // The clock is ten minutes ahead when the agent reads the IC's time, on its
 // first refused request. An agent reads the time on that refusal and never
 // again, so once the clock is changed it signs by a clock that is off again,
@@ -307,7 +350,7 @@ describe.each([
       await t.balance()
       const before = {
         queries: t.sent("query").length,
-        timeReads: timeReads(t),
+        timeReads: t.timeReads(),
       }
       t.moveHost(moveMs)
       await expect(t.balance()).resolves.toBe(START)
@@ -316,7 +359,7 @@ describe.each([
         { endpoint: "query", signed: true, refused: false },
       ])
       // One read of the time for the one refusal.
-      expect(timeReads(t) - before.timeReads).toBe(3)
+      expect(t.timeReads() - before.timeReads).toBe(3)
     })
 
     it("answers a read made with queryOptions in a browser page, which TanStack asks again", async () => {
@@ -389,7 +432,7 @@ describe("the client's own read of the IC's time", () => {
   it("is not made for an agent's first refusal, when the agent reads the time itself", async () => {
     const t = offClock(10 * MINUTE)
     await t.balance()
-    expect(timeReads(t)).toBe(3)
+    expect(t.timeReads()).toBe(3)
   })
 
   it("leaves a read refused after its two re-sends when the time cannot be read", async () => {
@@ -427,6 +470,80 @@ describe("the client's own read of the IC's time", () => {
     ])
     expect(t.moved()).toBe(0n)
     release()
+  })
+})
+
+// No request of an anonymous read is refused, so each read below fails in the
+// agent, on its check of the answer, and never on the first of these clocks:
+// an agent that has read no time checks by the host's clock, which is true.
+describe("a device whose clock changes with no one signed in", () => {
+  const STALE_ANSWER = {
+    kind: "not_delivered",
+    mayHaveExecuted: false,
+    message: expect.stringContaining("could not be verified"),
+  }
+
+  it("answers a read after the clock moved ahead, though the agent had read no time", async () => {
+    const t = offClock(0, { anonymous: true })
+    await t.balance()
+    expect(t.timeReads()).toBe(0)
+    const before = t.sent("query").length
+    // The agent has the ledger's node keys by now, so it checks no
+    // certificate for this read: the query's answer is signed ten minutes
+    // before the host's time, and the agent reads no time for that.
+    t.moveHost(10 * MINUTE)
+    await expect(t.balance()).resolves.toBe(START)
+    expect(t.sent("query").length - before).toBe(2)
+    expect(t.timeReads()).toBe(3)
+  })
+
+  it("answers a read after a clock that was behind is set right", async () => {
+    const t = offClock(-10 * MINUTE, { anonymous: true })
+    // The certificate of the ledger's node keys is ten minutes after the
+    // host's time: the agent reads the IC's time for it.
+    await t.balance()
+    expect(t.timeReads()).toBe(3)
+    const before = t.sent("query").length
+    t.moveHost(10 * MINUTE)
+    await expect(t.balance()).resolves.toBe(START)
+    expect(t.sent("query").length - before).toBe(2)
+    expect(t.timeReads()).toBe(6)
+  })
+
+  it("answers a read of another canister after a clock that was ahead is set right", async () => {
+    const t = offClock(10 * MINUTE, { anonymous: true })
+    await t.balance()
+    expect(t.timeReads()).toBe(3)
+    t.moveHost(-10 * MINUTE)
+    // A query's answer may be signed after the agent's time, so the first
+    // ledger still answers. The node keys of the second come in a
+    // certificate ten minutes after the agent's time.
+    await expect(t.balance()).resolves.toBe(START)
+    expect(t.timeReads()).toBe(3)
+    await expect(t.balanceOnSecond()).resolves.toBe(START)
+    expect(t.timeReads()).toBe(6)
+  })
+
+  it("answers a read of another canister after a clock that was behind is set right, when the certificate is checked first", async () => {
+    const t = offClock(-10 * MINUTE, { anonymous: true })
+    await t.balance()
+    t.moveHost(10 * MINUTE)
+    // The second ledger's node keys come in a certificate ten minutes
+    // before the agent's time, and its answer is signed as long before it.
+    // The answer is held back, so the certificate is what fails the read.
+    t.holdQuery(() => sleep(100))
+    await expect(t.balanceOnSecond()).resolves.toBe(START)
+    expect(t.timeReads()).toBe(6)
+  })
+
+  it("leaves a read failed after its two re-sends when the time cannot be read", async () => {
+    const t = offClock(-10 * MINUTE, { anonymous: true })
+    await t.balance()
+    const before = t.sent("query").length
+    t.moveHost(10 * MINUTE)
+    t.holdSync(() => Promise.reject(new Error("offline")))
+    await expect(t.balance()).rejects.toMatchObject(STALE_ANSWER)
+    expect(t.sent("query").length - before).toBe(3)
   })
 })
 

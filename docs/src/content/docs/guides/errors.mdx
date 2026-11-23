@@ -191,13 +191,19 @@ A write meets that refusal only when nothing signed went before it. In most
 apps a read as the caller comes first, or `await client.time(canister)` for a
 `created_at_time`, and the write after it goes through. A visitor who is not
 signed in is not affected: the IC does not check the expiry of an anonymous
-read.
+read, and the agent reads the IC's time for the first certificate whose time
+is minutes from the device's.
 
-The agent reads the IC's time on that first refusal only. When the device's
-clock is changed by minutes after that, with the page still open, the IC
-refuses the caller's requests again, and the client has the agent read the
-time once more. A read is then asked again and answers, as above. A write
-rejects `not_delivered` once, and goes through when it is sent again.
+The agent reads the IC's time only once: on that first refusal, or for that
+first certificate. When the device's clock is changed by minutes while the
+page is open, its requests can fail until the time is read again. The IC
+refuses a signed-in caller's. With no one signed in, a read fails the agent's
+own check of the answer: a query's answer signed more than five minutes
+before the agent's time, or a certificate whose time is more than five
+minutes from it (a failed certificate check in the table). Either way the
+client has the agent read the time once more. A read is then asked again and
+answers, as above. A write rejects `not_delivered` once, and goes through
+when it is sent again.
 
 ### How long a call waits
 
