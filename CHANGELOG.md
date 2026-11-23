@@ -79,6 +79,24 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `not_delivered` (the canister ran nothing), and sending it again goes
   through. A visitor who is not signed in was not affected, and an app has
   nothing to change.
+- A device whose clock is changed while the page stays open no longer needs
+  a reload. An agent reads the IC's time once, on its first refused ingress
+  expiry or for the first certificate whose time is minutes off, and never
+  again. So once the clock was changed with the page open, corrected or
+  moved further off, the agent signed and checked by a clock that was off.
+  The IC then refused every request of a signed-in caller. With no one
+  signed in, where the IC checks no expiry, a read failed the agent's own
+  check of the answer instead: a query's answer signed more than five
+  minutes before the agent's time, or a certificate more than five minutes
+  from it. Either lasted until a new agent was built. Now the client has the
+  agent read the time again after such a failure: a read is asked again and
+  answers, `client.time()` reads once more and resolves, and a write rejects
+  `not_delivered` once and goes through when it is sent again. The first
+  refusal is left to the agent, so nothing more is sent for it. Measured on
+  mainnet, read-only, with the clock moved by 3 or 10 minutes after the
+  first read: 11 of 19 cases failed until a reload before (7 of 11 for a
+  signed-in caller, 4 of 8 with no one signed in), and every one answers
+  now. Core is 141 B larger for this, gzipped.
 
 #### Fixed
 

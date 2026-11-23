@@ -550,6 +550,10 @@ async function run(
   // The latest ingress expiry among this call's sends, for a write that ends
   // with no answer (`expiresAt`).
   const sends: Sent = {}
+  // The agent of the attempt that is out, and whether it had read the IC's
+  // time before that attempt was signed (`resync`).
+  let agent: HttpAgent | undefined
+  let synced = false
   try {
     for (let resends = 0; ; resends += 1) {
       try {
@@ -561,10 +565,11 @@ async function run(
         }
         // Asked again before every attempt: a re-send for a caller who is no
         // longer current is cancelled, not sent as them.
-        const agent = await untilAborted(
+        agent = await untilAborted(
           internals.agentFor(caller.principal, where),
           signal
         )
+        synced = agent.hasSyncedTime()
         if (signal?.aborted) throw notSent(where, "the call was cancelled")
         // agentFor checked for disposal before it returned the agent, but a
         // dispose() can still run in the microtask between that check and
@@ -590,6 +595,16 @@ async function run(
         if (signal?.aborted && !isReactorError(error)) {
           throw notSent(where, "the call was cancelled")
         }
+        // After `out`, so that a bound that passes while the time is read
+        // leaves the failure as it was classified: nothing is out by then.
+        // Only a request of `agent` fails in a way `resync` acts on.
+        await resync(
+          agent as HttpAgent,
+          synced,
+          call.effective,
+          asRecord(error).cause,
+          signal
+        )
         const resend =
           request.resend &&
           (write
@@ -715,6 +730,54 @@ export function keepSigned(request: HttpAgentRequest, signed: unknown): void {
     signing.has(arg)
   ) {
     SIGNED.set(arg, signed as HttpAgentRequest)
+  }
+}
+
+/**
+ * What an agent throws when its time and the IC's are minutes apart, by the
+ * name of its code: a replica refused a request for its ingress expiry, a
+ * query's answer was signed more than five minutes before the agent's time,
+ * or a certificate's time is more than five minutes from it. The last
+ * alternative is the agent's message for a certificate from the future once
+ * it has read the IC's time, which it throws as an `UnexpectedErrorCode`.
+ */
+const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime|synced/
+
+/**
+ * Has `agent` read the IC's time after `error`, when that says the agent's
+ * time and the IC's are minutes apart ({@link OFF_CLOCK}) and the agent did
+ * not read the time while it made the request: it had read it before
+ * (`synced`), or has not read it yet. An agent reads the IC's time once, on
+ * the first refused expiry or the first certificate that is minutes off, and
+ * never for a query's answer. Once the host's clock is changed after that
+ * (corrected, as often as not), it signs and checks by a clock that is off
+ * again, and its requests fail until a new agent is built. With the time
+ * read, the next request is signed and checked by it: a read is asked again,
+ * and a write goes through when it is sent again.
+ *
+ * `error` is what the agent threw. Resolves whatever becomes of the read of
+ * the time, and as soon as `signal` aborts.
+ */
+export async function resync(
+  agent: HttpAgent,
+  synced: boolean,
+  canisterId: string,
+  error: unknown,
+  signal?: AbortSignal
+): Promise<void> {
+  const code = asRecord(asRecord(error).code)
+  try {
+    if (
+      OFF_CLOCK.test(String([code.name, code.error])) &&
+      synced === agent.hasSyncedTime()
+    ) {
+      await untilAborted(
+        agent.syncTime({ canisterId: Principal.fromText(canisterId) }),
+        signal
+      )
+    }
+  } catch {
+    // The request's own failure is what the caller is told.
   }
 }
 

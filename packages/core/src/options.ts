@@ -33,6 +33,7 @@ import {
   isWrite,
   prepareMethod,
   notEncoded,
+  resync,
   retriedWrite,
   slotOf,
   valuesOf,
@@ -934,6 +935,7 @@ export function createBuilders(
       })
     }
     if (timedOut()) throw timedOutError(where, false)
+    const synced = agent.hasSyncedTime()
     try {
       // The agent verifies the certificate against the network's root key
       // and the canister's subnet delegation. Its age is not checked: that
@@ -961,6 +963,7 @@ export function createBuilders(
       if (now > latestTime) latestTime = now
       return now
     } catch (error) {
+      await resync(agent, synced, where.canisterId, error)
       throw classifyError(error, { ...where, mode: "query" })
     }
   }
