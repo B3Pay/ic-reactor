@@ -40,7 +40,10 @@ rejects as kind `canister_err`.
 Its `mutationKey` is `["ic-reactor", network, canisterId, method]`. Built from
 the client `useClient()` returns, it ends with the caller the render shows as
 well, `["ic-reactor", network, canisterId, method, caller]`, so a filter on
-the shorter key still finds it.
+the shorter key still finds it. A mutation under either key belongs to the
+caller it was made as: when the caller changes, the client starts it over
+wherever it is shown and removes it from its cache (see
+[When the caller changes](/docs/ic-reactor/guides/auth/#when-the-caller-changes)).
 
 ## Who signs
 
@@ -72,11 +75,13 @@ render (the switch and the click in one batch) is refused: kind `cancelled`,
 code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. The
 refusal reaches the callbacks of the options the press used (an `onError`
 given to `useMutation`); the mutation that the render for the new caller shows
-starts over, idle, since the key holds the caller. That is true of any
-outcome, a write whose outcome is unknown included: an app that must keep
-showing it across a switch (to read the sender's balance back, say) keeps it
-in its own state, from the promise `mutateAsync` returns. The handler needs no check
-of its own; disable the button for a caller who is not signed in:
+starts over, idle, and the refused one is not kept in the cache. That is true
+of any outcome, a write whose outcome is unknown included: when the caller
+changes, the client starts every mutation under its keys over. An app that
+must keep showing an outcome across a switch (to read the sender's balance
+back, say) keeps it in its own state, from the callbacks in the options or
+the promise `mutateAsync` returns. The handler needs no check of its own;
+disable the button for a caller who is not signed in:
 
 ```tsx
 import { useAuth, useClient } from "@ic-reactor/react"

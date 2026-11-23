@@ -9,7 +9,7 @@ prev: true
 
 > **isReactorError**\<`A`, `M`\>(`error`, `canister`, `method`): `error is ReactorError<ErrorOf<A, M>> & { method: M }`
 
-Defined in: [core/src/errors.ts:204](https://github.com/B3Pay/ic-reactor/blob/2adc2f76010801d0192a7579138ecc075bd00b5e/packages/core/src/errors.ts#L204)
+Defined in: [core/src/errors.ts:204](https://github.com/B3Pay/ic-reactor/blob/900b887801877b929a7d78ae0777bfe27e0281b8/packages/core/src/errors.ts#L204)
 
 Whether `error` is a [ReactorError](/docs/ic-reactor/libs/type-aliases/reactorerror/) that a call of `method` on
 `canister` rejected with. Narrows to `ReactorError<E>`, where `E` is the
@@ -70,7 +70,7 @@ try {
 
 > **isReactorError**(`error`): error is Error & (\{ readonly name: "ReactorError"; readonly mayHaveExecuted: boolean; readonly method: string; readonly canisterId: string; readonly code?: string \| undefined; readonly rejectCode?: number \| undefined; readonly httpStatus?: number \| undefined; readonly issues?: readonly \{ ...; \}\[\] \| undefined; readonly cause?: unknown...)
 
-Defined in: [core/src/errors.ts:217](https://github.com/B3Pay/ic-reactor/blob/2adc2f76010801d0192a7579138ecc075bd00b5e/packages/core/src/errors.ts#L217)
+Defined in: [core/src/errors.ts:217](https://github.com/B3Pay/ic-reactor/blob/900b887801877b929a7d78ae0777bfe27e0281b8/packages/core/src/errors.ts#L217)
 
 Whether `error` is a [ReactorError](/docs/ic-reactor/libs/type-aliases/reactorerror/), including one created by another
 copy of this package. Narrows to `ReactorError<unknown>`: after a check on
