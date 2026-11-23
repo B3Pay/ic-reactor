@@ -18,6 +18,35 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+Nothing yet.
+
+## core, react, vite-plugin, mcp 4.4.0
+
+Prepared on 2026-11-22. 4.4.0 is a minor because `ReactorError.code` gains a
+value, `retried_write`, and each `call` entry of the test client's `requests`
+gains a `requestId`. Its changes are all in `@ic-reactor/core`. Three are
+about a write whose outcome stayed unknown, that ran twice, or that went to
+the wrong canister: the client reads back the status of an update whose
+answer was lost and sends the same signed request again, where 4.3.0 reported
+`outcome_unknown` at once (#1036); a mutation given a `retry` no longer sends
+the write again as a new request (#1037); and a `mutationFn` of your own that
+writes to two canisters has each write go to its own canister (#1037). The
+fake replica of `@ic-reactor/core/testing` runs a request id at most once, as
+a replica does, and `network: "env"` treats `icp.net` and `icp1.io` as the
+mainnet gateways they are. `@ic-reactor/react`, `@ic-reactor/vite-plugin` and
+`@ic-reactor/mcp` change only their version; the MCP server installs core at
+its own version, so the updates it sends are read back the same way. The
+release adds or removes no `@ic-reactor/*` export (core 13,
+`@ic-reactor/core/testing` 2, react 4, vite-plugin 2; mcp has nothing to
+import), no floor of the support table moves, the Meant peers stay
+`@meantjs/schema` 0.6.0 and `@meantjs/cli` 0.5.1, and committed modules do
+not change.
+
+An app on 4.3.0 that kept `retry: false` on its writes has nothing to change.
+A test may: one that refuses a write once, with `refuseNext(408)` or a 5xx, to
+get `outcome_unknown` now refuses four sends, and one on fake timers advances
+them past the second the read-back takes. Each entry below has the rest.
+
 ### @ic-reactor/core
 
 #### Changed
