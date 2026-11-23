@@ -148,6 +148,15 @@ function offClock(
     return replica.fetch(input, init)
   }
   const account = { owner: me, subaccount: null }
+  /** What `transfer()` sends: it takes `DEBIT` from the caller's account. */
+  const transferArg = () => ({
+    to: { owner: payee, subaccount: null },
+    amount: 100n,
+    fee: FEE,
+    memo: null,
+    from_subaccount: null,
+    created_at_time: null,
+  })
   /** A client of its own, as a page builds one: its agent has read no time yet. */
   const open = () => {
     const client = createClient({
@@ -169,15 +178,16 @@ function offClock(
         client
           .canister<icrc1.Actor>(icrc1.actor, { id: SECOND, ...options })
           .icrc1_balance_of(account),
-      transfer: () =>
-        ledger.icrc1_transfer({
-          to: { owner: payee, subaccount: null },
-          amount: 100n,
-          fee: FEE,
-          memo: null,
-          from_subaccount: null,
-          created_at_time: null,
-        }),
+      transfer: () => ledger.icrc1_transfer(transferArg()),
+      /** The same transfer, through a target of the ledger bounded by `timeoutMs`. */
+      transferWithin: (timeoutMs: number) =>
+        client
+          .canister<icrc1.Actor>(icrc1.actor, {
+            id: LEDGER,
+            ...options,
+            timeoutMs,
+          })
+          .icrc1_transfer(transferArg()),
     }
   }
   return {
@@ -451,25 +461,55 @@ describe("the client's own read of the IC's time", () => {
   })
 
   it("leaves a refused write not_delivered when its timeoutMs passes meanwhile", async () => {
-    const t = offClock(10 * MINUTE, { timeoutMs: 1_000 })
+    // The read before the write has no bound: with its refused query and the
+    // certificates of the agent's read of the time, it can take a busy
+    // machine more than a second, and a bound on it would end it there.
+    const t = offClock(10 * MINUTE)
     await t.balance()
     t.moveHost(-10 * MINUTE)
-    // The read of the time gets no answer until the test lets it go.
-    let release = () => {}
-    t.holdSync(() => new Promise<void>((resolve) => (release = resolve)))
-    const started = Date.now()
-    // Not `cancelled` with `mayHaveExecuted: true`, as a write that is out
-    // when its bound passes is: the replica refused this one.
-    await expect(t.transfer()).rejects.toMatchObject(REFUSED_READ)
-    // At its bound: not at once, and not when the read of the time ends.
-    const waited = Date.now() - started
-    expect(waited).toBeGreaterThanOrEqual(900)
-    expect(waited).toBeLessThan(2_500)
+    // The read of the time gets no answer until the test lets it go, and its
+    // start tells the test that the replica has refused the write.
+    const held: (() => void)[] = []
+    let reading = () => {}
+    const readStarts = new Promise<void>((resolve) => (reading = resolve))
+    t.holdSync(() => {
+      reading()
+      return new Promise<void>((resolve) => held.push(resolve))
+    })
+    // The write's bound is a timer the test moves, so it passes after the
+    // refusal however long the machine takes to get there.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    try {
+      let settled = false
+      const outcome = t.transferWithin(1_000).then(
+        () => {
+          settled = true
+          return "sent"
+        },
+        (error: unknown) => {
+          settled = true
+          return error
+        }
+      )
+      await readStarts
+      // The write waits for the read of the time: not ended at once, nor
+      // before its bound.
+      await vi.advanceTimersByTimeAsync(999)
+      expect(settled).toBe(false)
+      // At its bound, and not when the read of the time ends. Not
+      // `cancelled` with `mayHaveExecuted: true`, as a write that is out
+      // when its bound passes is: the replica refused this one.
+      await vi.advanceTimersByTimeAsync(1)
+      await vi.waitFor(() => expect(settled).toBe(true))
+      expect(await outcome).toMatchObject(REFUSED_READ)
+    } finally {
+      vi.useRealTimers()
+      for (const release of held) release()
+    }
     expect(t.sent("call")).toEqual([
       { endpoint: "call", signed: true, refused: true },
     ])
     expect(t.moved()).toBe(0n)
-    release()
   })
 })
 
