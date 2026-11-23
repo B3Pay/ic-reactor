@@ -7,7 +7,7 @@ prev: true
 
 > **formatUnits**(`value`, `decimals`, `options?`): `string`
 
-Defined in: [core/src/units.ts:254](https://github.com/B3Pay/ic-reactor/blob/15758feace38203b78adee7d96140ddac7dddf49/packages/core/src/units.ts#L254)
+Defined in: [core/src/units.ts:254](https://github.com/B3Pay/ic-reactor/blob/dd94aaa13622dd127a60cb2711e922b0832df648/packages/core/src/units.ts#L254)
 
 Show an amount of a token's base units as plain decimal text, exactly.
 

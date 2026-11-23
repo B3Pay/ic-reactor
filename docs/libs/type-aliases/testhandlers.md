@@ -7,7 +7,7 @@ prev: true
 
 > **TestHandlers**\<`A`\> = \{ \[K in keyof A\]?: A\[K\] extends (args: infer P) =\> Promise\<infer R\> ? (args: \[...P, ctx: \{ caller: Principal \}\]) =\> R \| Promise\<R\> : never \}
 
-Defined in: [core/src/testing/test-client.ts:71](https://github.com/B3Pay/ic-reactor/blob/15758feace38203b78adee7d96140ddac7dddf49/packages/core/src/testing/test-client.ts#L71)
+Defined in: [core/src/testing/test-client.ts:71](https://github.com/B3Pay/ic-reactor/blob/dd94aaa13622dd127a60cb2711e922b0832df648/packages/core/src/testing/test-client.ts#L71)
 
 The handlers of a mocked canister, typed from the generated `Actor` of its
 module: one optional function per method.

@@ -7,7 +7,7 @@ prev: true
 
 > **CanisterTarget** = \{ `id`: `string`; `name?`: `never`; `certified?`: `boolean`; `timeoutMs?`: `number`; \} \| \{ `name`: `string`; `id?`: `never`; `certified?`: `boolean`; `timeoutMs?`: `number`; \}
 
-Defined in: [core/src/types.ts:248](https://github.com/B3Pay/ic-reactor/blob/15758feace38203b78adee7d96140ddac7dddf49/packages/core/src/types.ts#L248)
+Defined in: [core/src/types.ts:248](https://github.com/B3Pay/ic-reactor/blob/dd94aaa13622dd127a60cb2711e922b0832df648/packages/core/src/types.ts#L248)
 
 Which canister `client.canister()` calls: by its id, or by the name the
 `ic_env` cookie gives it.
