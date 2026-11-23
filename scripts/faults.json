@@ -675,7 +675,7 @@
     "testName": "invalidates the canister a { name } write went to when the cookie moves the name before the write settles",
     "why": "onSettled resolves a { name } from the ic_env cookie again when the write settles, so after a local redeploy mid-write it invalidates the canister the cookie names now and leaves the reads of the one written to stale",
     "file": "src/options.ts",
-    "search": "        const run = keptRun(context) ?? started ?? resolveRun()",
+    "search": "        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()",
     "replace": "        const run = resolveRun()"
   },
   {
@@ -685,8 +685,8 @@
     "testName": "keeps a { name } write and its invalidation on one canister when an onMutate of the app's replaces the given one",
     "why": "onSettled looks for the run only in what onMutate returned, not by the run's function context, so under an onMutate of the app's that replaces the given one (TanStack's optimistic-update recipe) it resolves a { name } again at settlement, and a local redeploy mid-write leaves the reads of the canister written to stale",
     "file": "src/options.ts",
-    "search": "        const run = keptRun(context) ?? started ?? resolveRun()",
-    "replace": "        const run = started ?? resolveRun()"
+    "search": "        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()",
+    "replace": "        const run = runIn(onMutateResult) ?? resolveRun()"
   },
   {
     "id": "ir2t-name-write-sent-where-resolved-late",
@@ -2940,8 +2940,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "a mutation given an offered argument sends it as whoever is the caller when it runs, so another account pays the same transfer again",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key)",
-    "replace": "      const caller = callerOf(this, key)"
+    "search": "      const caller =\n        again?.caller ??\n        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "      const caller = key\n        ? internals.mutationCallers.get(key)\n        : internals.current()\n"
   },
   {
     "id": "ir850-send-as-whoever",
@@ -5618,8 +5618,8 @@
     "testName": "refuses a write paused offline when the account is switched before it is sent, and sends nothing",
     "why": "a write TanStack paused offline goes out as whoever is signed in when it resumes, not as the caller current when mutate() was called (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key)",
-    "replace": "      const caller = again?.caller ?? internals.current()"
+    "search": "      const caller =\n        again?.caller ??\n        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "      const caller = again?.caller ?? internals.current()\n"
   },
   {
     "id": "893-write-caller-read-when-sent-scope",
@@ -5628,18 +5628,8 @@
     "testName": "refuses a write queued behind its scope when the account is switched before its turn, and sends nothing",
     "why": "a write queued behind its mutation scope goes out as whoever is signed in at its turn (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key)",
-    "replace": "      const caller = again?.caller ?? internals.current()"
-  },
-  {
-    "id": "893-write-caller-no-context-fallback",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "refuses a write whose mutationFn gets no run context",
-    "why": "without a run context (TanStack before 5.89), a run whose onMutate read no caller for its options is sent as whoever is current, not refused (#893)",
-    "file": "src/options.ts",
-    "search": "      return startedMethods.has(prepared) ? undefined : internals.current()",
-    "replace": "      return internals.current()"
+    "search": "      const caller =\n        again?.caller ??\n        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "      const caller = again?.caller ?? internals.current()\n"
   },
   {
     "id": "893-write-caller-retry-read-when-sent",
@@ -5648,8 +5638,8 @@
     "testName": "refuses the retry of a write when the account is switched after the first attempt failed",
     "why": "an app's TanStack retry of a write goes out as whoever is signed in when it retries (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(this, key)",
-    "replace": "      const caller = again?.caller ?? internals.current()"
+    "search": "      const caller =\n        again?.caller ??\n        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "      const caller = again?.caller ?? internals.current()\n"
   },
   {
     "id": "893-write-caller-replaced-onmutate-sent-as-current",
@@ -5660,13 +5650,13 @@
     "edits": [
       {
         "file": "src/client.ts",
-        "search": "          mutationCallers.set(context, caller)\n",
+        "search": "          mutationCallers.set(context, current())\n",
         "replace": ""
       },
       {
         "file": "src/options.ts",
-        "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
-        "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
+        "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+        "replace": "        ((key && internals.mutationCallers.get(key)) ?? internals.current())\n"
       }
     ]
   },
@@ -5677,7 +5667,7 @@
     "testName": "sends a write paused offline as its caller when an onMutate of the app's replaces the given one",
     "why": "the client's MutationCache no longer reads the caller of each run, so a write whose onMutate the app replaced is refused though nobody switched (#893)",
     "file": "src/client.ts",
-    "search": "          mutationCallers.set(context, caller)\n",
+    "search": "          mutationCallers.set(context, current())\n",
     "replace": ""
   },
   {
@@ -5687,8 +5677,8 @@
     "testName": "refuses a write TanStack restored from a persister",
     "why": "a mutation restored from a persister, for which TanStack runs no onMutate, goes out as whoever is signed in when it resumes (#893)",
     "file": "src/options.ts",
-    "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
-    "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
+    "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "        ((key && internals.mutationCallers.get(key)) ?? internals.current())\n"
   },
   {
     "id": "893-write-caller-own-fn-sent-as-current",
@@ -5704,8 +5694,8 @@
       },
       {
         "file": "src/options.ts",
-        "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
-        "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
+        "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+        "replace": "        ((key && internals.mutationCallers.get(key)) ?? internals.current())\n"
       }
     ]
   },
@@ -5716,37 +5706,47 @@
     "testName": "refuses a write whose mutationFn and onMutate are both the app's own",
     "why": "a run nothing read the caller of (its mutationFn is the app's own, so the client's MutationCache does not read it, and its onMutate replaced the given one) falls back to the caller current when it is sent, so a write held back across an account switch would go out as the new account (#893)",
     "file": "src/options.ts",
-    "search": "      if (key !== undefined) return internals.mutationCallers.get(key)\n",
-    "replace": "      if (key !== undefined) {\n        return internals.mutationCallers.get(key) ?? internals.current()\n      }\n"
+    "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "        ((key && internals.mutationCallers.get(key)) ?? internals.current())\n"
   },
   {
-    "id": "893-write-caller-leftover-taken",
+    "id": "floor-589-call-by-hand-refused",
     "package": "core",
     "test": "tests/options.test.ts",
-    "testName": "never sends a write with no run context as the caller of a run whose mutationFn never ran",
-    "why": "without a run context, the caller our onMutate read is kept by method instead of by the run's options object, so a run goes out as the caller of an abandoned one (#893)",
+    "testName": "takes a call with no run context for one by hand",
+    "why": "a call of mutationFn with no run context is refused as a write nobody started, though it is a call by hand, which goes out as the caller current when it is made",
+    "file": "src/options.ts",
+    "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+    "replace": "        (key ? internals.mutationCallers.get(key) : undefined)\n"
+  },
+  {
+    "id": "floor-589-runs-of-one-observer-share-caller",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "tells the pending runs of one observer apart by their contexts",
+    "why": "who started a run is kept by the options object, which every run of one observer shares, and not by the run's context, so a write held back offline goes out as whoever started the observer's latest run",
     "edits": [
       {
-        "file": "src/options.ts",
-        "search": "            const kept = callersByOptions.get(this)\n            callersByOptions.set(\n              this,\n",
-        "replace": "            const kept = callersByOptions.get(prepared)\n            if (kept === undefined) callersByOptions.set(prepared, { caller, runs: 1 })\n            else callersByOptions.set(\n              {},\n"
+        "file": "src/client.ts",
+        "search": "          mutationCallers.set(context, current())\n",
+        "replace": "          mutationCallers.set(mutation.options, current())\n"
       },
       {
         "file": "src/options.ts",
-        "search": "          ? callersByOptions.get(options)",
-        "replace": "          ? callersByOptions.get(prepared)"
+        "search": "        (key ? internals.mutationCallers.get(key) : internals.current())\n",
+        "replace": "        (key\n          ? internals.mutationCallers.get(this as object)\n          : internals.current())\n"
       }
     ]
   },
   {
-    "id": "893-write-caller-other-client-takes-own-run",
+    "id": "floor-589-old-tanstack-run-sent",
     "package": "core",
     "test": "tests/options.test.ts",
-    "testName": "never sends a run on another QueryClient (no run context) as the caller of a run of the client's own cache",
-    "why": "without a run context, a run on another QueryClient is matched to a pending run of the client's own cache by anything but its options object, and goes out as that run's caller (#893)",
-    "file": "src/options.ts",
-    "search": "              mutation.options === options &&\n              mutation.state.status === \"pending\"\n",
-    "replace": "              mutation.state.status === \"pending\"\n"
+    "testName": "fails a run of its options before anything is sent when TanStack Query hands the client's MutationCache no run context",
+    "why": "on a TanStack Query older than the peer range, which passes no run context, a mutate() run is not stopped: its mutationFn takes it for a call by hand, so the write goes out as whoever is current by then and a retry sends it again",
+    "file": "src/client.ts",
+    "search": "        if (typeof context !== \"object\" || context === null) {\n          throw new TypeError(",
+    "replace": "        if (false) {\n          throw new TypeError("
   },
   {
     "id": "893-mutation-cache-reads-every-caller",
@@ -5757,46 +5757,6 @@
     "file": "src/client.ts",
     "search": "        if (typeof fn !== \"function\" || !ownMutationFns.has(fn)) return",
     "replace": "        if (typeof fn !== \"function\") return"
-  },
-  {
-    "id": "893-shared-options-settled-run-counted",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "never sends a write with no run context as the caller of a settled run that shares its options (one observer, TanStack before 5.89)",
-    "why": "a run of the client's own cache that already settled still counts among those a mutationFn called on its observer's shared options may run for, so the pending run's own caller is refused",
-    "file": "src/options.ts",
-    "search": "              mutation.options === options &&\n              mutation.state.status === \"pending\"\n",
-    "replace": "              mutation.options === options\n"
-  },
-  {
-    "id": "893-shared-options-own-runs-not-told-apart",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "refuses a write with no run context whose observer's pending runs started as different callers (TanStack before 5.89)",
-    "why": "pending runs of one observer that started as different callers share one options object, and mutationFn sends as the first one's caller",
-    "file": "src/options.ts",
-    "search": "          ? first\n          : undefined",
-    "replace": "          ? first\n          : first"
-  },
-  {
-    "id": "893-shared-options-other-runs-not-told-apart",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)",
-    "why": "on another QueryClient, a later run's onMutate replaces the caller kept for options an earlier pending run shares, so the earlier run is sent as the later caller",
-    "file": "src/options.ts",
-    "search": "                    caller: sameCaller(kept.caller, caller)\n                      ? caller\n                      : undefined,",
-    "replace": "                    caller,"
-  },
-  {
-    "id": "893-shared-options-never-counted-out",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)",
-    "why": "onSettled no longer counts a settled run out of its options, so once two callers shared an observer every later write of it is refused",
-    "file": "src/options.ts",
-    "search": "        if (kept) {",
-    "replace": "        if (false) {"
   },
   {
     "id": "1037-retried-attempt-sent",
@@ -5815,8 +5775,8 @@
     "testName": "sends a write whose reply was lost once, whatever retry asks for",
     "why": "an attempt that may have executed is not kept for its run, so the attempt after it finds nothing and is sent (#1037)",
     "file": "src/options.ts",
-    "search": "        if (kept && mayHaveRun(error)) {",
-    "replace": "        if (false) {"
+    "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+    "replace": "        if (false) unknownAttempts.set(key, error)\n"
   },
   {
     "id": "1037-retry-refused-after-nothing-ran",
@@ -5825,8 +5785,8 @@
     "testName": "still sends the retry after an attempt that was turned away before the canister saw it",
     "why": "every failed attempt is kept as one that may have executed, so a retry after a failure proving nothing ran is refused and a retry policy is of no use anywhere (#1037)",
     "file": "src/options.ts",
-    "search": "        if (kept && mayHaveRun(error)) {",
-    "replace": "        if (kept) {"
+    "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+    "replace": "        if (key) unknownAttempts.set(key, error)\n"
   },
   {
     "id": "1037-retry-refused-after-err",
@@ -5835,8 +5795,8 @@
     "testName": "still sends the retry after the canister answered Err, which is its answer",
     "why": "an attempt is kept by what invalidates reads, which a canister's Err does too, so a retry after an Err, the canister's own answer, is refused as an unknown outcome (#1037)",
     "file": "src/options.ts",
-    "search": "        if (kept && mayHaveRun(error)) {",
-    "replace": "        if (kept && mayHaveChanged(error)) {"
+    "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+    "replace": "        if (key && mayHaveChanged(error)) unknownAttempts.set(key, error)\n"
   },
   {
     "id": "1037-refusal-says-nothing-ran",
@@ -5863,17 +5823,17 @@
     "package": "core",
     "test": "tests/retried-write.test.ts",
     "testName": "sends the next run of the mutation, with the same argument too",
-    "why": "an attempt that may have executed is kept by the options object and the argument on every TanStack version, not by the run, so the user's next mutate() with that argument is refused as a retry (#1037)",
+    "why": "an attempt that may have executed is kept by the options object its mutationFn was called on, not by the run, so the user's next mutate() through the same observer is refused as a retry (#1037)",
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(key ?? vars)\n",
-        "replace": "  const kept = unknownAttempts.get(options as object)?.get(vars)\n"
+        "search": "  const kept = unknownAttempts.get(key)\n",
+        "replace": "  const kept = unknownAttempts.get(options as object)\n"
       },
       {
         "file": "src/options.ts",
-        "search": "        key ?? (callersByOptions.has(this as object) ? this : undefined)\n",
-        "replace": "        this\n"
+        "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+        "replace": "        if (mayHaveRun(error)) unknownAttempts.set(this as object, error)\n"
       }
     ]
   },
@@ -5915,7 +5875,7 @@
     "why": "a retried attempt is refused as one only while its caller is current, so after an account switch the run ends cancelled (caller_changed) with mayHaveExecuted: false, though its first attempt may have executed (#1037)",
     "file": "src/options.ts",
     "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
-    "replace": "      if (earlier !== undefined && sameCaller(caller, internals.current())) {\n        return Promise.reject("
+    "replace": "      if (\n        earlier !== undefined &&\n        caller?.principal === internals.current().principal\n      ) {\n        return Promise.reject("
   },
   {
     "id": "1037-switched-retry-leaves-reads",
@@ -5925,7 +5885,7 @@
     "why": "a run retried after an account switch ends on an error that says nothing ran, so the reads of the canister are not invalidated though the write may have changed them (#1037)",
     "file": "src/options.ts",
     "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
-    "replace": "      if (earlier !== undefined && sameCaller(caller, internals.current())) {\n        return Promise.reject("
+    "replace": "      if (\n        earlier !== undefined &&\n        caller?.principal === internals.current().principal\n      ) {\n        return Promise.reject("
   },
   {
     "id": "1037-disposed-retry-says-nothing-ran",
@@ -5944,47 +5904,17 @@
     "testName": "sends another run of the same observer with the same argument while the first waits to retry",
     "why": "TanStack's record of a pending run is read for a run the client saw start with its own context too, so a second mutate() with the same argument is taken for the retry of the first and refused (#1037)",
     "file": "src/options.ts",
-    "search": "  if (kept !== undefined || (key !== undefined && started)) return kept\n",
+    "search": "  if (kept !== undefined || started) return kept\n",
     "replace": "  if (kept !== undefined) return kept\n"
-  },
-  {
-    "id": "1037-no-context-own-run-not-read",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "refuses an attempt with no run context while a run of its options with its argument waits to retry",
-    "why": "without a run context (TanStack before 5.89) TanStack's own record of the run is not read, so a retried attempt of a run whose options a later render replaced is sent (#1037)",
-    "file": "src/options.ts",
-    "search": "  if (kept !== undefined || (key !== undefined && started)) return kept\n",
-    "replace": "  if (kept !== undefined || key === undefined || started) return kept\n"
   },
   {
     "id": "1037-refusal-wraps-refusal",
     "package": "core",
     "test": "tests/retried-write.test.ts",
-    "testName": "keeps the first failure as the cause when TanStack's record of the run holds a refusal",
+    "testName": "keeps the first failure as the cause when TanStack's record of a restored run holds a refusal",
     "why": "a refusal found as the earlier failure is wrapped in a new refusal, so the cause of the error the mutation ends with is another refusal and not the failure that says why the outcome is open (#1037)",
     "file": "src/call.ts",
     "search": "  if (isReactorError(earlier) && earlier.code === \"retried_write\") {\n    return earlier as ReactorError\n  }\n",
-    "replace": ""
-  },
-  {
-    "id": "1037-no-context-run-not-kept",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "refuses a retried attempt with no run context on another QueryClient, until the next run of its options with its argument",
-    "why": "without a run context an attempt that may have executed is not kept for the options its run started with, so on another QueryClient the retried attempt is sent (#1037)",
-    "file": "src/options.ts",
-    "search": "        key ?? (callersByOptions.has(this as object) ? this : undefined)\n",
-    "replace": "        key\n"
-  },
-  {
-    "id": "1037-options-record-outlives-run",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "refuses a retried attempt with no run context on another QueryClient, until the next run of its options with its argument",
-    "why": "the record kept under an observer's options is not removed when the next run with that argument starts, so every later mutate() of the observer with it is refused (#1037)",
-    "file": "src/options.ts",
-    "search": "            unknownAttempts.get(this)?.delete(_vars)\n",
     "replace": ""
   },
   {
@@ -5992,10 +5922,19 @@
     "package": "core",
     "test": "tests/retried-write.test.ts",
     "testName": "leaves a call of mutationFn by hand alone",
-    "why": "an attempt is kept under whatever object mutationFn is called on, so a second call by hand with the same argument, which is the app's own decision, is refused as a retry (#1037)",
-    "file": "src/options.ts",
-    "search": "        key ?? (callersByOptions.has(this as object) ? this : undefined)\n",
-    "replace": "        key ?? this\n"
+    "why": "an attempt of a call with no run context is kept under the object mutationFn is called on, so a second call by hand, which is the app's own decision, is refused as a retry (#1037)",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "  if (key === undefined) return undefined\n  const kept = unknownAttempts.get(key)\n",
+        "replace": "  const kept = unknownAttempts.get(key ?? (options as object))\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+        "replace": "        if (mayHaveRun(error)) {\n          unknownAttempts.set(key ?? (this as object), error)\n        }\n"
+      }
+    ]
   },
   {
     "id": "1037-restored-run-says-nothing-ran",
@@ -6004,7 +5943,7 @@
     "testName": "refuses a run TanStack restored from a persister with an attempt that may have run",
     "why": "TanStack's record is not read for a run the client did not see start, so a run restored from a persister after an attempt that may have executed is refused caller_changed with mayHaveExecuted: false (#1037)",
     "file": "src/options.ts",
-    "search": "  if (kept !== undefined || (key !== undefined && started)) return kept\n",
+    "search": "  if (kept !== undefined || started) return kept\n",
     "replace": "  if (kept !== undefined || key !== undefined) return kept\n"
   },
   {
@@ -6028,93 +5967,34 @@
     "replace": ""
   },
   {
-    "id": "1037-settled-run-record-kept",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "keeps nothing of a run with no run context once it settled",
-    "why": "what an attempt left under an observer's options is not removed when the last pending run of those options settles, so on TanStack before 5.89 a long-lived observer holds the argument, the error and the signed request of every write whose outcome was unknown (#1037)",
-    "file": "src/options.ts",
-    "search": "          if (kept.runs === 1) unknownAttempts.delete(counted)\n",
-    "replace": ""
-  },
-  {
-    "id": "1037-settled-run-counted-by-options",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "keeps nothing of a run with no run context once it settled, when an onSettled of the app's calls the client's",
-    "why": "a settled run is counted out of the options onSettled is called on, not of the options its onMutate counted it in for, so with an onSettled of the app's that calls the client's as the guide says nothing is counted out and what the run left is kept (#1037)",
-    "file": "src/options.ts",
-    "search": "        const counted = started?.options\n",
-    "replace": "        const counted = started && (this as object)\n"
-  },
-  {
-    "id": "1037-settled-sibling-drops-record",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "still refuses the retry of a run with no run context after another run of its options settled",
-    "why": "the records under an observer's options are removed when any run of those options settles, so the retry of a run that still waits finds nothing and the write goes out again as a new request (#1037)",
-    "file": "src/options.ts",
-    "search": "          if (kept.runs === 1) unknownAttempts.delete(counted)\n",
-    "replace": "          unknownAttempts.delete(counted)\n"
-  },
-  {
-    "id": "1037-run-counted-out-twice",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "still refuses the retry of a run with no run context after onSettled was called twice for another run",
-    "why": "a run is counted out of its options every time onSettled is called for it, so a second call counts out a run that still waits to retry: what it left is removed, and its retry is refused caller_changed, which says nothing ran (#1037)",
-    "file": "src/options.ts",
-    "search": "          started.options = undefined\n",
-    "replace": ""
-  },
-  {
-    "id": "1037-settling-without-run-counts-out",
-    "package": "core",
-    "test": "tests/retried-write.test.ts",
-    "testName": "still refuses the retry of a run with no run context after a run the client's onMutate did not start settled",
-    "why": "a settling that hands onSettled no run of the client's counts a run out of the options it is called on, as a run whose onMutate threw would, so a run that still waits to retry loses what it left and its retry is refused caller_changed, which says nothing ran (#1037)",
-    "edits": [
-      {
-        "file": "src/options.ts",
-        "search": "        const counted = started?.options\n",
-        "replace": "        const counted = started?.options ?? (this as object)\n"
-      },
-      {
-        "file": "src/options.ts",
-        "search": "          started.options = undefined\n",
-        "replace": "          if (started) started.options = undefined\n"
-      }
-    ]
-  },
-  {
     "id": "1037-cloned-failure-says-nothing-ran",
     "package": "core",
     "test": "tests/retried-write.test.ts",
     "testName": "refuses a restored run whose persister kept no field of its failure as a retried write",
     "why": "a failure counts as one that may have executed only when it says so, and a persister that stores a structured clone (IndexedDB) keeps no field of an error, so a run restored after an attempt that may have executed is refused caller_changed, which tells the app to call mutate() again (#1037)",
     "file": "src/options.ts",
-    "search": "    !known) !== false\n",
-    "replace": "    false) !== false\n"
+    "search": "  (reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted !== false\n",
+    "replace": "  (reason as { readonly mayHaveExecuted?: unknown }).mayHaveExecuted === true\n"
   },
   {
     "id": "1037-app-failure-refuses-known-run",
     "package": "core",
     "test": "tests/retried-write.test.ts",
     "testName": "sends the re-send a function of the app's own makes after a step of its own failed",
-    "why": "a failure TanStack kept that does not say whether its attempt may have executed counts as one that may have for a run whose starter the client knows too, where it is the failure of a step of the app's own before the write was sent, so the client refuses a write it would send, retried_write, though no attempt of the run went out (#1037)",
+    "why": "TanStack's record of a pending run is read for a run the client saw start too, where a failure that does not say whether its attempt may have executed is the failure of a step of the app's own before the write was sent, so the client refuses a write it would send, retried_write, though nothing of it ran (#1037)",
     "file": "src/options.ts",
-    "search": "        mayHaveRun(state.failureReason, started)\n",
-    "replace": "        mayHaveRun(state.failureReason)\n"
+    "search": "  if (kept !== undefined || started) return kept\n",
+    "replace": "  if (kept !== undefined) return kept\n"
   },
   {
     "id": "1037-wrapped-fn-context-ignored",
     "package": "core",
     "test": "tests/retried-write.test.ts",
     "testName": "knows the run of a write that a function of the app's own calls with both arguments",
-    "why": "the client's mutationFn looks for an earlier attempt without the run context it was handed, so when a function of the app's own calls it with both arguments, as the guide says, it finds nothing under the options it is called on and the retry goes out as a new request (#1037)",
+    "why": "the client's mutationFn looks for an earlier attempt without the run context it was handed, so when a function of the app's own calls it with both arguments, as the guide says, the attempt is taken for a call by hand and the retry goes out as a new request (#1037)",
     "file": "src/options.ts",
-    "search": "        vars,\n        context,\n        caller !== undefined\n",
-    "replace": "        vars,\n        undefined,\n        caller !== undefined\n"
+    "search": "      const earlier = earlierAttempt(this, vars, context, caller !== undefined)\n",
+    "replace": "      const earlier = earlierAttempt(\n        this,\n        vars,\n        undefined,\n        caller !== undefined\n      )\n"
   },
   {
     "id": "1037-run-record-kept-by-argument",
@@ -6125,13 +6005,13 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(key ?? vars)\n",
-        "replace": "  const kept = unknownAttempts.get(key ?? (options as object))?.get(vars)\n"
+        "search": "  const kept = unknownAttempts.get(key)\n",
+        "replace": "  const kept = (\n    unknownAttempts.get(key) as Map<unknown, unknown> | undefined\n  )?.get(vars)\n"
       },
       {
         "file": "src/options.ts",
-        "search": "          byArgument.set(key ?? vars, error)\n",
-        "replace": "          byArgument.set(vars, error)\n"
+        "search": "        if (key && mayHaveRun(error)) unknownAttempts.set(key, error)\n",
+        "replace": "        if (key && mayHaveRun(error)) {\n          unknownAttempts.set(key, new Map([[vars, error]]))\n        }\n"
       }
     ]
   },

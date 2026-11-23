@@ -830,15 +830,11 @@ describe("mutationOptions", () => {
 
     await mutation.mutate(transfer(100n))
 
-    // onSettled waited for both active reads to refetch. A TanStack Query
-    // older than 5.89 does not tell onSettled which QueryClient the run was
-    // on, so only the client's own reads are invalidated there.
-    const handsClient = await sharesRunContext()
+    // onSettled waited for both active reads to refetch: TanStack Query
+    // tells it which QueryClient the run was on.
     expect(balance.getCurrentResult().data).toBe(1_000_000n - 100n - FEE)
-    expect(appBalance.getCurrentResult().data).toBe(
-      handsClient ? 1_000_000n - 100n - FEE : 1_000_000n
-    )
-    expect(reads(replica)).toBe(handsClient ? 4 : 3)
+    expect(appBalance.getCurrentResult().data).toBe(1_000_000n - 100n - FEE)
+    expect(reads(replica)).toBe(4)
     unsubscribeApp()
     unsubscribe()
   })
@@ -947,14 +943,7 @@ describe("mutationOptions", () => {
     (_label, compose) => writeAcrossRedeploy(compose)
   )
 
-  it("keeps a { name } write and its invalidation on one canister when an onMutate of the app's replaces the given one", async ({
-    skip,
-  }) => {
-    if (!(await sharesRunContext())) {
-      skip(
-        "this TanStack Query does not pass mutationFn and onSettled the run's context, so each resolves the canister when it runs"
-      )
-    }
+  it("keeps a { name } write and its invalidation on one canister when an onMutate of the app's replaces the given one", async () => {
     // TanStack's optimistic-update recipe, spread over the options: the
     // app's onMutate returns its own context and never calls the given one.
     await writeAcrossRedeploy((options) => ({
@@ -996,14 +985,7 @@ describe("mutationOptions", () => {
     ).toBe(false)
   })
 
-  it("sends a { name } write that waited offline to the canister resolved when it started, whose reads it invalidates", async ({
-    skip,
-  }) => {
-    if (!(await sharesRunContext())) {
-      skip(
-        "this TanStack Query does not pass mutationFn the run's context, so mutationFn resolves the canister when it starts"
-      )
-    }
+  it("sends a { name } write that waited offline to the canister resolved when it started, whose reads it invalidates", async () => {
     const { replica, client, backend, redeploy } = redeployable()
     const read = client.queryOptions(backend, "one", 1n)
     await client.queryClient.fetchQuery(read)
@@ -1031,14 +1013,7 @@ describe("mutationOptions", () => {
     )
   })
 
-  it("sends such a write to the canister resolved when it started, when a later render handed the waiting run new options", async ({
-    skip,
-  }) => {
-    if (!(await sharesRunContext())) {
-      skip(
-        "this TanStack Query does not pass mutationFn the run's context, so mutationFn resolves the canister when it starts"
-      )
-    }
+  it("sends such a write to the canister resolved when it started, when a later render handed the waiting run new options", async () => {
     const { replica, client, backend, redeploy } = redeployable()
     const read = client.queryOptions(backend, "one", 1n)
     await client.queryClient.fetchQuery(read)
@@ -1072,14 +1047,7 @@ describe("mutationOptions", () => {
     )
   })
 
-  it("resolves the canister again when the write is sent, and refreshes that canister's reads, when the later render built the waiting run's options from another canister object of the same canister", async ({
-    skip,
-  }) => {
-    if (!(await sharesRunContext())) {
-      skip(
-        "this TanStack Query does not pass mutationFn the run's context, so mutationFn resolves the canister when it starts"
-      )
-    }
+  it("resolves the canister again when the write is sent, and refreshes that canister's reads, when the later render built the waiting run's options from another canister object of the same canister", async () => {
     const { replica, client, backend, redeploy } = redeployable()
     const read = client.queryOptions(backend, "one", 1n)
     await client.queryClient.fetchQuery(read)
@@ -1302,21 +1270,14 @@ describe("mutationOptions", () => {
   })
 
   it("sends a write paused offline as its caller when a mutationFn of the app's calls the given one with both arguments", async () => {
-    const { replica, client, canister } = addressBook()
+    const { client, canister } = addressBook()
     const clickedAs = client.caller()
     const write = pausedOffline(
       client,
       wrappingMutationFn(client, canister),
       () => undefined
     )
-    if (await sharesRunContext()) {
-      await expect(write).resolves.toBe(`x:${clickedAs}`)
-    } else {
-      // TanStack before 5.89 hands a mutationFn no context to pass on. The
-      // client cannot tell which run the call is for, and refuses it.
-      await expect(write).rejects.toMatchObject(callerChanged)
-      expect(requestsFor(replica, "address")).toEqual([])
-    }
+    await expect(write).resolves.toBe(`x:${clickedAs}`)
   })
 
   it("refuses a write whose mutationFn and onMutate are both the app's own, though the mutationFn calls the given one with both arguments: nothing read who started it", async () => {
@@ -1332,15 +1293,8 @@ describe("mutationOptions", () => {
     // The client's MutationCache reads the caller of a run of the client's
     // own mutationFn, and the given onMutate that of any run it is called
     // for. Here neither ran.
-    if (await sharesRunContext()) {
-      await expect(observer.mutate("x")).rejects.toMatchObject(callerChanged)
-      expect(requestsFor(replica, "address")).toEqual([])
-    } else {
-      // TanStack before 5.89 hands a mutationFn no context to pass on, and
-      // nothing of the client's ran for this run: the call is one by hand,
-      // which goes out as the caller current when it is sent.
-      await expect(observer.mutate("x")).resolves.toBe(`x:${client.caller()}`)
-    }
+    await expect(observer.mutate("x")).rejects.toMatchObject(callerChanged)
+    expect(requestsFor(replica, "address")).toEqual([])
   })
 
   /** Two ledgers with one interface, and a client that holds a balance on each. */
@@ -1364,12 +1318,7 @@ describe("mutationOptions", () => {
     }
   }
 
-  it("writes to its own canister when a mutationFn of the app's hands it the context of a run that the options of another canister started", async ({
-    skip,
-  }) => {
-    if (!(await sharesRunContext())) {
-      skip("this TanStack Query hands a mutationFn no context to pass on")
-    }
+  it("writes to its own canister when a mutationFn of the app's hands it the context of a run that the options of another canister started", async () => {
     const { client, balances, sentTo, ledger, other } = twoLedgers()
     const options = client.mutationOptions(ledger, "icrc1_transfer")
     const otherOptions = client.mutationOptions(other, "icrc1_transfer")
@@ -1390,12 +1339,7 @@ describe("mutationOptions", () => {
     expect(balances.first.get(BOB)).toBe(100n)
   })
 
-  it("refreshes the reads of each canister such a run wrote to, when an onSettled of the app's calls the given one of both options", async ({
-    skip,
-  }) => {
-    if (!(await sharesRunContext())) {
-      skip("this TanStack Query hands a mutationFn no context to pass on")
-    }
+  it("refreshes the reads of each canister such a run wrote to, when an onSettled of the app's calls the given one of both options", async () => {
     const { client, ledger, other } = twoLedgers()
     const account = { owner: ALICE, subaccount: null }
     const read = client.queryOptions(ledger, "icrc1_balance_of", account)
@@ -1411,8 +1355,6 @@ describe("mutationOptions", () => {
         return options.mutationFn(arg, context)
       },
       // Each given onSettled finds what its own canister kept for the run.
-      // Typed in full, so that it also compiles on a TanStack Query before
-      // 5.89, whose onSettled has four parameters.
       onSettled: async (
         data: bigint | undefined,
         error: ReactorError<icrc1.TransferError> | null,
@@ -1442,12 +1384,7 @@ describe("mutationOptions", () => {
     ).toBe(true)
   })
 
-  it("refreshes the reads each options names, when such a run wrote through two methods of one canister and an onSettled of the app's calls the given one of both options", async ({
-    skip,
-  }) => {
-    if (!(await sharesRunContext())) {
-      skip("this TanStack Query hands a mutationFn no context to pass on")
-    }
+  it("refreshes the reads each options names, when such a run wrote through two methods of one canister and an onSettled of the app's calls the given one of both options", async () => {
     const replica = replicaWith({ [SHAPES]: whoCanister(new Map()) })
     const client = clientAs(replica, alice)
     const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
@@ -1500,12 +1437,7 @@ describe("mutationOptions", () => {
     expect(invalidated()).toEqual([true, true])
   })
 
-  it("shares what such a run resolved between two options for one method of one canister object, the reads it refreshes included", async ({
-    skip,
-  }) => {
-    if (!(await sharesRunContext())) {
-      skip("this TanStack Query hands a mutationFn no context to pass on")
-    }
+  it("shares what such a run resolved between two options for one method of one canister object, the reads it refreshes included", async () => {
     const replica = replicaWith({ [SHAPES]: whoCanister(new Map()) })
     const client = clientAs(replica, alice)
     const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
@@ -1631,162 +1563,71 @@ describe("mutationOptions", () => {
     expect(requestsFor(replica, "address")).toEqual([])
   })
 
-  it("refuses a write whose mutationFn gets no run context (TanStack before 5.89, another QueryClient) unless the caller onMutate read for its options is the live one", async () => {
-    const { replica, auth, client, canister } = addressBook()
-    const clickedAs = client.caller()
+  it("takes a call with no run context for one by hand, made as the caller current then, whatever onMutate was called with none before it", async () => {
+    const { auth, client, canister } = addressBook()
     const options = client.mutationOptions(canister, "address")
-    // TanStack before 5.89 calls both with the argument alone.
+    // Both called with the argument alone, as a function of the app's own
+    // that passes on no context calls them: the client knows no run by
+    // them, so nothing ties the write to who called onMutate.
     options.onMutate("x")
     auth.switchTo(2)
-    await expect(options.mutationFn("x")).rejects.toMatchObject(callerChanged)
-    // A run whose onMutate read nothing for its options (a later render
-    // handed it new ones): its caller is not known.
-    await expect(
-      options.mutationFn.call({ ...options }, "x")
-    ).rejects.toMatchObject(callerChanged)
-    expect(requestsFor(replica, "address")).toEqual([])
-    auth.switchTo(1)
-    options.onMutate("y")
-    await expect(options.mutationFn("y")).resolves.toBe(`y:${clickedAs}`)
+    const second = client.caller()
+    await expect(options.mutationFn("x")).resolves.toBe(`x:${second}`)
+    // Called on another object, such as the options an app spread them
+    // into, it is the same call.
+    await expect(options.mutationFn.call({ ...options }, "y")).resolves.toBe(
+      `y:${second}`
+    )
   })
 
-  it("never sends a write with no run context as the caller of a run whose mutationFn never ran", async () => {
+  it("tells the pending runs of one observer apart by their contexts: each goes out as the caller who started it, or not at all", async () => {
     const { replica, auth, client, canister } = addressBook()
     const options = client.mutationOptions(canister, "address")
-    // Two runs of "z" as TanStack before 5.89 makes them through two
-    // observers, each with its own options object. The first, started as the first account, never gets
-    // to mutationFn (its mutation was removed).
-    const abandoned = { ...options }
-    options.onMutate.call(abandoned, "z")
+    const observer = new MutationObserver(client.queryClient, options)
+    // The first account's write, then the second's, both held back offline.
+    // TanStack builds both runs with the observer's one options object.
+    onlineManager.setOnline(false)
+    const first = observer.mutate("a")
+    first.catch(() => undefined)
     auth.switchTo(2)
     const second = client.caller()
-    const run = { ...options }
-    options.onMutate.call(run, "z")
-    // Back to the first account before the second account's run is sent.
-    auth.switchTo(1)
-    await expect(options.mutationFn.call(run, "z")).rejects.toMatchObject(
-      callerChanged
-    )
-    expect(requestsFor(replica, "address")).toEqual([])
-    auth.switchTo(2)
-    await expect(options.mutationFn.call(run, "z")).resolves.toBe(`z:${second}`)
-  })
-
-  it("never sends a run on another QueryClient (no run context) as the caller of a run of the client's own cache with the same argument", async () => {
-    const { replica, auth, client, canister } = addressBook()
-    const alice = client.caller()
-    const options = client.mutationOptions(canister, "address")
-    // Alice's write of "x", paused offline in the client's own cache.
-    onlineManager.setOnline(false)
-    const observer = new MutationObserver(client.queryClient, options)
-    observer.mutate("x").catch(() => undefined)
-    await vi.waitFor(() =>
-      expect(observer.getCurrentResult().isPaused).toBe(true)
-    )
-    onlineManager.setOnline(true)
-    // Bob's write of "x" through the same options on another QueryClient,
-    // as TanStack before 5.89 runs it: both functions called as methods of
-    // its observer's options object, with the argument alone.
-    auth.switchTo(2)
-    const bobsRun = { ...options }
-    options.onMutate.call(bobsRun, "x")
-    // Alice is back before Bob's run is sent.
-    auth.switchTo(1)
-    expect(client.caller()).toBe(alice)
-    await expect(options.mutationFn.call(bobsRun, "x")).rejects.toMatchObject(
-      callerChanged
-    )
-    expect(requestsFor(replica, "address")).toEqual([])
-  })
-
-  it("never sends a write with no run context as the caller of a settled run that shares its options (one observer, TanStack before 5.89)", async () => {
-    const { replica, auth, client, canister } = addressBook()
-    const alice = client.caller()
-    const options = client.mutationOptions(canister, "address")
-    const observer = new MutationObserver(client.queryClient, options)
-    // Alice's write, settled and still cached.
-    await expect(observer.mutate("a")).resolves.toBe(`a:${alice}`)
-    // Bob's write through the same observer, held back offline: TanStack
-    // builds it with the same options object as Alice's.
-    auth.switchTo(2)
-    onlineManager.setOnline(false)
-    observer.mutate("b").catch(() => undefined)
-    await vi.waitFor(() =>
-      expect(observer.getCurrentResult().isPaused).toBe(true)
-    )
-    const runs = client.queryClient.getMutationCache().getAll()
-    expect(runs).toHaveLength(2)
-    expect(runs[0]?.options).toBe(runs[1]?.options)
-    onlineManager.setOnline(true)
-    // Alice is back when Bob's run is sent as TanStack before 5.89 sends it:
-    // mutationFn called on the shared options, with the argument alone.
-    auth.switchTo(1)
-    await expect(
-      options.mutationFn.call(runs[1]?.options, "b")
-    ).rejects.toMatchObject(callerChanged)
-    // Only Alice's write went out.
-    expect(requestsFor(replica, "address")).toHaveLength(1)
-    // With Bob current, his run goes out as him: Alice's settled run is not
-    // one it may run for.
-    auth.switchTo(2)
-    const bob = client.caller()
-    await expect(options.mutationFn.call(runs[1]?.options, "b")).resolves.toBe(
-      `b:${bob}`
-    )
-  })
-
-  it("refuses a write with no run context whose observer's pending runs started as different callers (TanStack before 5.89)", async () => {
-    const { replica, auth, client, canister } = addressBook()
-    const options = client.mutationOptions(canister, "address")
-    const observer = new MutationObserver(client.queryClient, options)
-    // Alice's write, then Bob's, both held back offline.
-    onlineManager.setOnline(false)
-    observer.mutate("a").catch(() => undefined)
-    auth.switchTo(2)
-    observer.mutate("b").catch(() => undefined)
+    const later = observer.mutate("b")
     const runs = client.queryClient.getMutationCache().getAll()
     await vi.waitFor(() =>
       expect(runs.every((run) => run.state.isPaused)).toBe(true)
     )
+    expect(runs).toHaveLength(2)
+    expect(runs[0]?.options).toBe(runs[1]?.options)
     onlineManager.setOnline(true)
-    // Called on the options both share, mutationFn cannot tell which of them
-    // it runs for, so it sends neither, whoever is current.
-    auth.switchTo(1)
-    await expect(
-      options.mutationFn.call(runs[0]?.options, "a")
-    ).rejects.toMatchObject(callerChanged)
-    expect(requestsFor(replica, "address")).toEqual([])
+    void client.queryClient.resumePausedMutations()
+
+    await expect(first).rejects.toMatchObject(callerChanged)
+    await expect(later).resolves.toBe(`b:${second}`)
+    expect(requestsFor(replica, "address")).toHaveLength(1)
   })
 
-  it("refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)", async () => {
-    const { replica, auth, client, canister } = addressBook()
-    const alice = client.caller()
-    const options = client.mutationOptions(canister, "address")
-    // Two runs of one observer on another QueryClient, as TanStack before
-    // 5.89 runs them: every function called on the observer's one options
-    // object, with the argument alone, and onSettled with what onMutate
-    // returned for the run.
-    const shared = { ...options }
-    const startedA = options.onMutate.call(shared, "a")
-    auth.switchTo(2)
-    const startedB = options.onMutate.call(shared, "b")
-    // Neither run can be told from the other, so neither is sent, whoever
-    // is current.
-    await expect(options.mutationFn.call(shared, "b")).rejects.toMatchObject(
-      callerChanged
+  it("fails a run of its options before anything is sent when TanStack Query hands the client's MutationCache no run context (a release older than 5.89)", async () => {
+    const { replica, client, canister } = addressBook()
+    const cache = client.queryClient.getMutationCache()
+    const started = cache.config.onMutate as unknown as (
+      variables: unknown,
+      mutation: unknown
+    ) => unknown
+    const run = cache.build(
+      client.queryClient,
+      client.mutationOptions(canister, "address")
     )
-    auth.switchTo(1)
-    await expect(options.mutationFn.call(shared, "a")).rejects.toMatchObject(
-      callerChanged
-    )
+    // As a TanStack Query before 5.89 calls it when mutate() starts a run:
+    // with the argument and the mutation, and no context. What it throws
+    // fails the run before mutationFn is called.
+    expect(() => started("x", run)).toThrow(TypeError)
+    expect(() => started("x", run)).toThrow(/@tanstack\/query-core 5\.89/)
     expect(requestsFor(replica, "address")).toEqual([])
-    // Once both settled, a new run is sent as its caller.
-    await options.onSettled.call(shared, undefined, null, "a", startedA)
-    await options.onSettled.call(shared, undefined, null, "b", startedB)
-    options.onMutate.call(shared, "c")
-    await expect(options.mutationFn.call(shared, "c")).resolves.toBe(
-      `c:${alice}`
-    )
+    // A mutation of the app's own on the same QueryClient is left alone.
+    const unrelated = cache.build(client.queryClient, {
+      mutationFn: (n: number) => Promise.resolve(n + 1),
+    })
+    expect(() => started(1, unrelated)).not.toThrow()
   })
 
   it("reads no caller, and builds no auth, for a mutation of the app's on the client's QueryClient", async () => {
@@ -1964,40 +1805,6 @@ describe("timeoutMs", () => {
     }
   )
 })
-
-/**
- * Whether the installed TanStack Query hands `onMutate`, `mutationFn` and
- * `onSettled` the same function context for one run (5.89 and later), through
- * which `mutationFn` finds the canister `onMutate` resolved, and `onSettled`
- * the one `mutationFn` wrote to. The peer-floor check runs these tests on an
- * older release, which passes `mutationFn` and `onSettled` none.
- */
-async function sharesRunContext(): Promise<boolean> {
-  const seen: unknown[] = []
-  await new MutationObserver(new QueryClient(), {
-    onMutate: (_vars: void, context?: unknown) => {
-      seen.push(context)
-    },
-    mutationFn: (_vars: void, context?: unknown) => {
-      seen.push(context)
-      return Promise.resolve()
-    },
-    onSettled: (
-      _data: unknown,
-      _error: unknown,
-      _vars: void,
-      _onMutateResult: unknown,
-      context?: unknown
-    ) => {
-      seen.push(context)
-    },
-  }).mutate()
-  return (
-    seen.length === 3 &&
-    seen[0] !== undefined &&
-    seen.every((context) => context === seen[0])
-  )
-}
 
 /** A client in a page, on `replica`, with nobody signed in. */
 function createClientSignedOut(replica: ReturnType<typeof replicaWith>) {
