@@ -11,7 +11,7 @@ person signs in with Internet Identity, sees their balance, and sends a
 transfer. It uses the ICP ledger on mainnet. Any ICRC-1 ledger, such as ckBTC,
 ckETH or an SNS token, works the same way with its own ledger id.
 
-The app takes care of four things that are easy to get wrong:
+The app takes care of five things that are easy to get wrong:
 
 - **Amounts** are `bigint` base units. What a person types is read by
   `parseUnits`, which refuses `1,5` or a ninth decimal of ICP instead of
@@ -20,6 +20,8 @@ The app takes care of four things that are easy to get wrong:
 - **A lost reply** is never answered by sending a new transfer. The page
   offers the same transfer again, and the ledger answers `Duplicate` if the
   first one went through.
+- **A double press** sends one transfer. The first press starts the transfer
+  at once, and the form sends no other while that one is on its way.
 - **A test** runs the transfer against an in-memory replica, with its reply
   lost on purpose, and checks that the ledger is paid once.
 
@@ -35,7 +37,7 @@ When it is done, the project holds these files:
   - App.tsx the client and the page
   - SignIn.tsx
   - Balance.tsx
-  - transfer.ts a form to a transfer, and the ledger's errors in words
+  - transfer.ts a form to a transfer, its time, and the ledger's errors in words
   - Send.tsx
   - transfer.test.ts
   - main.tsx
@@ -276,8 +278,8 @@ export function Balance() {
 ## 5. From a form to a transfer
 
 This file has no React in it. It turns what a person typed into a transfer, or
-refuses it before anything is sent, and words each error the ledger can
-answer with.
+refuses it before anything is sent, gives a transfer its time as it is sent,
+and words each error the ledger can answer with.
 
 ```ts
 // src/transfer.ts
@@ -319,17 +321,14 @@ export function readForm(
 }
 
 /**
- * A new transfer argument, with a memo of its own and the IC's time in
- * `created_at_time`. The ledger answers the same argument from the same
- * account `Duplicate` instead of running it twice.
+ * A new transfer argument, with a memo of its own. `created_at_time` is left
+ * empty: `stamped` sets it as the transfer is sent.
  */
-export async function newTransfer(
-  client: Client,
-  ledger: Canister<Actor>,
+export function newTransfer(
   to: Account,
   amount: bigint,
   token: Token
-): Promise<TransferArg> {
+): TransferArg {
   return {
     to,
     amount,
@@ -338,8 +337,24 @@ export async function newTransfer(
     fee: token.fee,
     memo: crypto.getRandomValues(new Uint8Array(16)),
     from_subaccount: null,
-    created_at_time: await client.time(ledger),
+    created_at_time: null,
   }
+}
+
+/**
+ * `arg` as it is sent. A new transfer gets the IC's time in
+ * `created_at_time`, and the ledger then answers the same argument from the
+ * same account `Duplicate` instead of running it twice. A transfer that has
+ * its time is one sent again: it is returned as it is, the same object.
+ */
+export async function stamped(
+  client: Pick<Client, "time">,
+  ledger: Canister<Actor>,
+  arg: TransferArg
+): Promise<TransferArg> {
+  return arg.created_at_time === null
+    ? { ...arg, created_at_time: await client.time(ledger) }
+    : arg
 }
 
 /** What the ledger's Err means, in a sentence. */
@@ -366,12 +381,17 @@ export function describeError(err: TransferError, token: Token): string {
 
 - `readForm` checks the recipient with `isPrincipal` and the amount with
   `parseUnits` itself, so the form and the amount sent can never disagree.
-- `newTransfer` makes the transfer one the ledger can recognize. With
-  `created_at_time` set, the ledger runs an argument from the same account
-  once, and answers a repeat `Duplicate`. `client.time(ledger)` reads the IC's
-  certified time, which the ledger checks the stamp against, rather than the
-  computer's clock. That time moves about once a second, so the memo keeps two
-  transfers of the same amount, made in the same second, apart.
+- `newTransfer` and `stamped` make the transfer one the ledger can
+  recognize. With `created_at_time` set, the ledger runs an argument from the
+  same account once, and answers a repeat `Duplicate`. `client.time(ledger)`
+  reads the IC's certified time, which the ledger checks the stamp against,
+  rather than the computer's clock. That time moves about once a second, so
+  the memo keeps two transfers of the same amount, made in the same second,
+  apart.
+- `stamped` runs as the transfer is sent, in [step 6](#6-send). It leaves a
+  transfer that has its time alone and returns the same object: that one is
+  being sent again, and only the same argument is the same transfer to the
+  ledger.
 - `describeError` has a case for each tag of the generated `TransferError`.
   If a tag were missing, the function could end without returning a string,
   and it would not compile.
@@ -383,8 +403,9 @@ export function describeError(err: TransferError, token: Token): string {
 import { useAuth } from "@ic-reactor/react"
 import { useMutation } from "@tanstack/react-query"
 import { useState, type FormEvent } from "react"
+import type { TransferArg } from "./generated/icrc1"
 import { showAmount, useLedger, useToken } from "./ledger"
-import { describeError, newTransfer, readForm } from "./transfer"
+import { describeError, newTransfer, readForm, stamped } from "./transfer"
 
 export function Send() {
   const { client, ledger } = useLedger()
@@ -392,27 +413,33 @@ export function Send() {
   const token = useToken()
   const [form, setForm] = useState({ to: "", amount: "" })
   const [refusal, setRefusal] = useState<string>()
+  const options = client.mutationOptions(ledger, "icrc1_transfer")
   // No `retry`: a transfer sent again after a lost reply could pay twice.
-  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  const transfer = useMutation({
+    ...options,
+    // A step before the write: a new transfer gets the IC's time. The press
+    // has called mutate() by now, so this transfer is on its way while the
+    // time is read, and onSubmit sends no other.
+    mutationFn: async (arg: TransferArg, context) =>
+      options.mutationFn(await stamped(client, ledger, arg), context),
+  })
   // Offered only after an unknown outcome, and only to the account that sent it.
   const again = client.resendOf(transfer.error, ledger, "icrc1_transfer", {
     dedupedBy: (sent) => sent.created_at_time,
   })
 
-  const onSubmit = async (event: FormEvent) => {
+  const onSubmit = (event: FormEvent) => {
     event.preventDefault()
-    if (token === undefined) return
+    // `transfer.isPending` is what the last render saw. The cache knows at
+    // once that a transfer is on its way, and a second press sends nothing.
+    const onItsWay = client.queryClient.isMutating({
+      mutationKey: options.mutationKey,
+    })
+    if (onItsWay > 0 || token === undefined) return
     const read = readForm(form, token)
     if (!read.ok) return setRefusal(read.reason)
     setRefusal(undefined)
-    try {
-      transfer.mutate(
-        await newTransfer(client, ledger, read.to, read.amount, token)
-      )
-    } catch (error) {
-      // client.time() failed: nothing was sent.
-      setRefusal(String(error))
-    }
+    transfer.mutate(newTransfer(read.to, read.amount, token))
   }
 
   const error = transfer.error
@@ -499,6 +526,23 @@ A failed transfer ends one of three ways, and the page says which:
   [Writes](/docs/ic-reactor/guides/writes/#sending-the-same-write-again).
 - Each press of Send builds a new argument with a new memo, so a new transfer
   is never taken for a repeat of an earlier one.
+- The time is read inside the mutation function, which is where a step before
+  a write goes ([Writes](/docs/ic-reactor/guides/writes/#adding-your-own-callbacks)). The
+  press has called `mutate()` by then: the transfer is on its way while the
+  time is read, and it goes out as the account that pressed, or not at all.
+  Awaited in `onSubmit` instead, before `mutate()`, the read leaves a moment
+  in which nothing is on its way and the button is still on. A second press
+  in that moment builds a second transfer, with a memo of its own, and both
+  are paid.
+- `onSubmit` asks the cache whether a transfer is on its way, and sends
+  nothing if one is. The disabled button does not do that on its own:
+  `transfer.isPending` is what the last render saw, and TanStack Query tells
+  React about a new mutation from a timer, a moment after `mutate()`. A second
+  press that arrives before that timer finds the button still on.
+  `isMutating` knows at once. Its key holds the ledger, the method and the
+  caller, so it counts this account's transfers from any form of the page.
+- A time that cannot be read is the mutation's error, with
+  `mayHaveExecuted: false`: nothing was sent, and the page says "Not sent".
 - There is no `retry` on the mutation, and there must not be one. The client
   re-sends a transfer itself only after a failure that proves the ledger never
   got it. See [Errors and mayHaveExecuted](/docs/ic-reactor/guides/errors/).
@@ -515,7 +559,7 @@ import { createTestClient } from "@ic-reactor/core/testing"
 import { afterEach, beforeEach, expect, it } from "vitest"
 import { actor, type Actor } from "./generated/icrc1"
 import { LEDGER_ID, type Token } from "./ledger"
-import { newTransfer, readForm } from "./transfer"
+import { newTransfer, readForm, stamped } from "./transfer"
 
 const token: Token = { symbol: "ICP", decimals: 8, fee: 10_000n }
 const to = { owner: principal("aaaaa-aa"), subaccount: null }
@@ -563,7 +607,7 @@ it("refuses an amount it cannot send exactly", () => {
 
 it("pays once when the reply is lost and the same transfer is sent again", async () => {
   const ledger = test.client.canister<Actor>(actor, { id: LEDGER_ID })
-  const arg = await newTransfer(test.client, ledger, to, 1n, token)
+  const arg = await stamped(test.client, ledger, newTransfer(to, 1n, token))
   test.dropNextReply({ method: "icrc1_transfer" }) // it runs; its reply is lost
 
   const lost = await ledger.icrc1_transfer(arg).catch((error: unknown) => error)

@@ -7,7 +7,7 @@ prev: true
 
 > **useAuth**(): [`AuthState`](/docs/ic-reactor/libs/interfaces/authstate/) & `object`
 
-Defined in: [react/src/index.tsx:650](https://github.com/B3Pay/ic-reactor/blob/781d11bcfa2d23dbcbad7048332de4e77829f121/packages/react/src/index.tsx#L650)
+Defined in: [react/src/index.tsx:650](https://github.com/B3Pay/ic-reactor/blob/ce94e5b9e2b004caf0d0c660d738916e23af672e/packages/react/src/index.tsx#L650)
 
 Who calls, and how to change it: the client's [AuthState](/docs/ic-reactor/libs/interfaces/authstate/) (`status`,
 `principal` and, while signed in, `expiresAt`) with `signIn` and `signOut`

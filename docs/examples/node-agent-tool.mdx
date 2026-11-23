@@ -29,7 +29,8 @@ Node 22.18 or newer (`node src/cli.ts <command>`, no build step). It is
 - **Direct calls:** `info` and `balance` call the ledger's methods directly,
   in parallel; `--certified` reads through `{ id, certified: true }`.
 - **Writes:** `transfer` reads the amount with `parseUnits`, pays the ledger's
-  fee and sets `created_at_time`. Every failure goes through `isReactorError`
+  fee, and sets `created_at_time` from the IC's time (`client.time()`) and a
+  `memo` of its own. Every failure goes through `isReactorError`
   and a `kind` switch, with an exit code per kind. After a failure that may
   have executed, it reads the balance back and prints the command that
   re-sends the same argument, which the ledger answers `Duplicate` if the

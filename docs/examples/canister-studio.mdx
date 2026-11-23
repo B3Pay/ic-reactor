@@ -26,8 +26,11 @@ Candid, and calls it with every rule of ic-reactor 4 in view:
 - **Automatic forms.** A field per Candid type: amounts in token units read
   with `parseUnits`, principals checked as you type, blobs as hex, text or
   base64, and variants, options, vectors and records, with `created_at_time`
-  set to now for ICRC deduplication. The submit button names what is wrong,
-  and the issues of an `invalid_args` refusal land on their fields.
+  set to now for ICRC deduplication (by the browser's clock: the form fills
+  any canister's timestamps as it is submitted, where the Safety lab and the
+  other examples read the IC's time with `client.time()`). The submit button
+  names what is wrong, and the issues of an `invalid_args` refusal land on
+  their fields.
 - **Server rendering.** One client per request on the server and one per tab,
   made by the router. Loaders prefetch mainnet reads and never throw, the
   browser hydrates them without reading again, and a failed read is never

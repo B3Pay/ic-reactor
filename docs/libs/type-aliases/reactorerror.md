@@ -7,7 +7,7 @@ prev: true
 
 > **ReactorError**\<`E`\> = \[`E`\] *extends* \[`never`\] ? `ReactorErrorBase` & `object` : `ReactorErrorBase` & \{ `kind`: `Exclude`\<[`ReactorErrorKind`](/docs/ic-reactor/libs/type-aliases/reactorerrorkind/), `"canister_err"`\>; `err?`: `undefined`; \} \| \{ `kind`: `"canister_err"`; `err`: `E`; \}
 
-Defined in: [core/src/errors.ts:139](https://github.com/B3Pay/ic-reactor/blob/781d11bcfa2d23dbcbad7048332de4e77829f121/packages/core/src/errors.ts#L139)
+Defined in: [core/src/errors.ts:139](https://github.com/B3Pay/ic-reactor/blob/ce94e5b9e2b004caf0d0c660d738916e23af672e/packages/core/src/errors.ts#L139)
 
 The error every ic-reactor call rejects with.
 
