@@ -39,7 +39,10 @@ rejects as kind `canister_err`.
 Its `mutationKey` is `["ic-reactor", network, canisterId, method]`. Built from
 the client `useClient()` returns, it ends with the caller the render shows as
 well, `["ic-reactor", network, canisterId, method, caller]`, so a filter on
-the shorter key still finds it.
+the shorter key still finds it. A mutation under either key belongs to the
+caller it was made as: when the caller changes, the client starts it over
+wherever it is shown and removes it from its cache (see
+[When the caller changes](/v4/guides/auth/#when-the-caller-changes)).
 
 ## Who signs
 
@@ -71,11 +74,13 @@ render (the switch and the click in one batch) is refused: kind `cancelled`,
 code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. The
 refusal reaches the callbacks of the options the press used (an `onError`
 given to `useMutation`); the mutation that the render for the new caller shows
-starts over, idle, since the key holds the caller. That is true of any
-outcome, a write whose outcome is unknown included: an app that must keep
-showing it across a switch (to read the sender's balance back, say) keeps it
-in its own state, from the promise `mutateAsync` returns. The handler needs no check
-of its own; disable the button for a caller who is not signed in:
+starts over, idle, and the refused one is not kept in the cache. That is true
+of any outcome, a write whose outcome is unknown included: when the caller
+changes, the client starts every mutation under its keys over. An app that
+must keep showing an outcome across a switch (to read the sender's balance
+back, say) keeps it in its own state, from the callbacks in the options or
+the promise `mutateAsync` returns. The handler needs no check of its own;
+disable the button for a caller who is not signed in:
 
 ```tsx
 import { useAuth, useClient } from "@ic-reactor/react"
@@ -278,13 +283,36 @@ network's root key, rather than the host's clock. A node can answer with an
 old certificate, which still verifies, so a time more than five minutes
 before one the client read already rejects `not_delivered`, as a certificate
 that does not verify does. Its request is signed with an ingress expiry
-taken from the host's clock, as every request is: a host
-clock so far off that the IC refuses its requests cannot read the time
-either, and no call works until that clock is fixed. That time moves about once a second, so
+taken from the host's clock, as every request is, and on a host whose clock
+is minutes off the IC refuses a signed-in caller's request for that expiry.
+The agent then reads the IC's time and signs by it, and `client.time()` reads
+once more, so it answers all the same, and the transfer sent after it is
+signed by the IC's time. [A device whose clock is off](/v4/guides/errors/#a-device-whose-clock-is-off)
+has the rest. That time moves about once a second, so
 two transfers stamped in the same second need their own `memo` each, or the
 second is answered `Duplicate` without running. Most methods do not
 deduplicate. For them a second send
 can run the write twice, so read the state back instead.
+
+In a form, read that time as a step of the mutation function (`mutationFn`,
+under [Adding your own callbacks](#adding-your-own-callbacks)), and leave an
+argument that has its time as it is: that one is being sent again. The press
+has called `mutate()` by then, so the mutation is pending while the time is
+read. Awaited in the submit handler instead, before `mutate()`, the read
+leaves a moment in which nothing is pending and the button is still on: a
+second press builds a second transfer, with a memo of its own, and both are
+paid.
+
+A button disabled while `isPending` is off a moment after the press, not at
+once. `isPending` is what the last render saw, and TanStack Query tells React
+about a new mutation from a timer, after `mutate()` has returned. A second
+press that arrives before that timer starts a second mutation. So the submit
+handler asks the cache first, which knows at once, and sends nothing while
+`client.queryClient.isMutating({ mutationKey: options.mutationKey })` is above
+zero. It counts the runs under that key that have not ended: with the options
+`useClient()` builds, this caller's runs of that method.
+[Build an ICRC-1 wallet](/v4/build/icrc1-wallet/#6-send) has the few lines the
+two take.
 
 `client.resendOf(error, canister, method, { dedupedBy })` offers that re-send.
 `dedupedBy` states what the canister deduplicates on, read from the

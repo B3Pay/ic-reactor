@@ -6,7 +6,9 @@ import type { LoggedRequest } from "./scenarios.ts"
 function noteOf(request: LoggedRequest): string {
   if (request.refused !== undefined) return request.refused
   if (request.dropped === true) return "ran, reply lost"
-  if (request.endpoint === "read_state") return "state read (keys, certificate)"
+  if (request.endpoint === "read_state") {
+    return "state read (the subnet's keys, or the IC's time)"
+  }
   return ""
 }
 

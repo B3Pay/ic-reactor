@@ -359,7 +359,17 @@ principal's cached answer is never served to another: after a sign-in,
 sign-out or switch, the new caller's key is empty (`data` is `undefined`)
 until it loads, and a read made for the previous caller never lands in it.
 A sign-out, an expired session or a switch also removes the previous
-caller's reads from the cache; the anonymous reads stay.
+caller's reads from the cache; the anonymous reads stay. Any change of
+caller also starts over every mutation under the client's mutation keys: a
+`useMutation` that showed the last caller's result or error is idle before
+the components re-render, on a hidden `<Activity>` screen too (the client
+reaches it through a `WeakRef`; in a runtime with none it only clears the
+cache), the mutation leaves `client.queryClient` (a pending one when it
+settles), and a write still running reports to the callbacks in its options
+and to `mutateAsync`'s promise only. Component
+state (a form, a copied result), a mutation under a `mutationKey` of your
+own and another `QueryClient` are not the client's to clear: mount the
+account's part of the page under `key={principal}`.
 Keep it so: build the options in render from that render's `useClient()`,
 listing it in the dependencies of any `useMemo` or effect built from it
 (React Compiler does), and add nothing that carries data across keys
@@ -468,9 +478,21 @@ export function Send({ arg }: { arg: TransferArg }) {
   `bigint` of nanoseconds), not from `Date.now()`. That time moves about once
   a second, so give each transfer its own `memo` too. A time more than five
   minutes before one the client read already rejects `not_delivered`.
+  In a form, read it as a step of your `mutationFn` (the rule above), and
+  only for an argument that has no time yet (one that has is a re-send):
+  awaited in the submit handler before `mutate()`, it leaves the button on
+  with nothing pending, and a second press sends a second transfer.
+  `isPending` is the last render's value, and TanStack tells React of a new
+  mutation from a timer, after `mutate()` has returned: have the handler of
+  a write that must not go out twice return first while
+  `client.queryClient.isMutating({ mutationKey: options.mutationKey }) > 0`,
+  or two presses with nothing between them send it twice (two transfers,
+  each with a memo of its own).
   `client.resendOf(transfer.error, ledger, "icrc1_transfer", { dedupedBy: (arg) => arg.created_at_time })`
-  is `undefined` unless that write's outcome is unknown, `dedupedBy` finds a
-  key (not `null`) in its argument, the argument is unchanged since it was
+  is `undefined` unless that write's outcome is unknown, its argument is an
+  object (a record, a variant or the tuple of several arguments: a lone
+  `nat`, `text` or `principal` is never offered), `dedupedBy` finds a key
+  (not `null`) in it, the argument is unchanged since it was
   sent, the canister still resolves where the write went, and its sender is
   still the caller; then `again.send()` sends the same bytes to the same
   canister as that sender, and `transfer.mutate(again.arg)` sends the
@@ -534,6 +556,20 @@ since the host's clock may differ from the IC's.
 On the management canister (`aaaaa-aa`), codes 1 to 3 prove nothing: a write
 there may have executed. A query changes nothing, so a failed read never "may
 have executed".
+
+On a device whose clock is minutes off, the IC refuses the first request a
+signed-in caller's agent signs, because its ingress expiry comes from that
+clock, and the agent then signs by the IC's time. The client asks a refused
+read again and `client.time()` reads once more, so both answer. It never
+signs a refused write a second time: that write rejects `not_delivered` (the
+canister ran nothing), and sending it again goes through. A write that
+follows a read as the caller, or `await client.time(canister)`, is not the
+one refused. A visitor who is not signed in is not affected. When the clock
+is changed by minutes while the page is open, the agent's requests can fail
+again, signed in or not: the IC refuses a signed-in caller's, and with no one
+signed in a read fails the agent's own check of the answer. The client then
+has the agent read the time once more: a read answers when it is asked
+again, and a write goes through when it is sent again.
 
 How long a call waits: unless the call has a `timeoutMs` (below), neither the
 client nor the agent puts a timeout on an HTTP request (the call or query, or a `read_state` that polls), so a request

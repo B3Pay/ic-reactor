@@ -8,8 +8,15 @@
 // signed out (the client refuses writes), and the network names the host the
 // replica answers on. The mock ledger's accounts outlive each run's client, so
 // one test can transfer, then re-send, then read the balance.
+//
+// The IC's time is `NOW` in every run, the mock ledger's clock too, and a
+// new transfer's memo is `MEMO`, so a test can pin a whole argument and the
+// command that sends it again. The in-memory replica's own time follows this
+// machine's clock, so `connect` hands the CLI an object over the test client
+// whose `time()` answers `NOW` (a real client is frozen); every other call is
+// the test client's. The `demo` command runs on a test client as it is.
 import { generateKeyPairSync } from "node:crypto"
-import type { ClientOptions } from "@ic-reactor/core"
+import type { Client, ClientOptions } from "@ic-reactor/core"
 import { createTestClient } from "@ic-reactor/core/testing"
 import { Principal } from "@icp-sdk/core/principal"
 import { principal, type Principal as Text } from "@meantjs/schema"
@@ -21,6 +28,10 @@ export type TestClient = ReturnType<typeof createTestClient>
 
 /** A fixed clock: 2026-10-01T00:00:00Z, in nanoseconds. */
 export const NOW = 1_790_812_800_000_000_000n
+
+/** The memo a new transfer gets in a test run, and its hex. */
+export const MEMO = new Uint8Array(16).fill(0xab)
+export const MEMO_HEX = "ab".repeat(16)
 
 /** A JSON document the CLI printed. */
 export type Doc = { readonly [field: string]: unknown }
@@ -54,6 +65,8 @@ export function createCli(
   options: {
     readonly ledger?: Partial<MockLedgerOptions>
     readonly files?: Readonly<Record<string, string>>
+    /** The memo of each new transfer; `MEMO` every time when left out. */
+    readonly memo?: () => Uint8Array
   } = {}
 ) {
   const ledger = createMockLedger({
@@ -88,9 +101,11 @@ export function createCli(
         })
         ledger.mountOn(test)
         runOptions.before?.(test)
-        return test.client
+        return Object.create(test.client, {
+          time: { value: () => Promise.resolve(NOW) },
+        }) as Client
       },
-      now: () => NOW,
+      memo: options.memo ?? (() => MEMO),
       readFile(path) {
         const text = files[path]
         if (text === undefined) {

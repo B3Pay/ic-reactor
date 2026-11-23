@@ -60,16 +60,16 @@ identity above, pass `--pem`.
 
 ## Scenarios
 
-| Scenario                                                                                                                                                                                                                               | File                                              | See it                                                                            | Tests                                                                                 |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 1. **Identity**: `--pem` (Ed25519 or secp256k1, dfx's form too), else the hex seed in `NODE_AGENT_TOOL_SEED`, else `identity: "anonymous"`, whose writes the client refuses                                                            | `src/identity.ts`, `src/commands/whoami.ts`       | `whoami`, `whoami --pem <file>`, an anonymous `transfer`                          | `src/identity.test.ts`                                                                |
-| 2. **Networks**: `--network ic\|local\|<url>`; a root key is fetched only from this machine, a remote URL needs `--root-key <hex>`                                                                                                     | `src/network.ts`                                  | `info --network https://example.org` (refused), `--network http://127.0.0.1:8001` | `src/network.test.ts`                                                                 |
-| 3. **Many ledgers, one interface**: `--ledger icp\|ckbtc\|cketh\|<id>`, each `client.canister<Actor>(actor, { id })`                                                                                                                   | `src/ledgers.ts`                                  | `info --ledger cketh`                                                             | `src/ledgers.test.ts`                                                                 |
-| 4. **Direct calls**: `info` (five reads in parallel) and `balance`; `--certified` reads through `{ id, certified: true }` and says which reads were certified                                                                          | `src/commands/info.ts`, `src/commands/balance.ts` | `info --certified`, `balance <p> --certified`                                     | `src/commands/reads.test.ts`                                                          |
-| 5. **Writes**: `parseUnits` at the ledger's decimals, its fee, `created_at_time`; a `kind` switch with an exit code per kind; after `mayHaveExecuted`, a re-read and the exact same-argument re-send (`--resend-unknown` does it once) | `src/commands/transfer.ts`, `src/failure.ts`      | `pnpm demo`, steps 2 to 10                                                        | `src/commands/transfer.test.ts`, `src/commands/resend.test.ts`, `src/failure.test.ts` |
-| 6. **JSON for agents**: `--json` on every command, one stable shape                                                                                                                                                                    | `src/output.ts`                                   | any command with `--json`                                                         | `src/output.test.ts`                                                                  |
-| 7. **The cache outside React**: `watch` reads through `client.queryClient.fetchQuery(client.queryOptions(...))`, invalidates the balance alone each interval, prints only changes, disposes the client on Ctrl-C                       | `src/commands/watch.ts`                           | `watch <p>`                                                                       | `src/commands/watch.test.ts`                                                          |
-| 8. **Every failure, narrated**: `demo` runs the commands above on `createTestClient()` with a mocked ledger, arms one failure per step, and shows what the replica saw                                                                 | `src/commands/demo.ts`, `src/mock-ledger.ts`      | `pnpm demo`, `pnpm demo --json`                                                   | `src/commands/demo.test.ts`, `src/cli.test.ts`                                        |
+| Scenario                                                                                                                                                                                                                                                                                            | File                                              | See it                                                                            | Tests                                                                                 |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 1. **Identity**: `--pem` (Ed25519 or secp256k1, dfx's form too), else the hex seed in `NODE_AGENT_TOOL_SEED`, else `identity: "anonymous"`, whose writes the client refuses                                                                                                                         | `src/identity.ts`, `src/commands/whoami.ts`       | `whoami`, `whoami --pem <file>`, an anonymous `transfer`                          | `src/identity.test.ts`                                                                |
+| 2. **Networks**: `--network ic\|local\|<url>`; a root key is fetched only from this machine, a remote URL needs `--root-key <hex>`                                                                                                                                                                  | `src/network.ts`                                  | `info --network https://example.org` (refused), `--network http://127.0.0.1:8001` | `src/network.test.ts`                                                                 |
+| 3. **Many ledgers, one interface**: `--ledger icp\|ckbtc\|cketh\|<id>`, each `client.canister<Actor>(actor, { id })`                                                                                                                                                                                | `src/ledgers.ts`                                  | `info --ledger cketh`                                                             | `src/ledgers.test.ts`                                                                 |
+| 4. **Direct calls**: `info` (five reads in parallel) and `balance`; `--certified` reads through `{ id, certified: true }` and says which reads were certified                                                                                                                                       | `src/commands/info.ts`, `src/commands/balance.ts` | `info --certified`, `balance <p> --certified`                                     | `src/commands/reads.test.ts`                                                          |
+| 5. **Writes**: `parseUnits` at the ledger's decimals, its fee, `created_at_time` from the IC's time (`client.time()`) and a `memo` of its own; a `kind` switch with an exit code per kind; after `mayHaveExecuted`, a re-read and the exact same-argument re-send (`--resend-unknown` does it once) | `src/commands/transfer.ts`, `src/failure.ts`      | `pnpm demo`, steps 2 to 10                                                        | `src/commands/transfer.test.ts`, `src/commands/resend.test.ts`, `src/failure.test.ts` |
+| 6. **JSON for agents**: `--json` on every command, one stable shape                                                                                                                                                                                                                                 | `src/output.ts`                                   | any command with `--json`                                                         | `src/output.test.ts`                                                                  |
+| 7. **The cache outside React**: `watch` reads through `client.queryClient.fetchQuery(client.queryOptions(...))`, invalidates the balance alone each interval, prints only changes, disposes the client on Ctrl-C                                                                                    | `src/commands/watch.ts`                           | `watch <p>`                                                                       | `src/commands/watch.test.ts`                                                          |
+| 8. **Every failure, narrated**: `demo` runs the commands above on `createTestClient()` with a mocked ledger, arms one failure per step, and shows what the replica saw                                                                                                                              | `src/commands/demo.ts`, `src/mock-ledger.ts`      | `pnpm demo`, `pnpm demo --json`                                                   | `src/commands/demo.test.ts`, `src/cli.test.ts`                                        |
 
 `pnpm demo` walks through: a transfer; the ledger's `InsufficientFunds`; a
 lost reply (`outcome_unknown`), its re-read and printed re-send, which the
@@ -136,15 +136,24 @@ ICRC-1 ledgers deduplicate: the same sender sending the same argument
 (`created_at_time` included) within about 24 hours gets
 `Duplicate { duplicate_of }` and moves nothing. So after `outcome_unknown` the
 tool never builds a new transfer: it reads the balance back and prints the
-command that sends the very same one (`--fee` and `--created-at-time` pinned,
-the same `--pem`). Run it: `Duplicate` means the first went through, a block
-index means it had not and now has. `--resend-unknown` does this once by
-itself. A re-send that does not go through (an HTTP 429 three times, a reject
-before the ledger ran it, an `Err` other than `Duplicate`) moved nothing, and
-that says nothing about the first attempt: the tool still reports the first
-attempt's unknown outcome and exit code, and prints the same re-send command.
-After the window the ledger answers `TooOld`, and only the balance or the
-ledger's history can tell.
+command that sends the very same one (`--fee`, `--created-at-time` and
+`--memo` pinned, the same `--pem`). Run it: `Duplicate` means the first went
+through, a block index means it had not and now has. `--resend-unknown` does
+this once by itself. A re-send that does not go through (an HTTP 429 three
+times, a reject before the ledger ran it, an `Err` other than `Duplicate`)
+moved nothing, and that says nothing about the first attempt: the tool still
+reports the first attempt's unknown outcome and exit code, and prints the same
+re-send command. After the window the ledger answers `TooOld`, and only the
+balance or the ledger's history can tell.
+
+`created_at_time` is the IC's time: `transfer` reads it with
+`client.time(ledger)`, beside its other reads, and not from this machine's
+clock, which a ledger refuses when it is far from its own (`CreatedInFuture`,
+`TooOld`). That time moves about once a second, so a new transfer also gets a
+`memo` of its own (16 random bytes): two runs of one command within that
+second are two transfers, and the second is not answered as the first one's
+`Duplicate`. A transfer typed with `--created-at-time` is sent as typed, with
+the `--memo` given or none, so the same command line is the same transfer.
 
 ## A real local ledger
 
@@ -160,6 +169,7 @@ pnpm exec icp network stop
 ```
 
 Run the same `transfer` twice with one `--created-at-time` and the second
-answers `Duplicate`; `--fee 0.001` gives `BadFee`, an old `--created-at-time`
+answers `Duplicate` (without it, each run is a new transfer, with a time and a
+memo of its own); `--fee 0.001` gives `BadFee`, an old `--created-at-time`
 `TooOld`. The client fetches this replica's root key because `127.0.0.1` is
 this machine; for any other host the tool asks for `--root-key`.

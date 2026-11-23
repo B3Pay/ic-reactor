@@ -7,7 +7,6 @@ import {
   type TransferArg,
   type TransferError,
 } from "../canisters/icrc1.ts"
-import { nowNanos } from "../forms/convert.ts"
 import type { DynActor } from "../lib/reactor.ts"
 import {
   callUntyped,
@@ -71,8 +70,11 @@ const transfer = new MutationObserver(
   client.mutationOptions(ledger, "icrc1_transfer"),
 )
 const arg = { to: { owner: seed2, subaccount: null }, amount: 25_000n,
-  fee: null, memo: null, from_subaccount: null,
-  created_at_time: BigInt(Date.now()) * 1_000_000n }
+  fee: null, memo: null, from_subaccount: null, created_at_time: null }
+// The same transfer with a created_at_time, which the ledger deduplicates
+// on. It is the IC's time, not this machine's clock: one read_state.
+const stamped = async (): Promise<TransferArg> =>
+  ({ ...arg, created_at_time: await client.time(ledger) })
 const dedupe = { dedupedBy: (a: TransferArg) => a.created_at_time }`
 
 /** What the identity of seed 1 holds when a scenario starts: 1 ckBTC. */
@@ -92,15 +94,29 @@ function transferErr(lab: Lab, error: unknown): TransferError | undefined {
     : undefined
 }
 
+/** The setup's `arg`: 25,000 units to seed 2, with no `created_at_time`. */
 const transferArg = (overrides: Partial<TransferArg> = {}): TransferArg => ({
   to: { owner: SEED2, subaccount: null },
   amount: 25_000n,
   fee: null,
   memo: null,
   from_subaccount: null,
-  created_at_time: nowNanos(),
+  created_at_time: null,
   ...overrides,
 })
+
+/**
+ * The setup's `stamped()`: the same transfer with a `created_at_time`, which
+ * the ledger deduplicates on. It is the IC's time, read as `client.time()`
+ * reads it anywhere (one `read_state` in the scenario's log), not the clock
+ * of the machine the page runs on: a ledger refuses a time too far from its
+ * own with `CreatedInFuture` or `TooOld`.
+ */
+async function stamped(lab: Lab, r: Recorder): Promise<TransferArg> {
+  const time = await lab.client.time(lab.ledger)
+  r.note("created_at_time is the IC's time: client.time(ledger)", show(time))
+  return transferArg({ created_at_time: time })
+}
 
 const accountOf = (owner: Principal) => ({ owner, subaccount: null })
 
@@ -277,24 +293,25 @@ const lostReply: Scenario = {
     "The ledger runs the transfer, but its reply is lost on the way back. The client cannot know whether it ran, so it says outcome_unknown and mayHaveExecuted: true, and retries nothing. Because the argument carries created_at_time, resendOf offers to send the very same bytes again, as the same sender. The ledger recognises the transaction and answers Duplicate: it executed exactly once, and the balance read back agrees.",
   expected:
     "outcome_unknown (mayHaveExecuted true), resendOf offered, send() → canister_err Duplicate, 1 execution.",
-  code: `dropNextReply()
-await transfer.mutate(arg)
+  code: `const sent = await stamped() // created_at_time: the IC's time
+dropNextReply()
+await transfer.mutate(sent)
 // ReactorError: kind "outcome_unknown", mayHaveExecuted true
 
 const error = transfer.getCurrentResult().error
 const again = client.resendOf(error, ledger, "icrc1_transfer", dedupe)
-again.arg === arg // the very object that was sent
+again.arg === sent // the very object that was sent
 await again.send()
 // ReactorError: kind "canister_err", err { tag: "Duplicate", … }`,
   run: () =>
     runInLab({ fund: START_BALANCE }, async (lab, r) => {
-      const arg = transferArg()
+      const arg = await stamped(lab, r)
       const observer = transferObserver(lab)
       lab.kit.dropNextReply()
       r.note("dropNextReply(): the ledger will run, its reply will be lost")
       const error = failureOf(
         r,
-        "transfer.mutate(arg) fails",
+        "transfer.mutate(sent) fails",
         await settle(() => observer.mutate(arg))
       )
       r.check(
@@ -361,7 +378,7 @@ const throttled: Scenario = {
   expected:
     "Ok (block index) after 2 icrc1_transfer calls, the first refused 429.",
   code: `refuseNext(429, { method: "icrc1_transfer" })
-await transfer.mutate({ ...arg, created_at_time: null }) // 0n: the block index
+await transfer.mutate(arg) // 0n: the block index
 requests.filter((q) => q.methodName === "icrc1_transfer")
 // [{ refused: "refuseNext(429) answered …" }, { caller: "psith-…" }]`,
   run: () =>
@@ -375,7 +392,7 @@ requests.filter((q) => q.methodName === "icrc1_transfer")
         "transfer.mutate(arg) succeeds",
         await settle(() =>
           new MutationObserver(lab.client.queryClient, options).mutate(
-            transferArg({ created_at_time: null })
+            transferArg()
           )
         )
       )
@@ -406,7 +423,7 @@ const trapped: Scenario = {
   ...ledgerHandlers,
   icrc1_transfer: () => { throw new Error("assertion failed: …") }, // a trap
 })
-await transfer.mutate({ ...arg, created_at_time: null })
+await transfer.mutate(arg) // arg has no created_at_time
 // ReactorError: kind "rejected", rejectCode 5, mayHaveExecuted true
 
 client.resendOf(error, ledger, "icrc1_transfer", dedupe)
@@ -422,9 +439,7 @@ await ledger.icrc1_balance_of({ owner: seed1, subaccount: null })`,
       const error = failureOf(
         r,
         "transfer.mutate(arg) fails",
-        await settle(() =>
-          transferObserver(lab).mutate(transferArg({ created_at_time: null }))
-        )
+        await settle(() => transferObserver(lab).mutate(transferArg()))
       )
       r.same("kind", fieldsOf(error)?.kind, "rejected")
       r.same("rejectCode", fieldsOf(error)?.rejectCode, 5)
@@ -456,7 +471,7 @@ const destinationInvalid: Scenario = {
   ...ledgerHandlers,
   icrc1_transfer: () => reject(3, "Requested canister has no wasm module"),
 })
-await transfer.mutate(arg) // arg has created_at_time
+await transfer.mutate(await stamped()) // with a created_at_time
 // ReactorError: kind "rejected", rejectCode 3, mayHaveExecuted false
 client.resendOf(error, ledger, "icrc1_transfer", dedupe)
 // undefined: the outcome is known, nothing to resolve`,
@@ -468,10 +483,11 @@ client.resendOf(error, ledger, "icrc1_transfer", dedupe)
         message: "Requested canister has no wasm module",
       })
       r.note("The ledger's next transfer is rejected with code 3")
+      const arg = await stamped(lab, r)
       const error = failureOf(
         r,
-        "transfer.mutate(arg) fails",
-        await settle(() => transferObserver(lab).mutate(transferArg()))
+        "transfer.mutate(stamped) fails",
+        await settle(() => transferObserver(lab).mutate(arg))
       )
       r.same("kind", fieldsOf(error)?.kind, "rejected")
       r.same("rejectCode", fieldsOf(error)?.rejectCode, 3)
@@ -552,7 +568,9 @@ auth.switchTo(2)
 await client.queryClient.fetchQuery(read)
 // ReactorError: kind "cancelled", code "caller_changed"
 
-auth.switchTo(1); dropNextReply(); await transfer.mutate(arg) // outcome_unknown
+auth.switchTo(1)
+const sent = await stamped() // created_at_time: the IC's time
+dropNextReply(); await transfer.mutate(sent) // outcome_unknown
 const again = client.resendOf(error, ledger, "icrc1_transfer", dedupe)
 auth.switchTo(2)
 client.resendOf(error, ledger, "icrc1_transfer", dedupe) // undefined
@@ -582,9 +600,10 @@ await again.send() // canister_err Duplicate: it ran once`,
       r.same("Nothing was sent", lab.kit.requests.length, before)
 
       auth.switchTo(1)
-      r.note("auth.switchTo(1); dropNextReply(); transfer.mutate(arg)")
-      const arg = transferArg()
+      r.note("auth.switchTo(1)")
+      const arg = await stamped(lab, r)
       lab.kit.dropNextReply()
+      r.note("dropNextReply(); transfer.mutate(sent)")
       const lost = failureOf(
         r,
         "The transfer's reply is lost",

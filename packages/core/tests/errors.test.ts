@@ -628,11 +628,14 @@ const rows: Row[] = [
     httpStatus: status,
     ...doubtful,
   })),
+  // A host whose clock is minutes off. The agent has read the IC's time by
+  // the time this is thrown, so a read asked again is answered; a write
+  // signed again would be a second request for one intent.
   {
     name: "IngressExpiryInvalid",
     built: ingressExpiry,
     update: settled("not_delivered", false),
-    query: settled("not_delivered", false),
+    query: settled("not_delivered", false, true),
   },
   // The agent failed before it sent anything: never delivered, and the same
   // input fails the same way again, so never retried.
@@ -1152,6 +1155,7 @@ describe("retryUpdate", () => {
         transport(),
         pollingTimeout,
         untrusted,
+        ingressExpiry,
       ]) {
         const asQuery = classifyError(built.real(), context("query"))
         expect(retryQuery(0, asQuery)).toBe(true)
@@ -1195,12 +1199,24 @@ describe("retryQuery", () => {
       expect(retryQuery(0, query(http(429)))).toBe(true)
       expect(retryQuery(0, query(http(503)))).toBe(true)
       expect(retryQuery(0, query(certifiedReject(6)))).toBe(true)
+      expect(retryQuery(0, query(ingressExpiry))).toBe(true)
       expect(retryQuery(0, query(certifiedReject(5)))).toBe(false)
       expect(retryQuery(0, query(certifiedReject(2), MANAGEMENT))).toBe(false)
       expect(retryQuery(0, query(http(400)))).toBe(false)
       expect(retryQuery(0, query(http(403)))).toBe(false)
-      expect(retryQuery(0, query(ingressExpiry))).toBe(false)
       expect(retryQuery(0, query(notAnAgentError))).toBe(false)
+    })
+
+    it("does not retry a write the replica refused for its ingress expiry", () => {
+      // An app's own query around a direct write gets this predicate from
+      // the QueryClient's default. A write signed again while the refused
+      // request can still become valid would be two requests for one intent.
+      const write = classifyError(ingressExpiry.real(), context("update"))
+      expect(write).toMatchObject({
+        kind: "not_delivered",
+        mayHaveExecuted: false,
+      })
+      expect(retryQuery(0, write)).toBe(false)
     })
 
     it("does not retry a failure of the client's own", () => {

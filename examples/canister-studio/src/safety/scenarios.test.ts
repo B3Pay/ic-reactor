@@ -1,7 +1,9 @@
 import { principal } from "@meantjs/schema"
 import { isReactorError } from "@ic-reactor/core"
 import { describe, expect, it } from "vitest"
+import { LAB_LEDGER_ID } from "./mock-ledger.ts"
 import {
+  LAB_SETUP,
   SCENARIOS,
   sendTransferInLab,
   type Scenario,
@@ -88,6 +90,35 @@ describe("what the scenarios hand the page", () => {
       value: 100_000_000n - 25_000n - 10n,
       tokens: true,
     })
+  })
+
+  it.each(["lost-reply", "reject-3", "caller-changed"])(
+    "%s: created_at_time is the IC's time, read from the replica before the transfer is sent",
+    async (id) => {
+      const result = await scenario(id).run()
+      expect(result.requests[0]).toEqual({
+        endpoint: "read_state",
+        canisterId: LAB_LEDGER_ID,
+      })
+      expect(result.requests[1]?.methodName).toBe("icrc1_transfer")
+      expect(result.steps.map((step) => step.label)).toContain(
+        "created_at_time is the IC's time: client.time(ledger)"
+      )
+    }
+  )
+
+  it.each(["http-429", "reject-5", "canister-err"])(
+    "%s: a transfer with no created_at_time reads no time",
+    async (id) => {
+      const result = await scenario(id).run()
+      expect(result.requests[0]?.methodName).toBe("icrc1_transfer")
+    }
+  )
+
+  it("the setup it shows stamps a transfer with client.time(), never with this machine's clock", () => {
+    const shown = [LAB_SETUP, ...SCENARIOS.map((s) => s.code)].join("\n")
+    expect(shown).toContain("created_at_time: await client.time(ledger)")
+    expect(shown).not.toMatch(/Date\.now|nowNanos/)
   })
 
   it("caller changed: the refused re-send is shown as one, so it never reads as settling the transfer", async () => {

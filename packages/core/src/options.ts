@@ -33,6 +33,7 @@ import {
   isWrite,
   prepareMethod,
   notEncoded,
+  resync,
   retriedWrite,
   slotOf,
   valuesOf,
@@ -53,6 +54,7 @@ import {
   createReactorError,
   fromCanister,
   isReactorError,
+  isRetryable,
   retryQuery,
   timedOutError,
 } from "./errors.js"
@@ -886,7 +888,15 @@ export function createBuilders(
     const where = { method, canisterId: target.id }
     const ms = record.timeoutMs
     let timedOut = false
-    const read = readTime(where, () => timedOut)
+    // Read once more after a failure another attempt can change. The one
+    // this is for: a signed-in caller on a host whose clock is minutes off,
+    // whose first read_state the replica refuses for its ingress expiry. The
+    // agent has read the IC's time by then, and the second is signed by it.
+    const once = () => readTime(where, () => timedOut)
+    const read = once().catch((error: unknown) => {
+      if (isRetryable(error)) return once()
+      throw error
+    })
     if (ms === undefined) return read
     // The canister object's timeoutMs bounds the wait from here, as it bounds
     // a call through it: when it passes, the time rejects `cancelled` (code
@@ -925,6 +935,7 @@ export function createBuilders(
       })
     }
     if (timedOut()) throw timedOutError(where, false)
+    const synced = agent.hasSyncedTime()
     try {
       // The agent verifies the certificate against the network's root key
       // and the canister's subnet delegation. Its age is not checked: that
@@ -952,6 +963,7 @@ export function createBuilders(
       if (now > latestTime) latestTime = now
       return now
     } catch (error) {
+      await resync(agent, synced, where.canisterId, error)
       throw classifyError(error, { ...where, mode: "query" })
     }
   }

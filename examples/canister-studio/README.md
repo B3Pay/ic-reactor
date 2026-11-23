@@ -181,3 +181,21 @@ The app keeps each of these rules, which come from `@ic-reactor/core`'s
    followed by a fallback.
 10. A write shows its sender, target, method and exact bytes before it is
     sent.
+
+One rule of the guide it keeps only in the Safety lab: stamp
+`created_at_time` from the IC's time, `await client.time(ledger)`, and not
+from the machine's clock. The lab does (`stamped()` in
+`src/safety/scenarios.ts`, shown in its setup). The studio's own forms and
+its write runner use the browser's clock (`nowNanos` in
+`src/forms/convert.ts`), for two reasons:
+
+- They fill any timestamp of any canister as the form is submitted, in the
+  handler of the press, and the review step shows the exact bytes at once.
+- The runner sends a method's argument as it was typed, with no memo of its
+  own to add, so the stamp alone tells a new write from an identical one sent
+  just before it. The browser's clock moves every millisecond, the IC's time
+  about once a second.
+
+The price is a clock that is wrong: a ledger refuses a time too far from its
+own with `CreatedInFuture` or `TooOld`, and nothing moves. A page that builds
+its own transfers reads `client.time()`, as the other examples do.

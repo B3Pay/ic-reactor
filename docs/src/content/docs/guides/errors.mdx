@@ -137,7 +137,8 @@ an update and for a query:
 | reject code 4 or 5                                                                                                | `rejected`                  | true                      | `rejected`                  |
 | reject code 6, an unknown code, HTTP 408 or 5xx, a network failure, a polling timeout, a failed certificate check | `outcome_unknown`           | true                      | `not_delivered` (retryable) |
 | HTTP 429                                                                                                          | `not_delivered` (retryable) | false                     | `not_delivered` (retryable) |
-| any other HTTP 4xx, `IngressExpiryInvalid`                                                                        | `not_delivered`             | false                     | `not_delivered`             |
+| `IngressExpiryInvalid`: the IC refused the request's ingress expiry (a device whose clock is off, below)          | `not_delivered`             | false                     | `not_delivered` (retryable) |
+| any other HTTP 4xx                                                                                                | `not_delivered`             | false                     | `not_delivered`             |
 | a request that could not be built or signed                                                                       | `not_delivered`             | false                     | `not_delivered`             |
 | the signer did not sign it (a declined prompt; the `cause` is the signer's error)                                 | `not_delivered`             | false                     | `not_delivered`             |
 
@@ -160,6 +161,48 @@ Three rules sit behind the table.
   above, or a refusal before it is sent) says nothing about the earlier
   attempt, so it reads `outcome_unknown` with `mayHaveExecuted: true`. See
   [A re-send that did not run](#what-to-do-for-each-kind) below.
+
+### A device whose clock is off
+
+An agent signs every request with an ingress expiry four to five minutes
+after the device's clock. The IC accepts an expiry between its own time and
+five and a half minutes after it, and checks that on every update and on a
+read whose caller is signed in. So on a device whose clock is minutes ahead
+of the IC's, or minutes behind it, the IC refuses the first request a
+signed-in caller's agent sends (`IngressExpiryInvalid`). The agent answers
+that by reading the IC's time, and signs by it from then on.
+
+- **A read is asked again.** The client sends a direct call again, and
+  TanStack Query asks a read made with `queryOptions` again in a browser, so
+  both answer. On a server TanStack Query retries nothing, so there the first
+  read made with `queryOptions` rejects `not_delivered` and the next one
+  answers.
+- **`client.time()` reads once more**, so it answers too.
+- **A write is never signed a second time by the client.** The request the IC
+  refused can still become valid later, and two requests for one intent could
+  both run. The write rejects `not_delivered`: the canister ran nothing.
+  Sending it again goes through, because the agent has read the IC's time by
+  then. The agent signs the write again itself only when the refused request
+  had already expired, which is a clock that was behind, so there it goes
+  through at once.
+
+A write meets that refusal only when nothing signed went before it. In most
+apps a read as the caller comes first, or `await client.time(canister)` for a
+`created_at_time`, and the write after it goes through. A visitor who is not
+signed in is not affected: the IC does not check the expiry of an anonymous
+read, and the agent reads the IC's time for the first certificate whose time
+is minutes from the device's.
+
+The agent reads the IC's time only once: on that first refusal, or for that
+first certificate. When the device's clock is changed by minutes while the
+page is open, its requests can fail until the time is read again. The IC
+refuses a signed-in caller's. With no one signed in, a read fails the agent's
+own check of the answer: a query's answer signed more than five minutes
+before the agent's time, or a certificate whose time is more than five
+minutes from it (a failed certificate check in the table). Either way the
+client has the agent read the time once more. A read is then asked again and
+answers, as above. A write rejects `not_delivered` once, and goes through
+when it is sent again.
 
 ### How long a call waits
 

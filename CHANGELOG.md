@@ -58,6 +58,46 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   or `mutationFn` passes on the context it got, as the Writes guide says:
   `options.onMutate(variables, context)` and
   `options.mutationFn(variables, context)`.
+- On a device whose clock is minutes off, a signed-in caller's first read
+  and first `client.time()` no longer fail. An agent signs every request with
+  an ingress expiry four to five minutes after the device's clock. The IC
+  accepts an expiry between its own time and five and a half minutes after
+  it, and checks that on every update and on a read whose caller is signed
+  in, so on such a device it refuses the first request a signed-in caller's
+  agent sends. The agent then reads the IC's time and signs by it, but the
+  request that met the refusal failed, and for a read the client took that
+  as final. Measured on mainnet with the clock 3, 6 and 10 minutes ahead and
+  6 and 10 minutes behind: the first `icrc1_balance_of` as a signed-in caller
+  and the first `client.time()` rejected `not_delivered` ("the replica
+  refused the request's ingress expiry"), and the second answered. Now a read
+  refused that way is asked again: the client sends a direct call again (its
+  usual two re-sends at most), TanStack Query asks a `queryOptions` read
+  again in a browser, and `client.time()` reads once more, as it now does
+  after any failure another attempt can change. All of them answered on the
+  first call in the same measurements. A write is still never signed a second
+  time by the client: one the IC refuses for its expiry rejects
+  `not_delivered` (the canister ran nothing), and sending it again goes
+  through. A visitor who is not signed in was not affected, and an app has
+  nothing to change.
+- A device whose clock is changed while the page stays open no longer needs
+  a reload. An agent reads the IC's time once, on its first refused ingress
+  expiry or for the first certificate whose time is minutes off, and never
+  again. So once the clock was changed with the page open, corrected or
+  moved further off, the agent signed and checked by a clock that was off.
+  The IC then refused every request of a signed-in caller. With no one
+  signed in, where the IC checks no expiry, a read failed the agent's own
+  check of the answer instead: a query's answer signed more than five
+  minutes before the agent's time, or a certificate more than five minutes
+  from it. Either lasted until a new agent was built. Now the client has the
+  agent read the time again after such a failure: a read is asked again and
+  answers, `client.time()` reads once more and resolves, and a write rejects
+  `not_delivered` once and goes through when it is sent again. The first
+  refusal is left to the agent, so nothing more is sent for it. Measured on
+  mainnet, read-only, with the clock moved by 3 or 10 minutes after the
+  first read: 11 of 19 cases failed until a reload before (7 of 11 for a
+  signed-in caller, 4 of 8 with no one signed in), and every one answers
+  now. Core is 141 B larger for this, gzipped.
+
 - Peer `@icp-sdk/core` at `^6.1.1`, where it was `^6.1.0`. 6.1.1 is the
   release npm installs, while the lockfile held 6.1.0, so core's tests and
   the lowest-peers run had not run on what an app gets; they run on 6.1.1
@@ -68,8 +108,8 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   signed-in caller's write that is the agent's first signed request rejects
   `not_delivered` once, with `mayHaveExecuted: false`, where 6.1.0 signed it
   again by the IC's time. Sending it again goes through. With the peers
-  included, an app's bundle grows by 613 B gzipped for `{ createClient }` and
-  by 622 B with the React bindings, of which 582 B and 596 B are the agent's
+  included, an app's bundle grows by 618 B gzipped for `{ createClient }` and
+  by 624 B with the React bindings, of which 591 B and 616 B are the agent's
   own. Migration: an app on `@icp-sdk/core` 6.1.0 updates it. Installing
   core, npm updates it where the app's range allows it and stops with
   `ERESOLVE` where the app pins it; pnpm and yarn warn. A floor rises only in
@@ -91,6 +131,37 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   Before, a page that is not local refused them as differing. Migration:
   none.
 
+#### Fixed
+
+- What a write showed no longer outlives its caller (#920). When the caller
+  changes (a sign-in, a sign-out, an expired session, a switch of account),
+  the client starts over every mutation under its mutation keys before it
+  tells its listeners: each observer of one is reset, so a `useMutation` is
+  idle again, and the mutation leaves the cache of `client.queryClient`, at
+  once when it has settled and otherwise when it settles. An observer nobody
+  listens to then is reset as well, so a screen hidden with React's
+  `<Activity>` renders nothing of the last account's write when it comes back,
+  on every supported TanStack Query. Before, the last account's argument,
+  result or error (an `InsufficientFunds` error carries a balance) stayed on
+  screen and in `useMutationState` for the next account, because a mutation
+  key of the client's own names no caller. Built from `useClient()`, whose key
+  ends with the caller, it stayed for the first render after the change, since
+  `useMutation` takes new options in an effect, and for good where a component
+  kept the options past their render. A write still running keeps running, and
+  reports to the callbacks in its options and to the promise `mutateAsync`
+  returned, not to the screen or to the callbacks passed to `mutate()`. A
+  write under the client's keys that is refused because the render it was
+  pressed from showed another caller (`caller_changed`) leaves the cache as it
+  settles. The client reaches each observer through a `WeakRef` and keeps none
+  alive. A runtime with no `WeakRef`, which every browser has had since 2021,
+  gets the cache cleared and no observer reset. Not covered, as before: a
+  mutation given a `mutationKey` of your own, a mutation on another
+  `QueryClient`, and what a component keeps in its own state. The Auth guide's
+  "Switching accounts" shows the `key={principal}` that covers those, and a
+  hidden screen that React shows again without rendering it. Migration: none,
+  unless an app relied on a result staying on screen across a change of
+  caller: keep it in the app's own state, from the callbacks in the options.
+
 ### @ic-reactor/vite-plugin
 
 #### Changed
@@ -110,6 +181,44 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 - The Writes guide no longer lists what differs on TanStack Query before
   5.89, and the support table names `@tanstack/query-core` 5.89.0.
+- The Auth guide says what a change of caller does to a write, and has a
+  recipe for switching accounts (#920). The Vite wallet's README and docs
+  page say that its Internet Identity button, pressed while someone is signed
+  in, switches accounts with no reload.
+- The Errors guide has a section on a device whose clock is off, and the
+  classification table gives `IngressExpiryInvalid` a row of its own. The
+  Writes guide no longer says that no call works on such a device until its
+  clock is fixed: the agent corrects itself after the first refusal. The
+  reference of `client.time()` says what it does there.
+- "Build an ICRC-1 wallet" sends one transfer when Send is pressed twice. It
+  awaited `client.time()` in the submit handler, before `mutate()`. While that
+  read was on its way nothing was pending and the Send button stayed on, so a
+  second press built a second transfer, with a memo of its own, and both were
+  paid: on the test replica, two presses during the read ran two transfers.
+  The page now reads the time inside the mutation function: `newTransfer`
+  leaves `created_at_time` empty, and a new `stamped` sets it as the transfer
+  is sent and leaves a transfer that has its time, one sent again, as it is.
+  The press calls `mutate()` at once, the transfer goes out as the account
+  that pressed, and a time that cannot be read is the mutation's error. Its
+  submit handler also asks the cache first whether a transfer is on its way,
+  with `client.queryClient.isMutating`, and sends nothing then. `isPending`
+  reaches the page from a timer, a moment after `mutate()`, and two presses
+  with nothing between them could both find the button on: under a parent
+  that had just rendered again, they ran two transfers. Migration: an app that
+  copied the guide's `Send.tsx` moves the read into its `mutationFn` and adds
+  that check to its submit handler, as the page shows.
+- The Writes guide and the consumer guide (`packages/core/llms.txt`) say where
+  a form reads the time for `created_at_time`: as a step of the mutation
+  function, and never between the press and `mutate()`. They also say that a
+  button disabled while `isPending` is off a moment after the press, not at
+  once, and what the submit handler asks the cache first.
+- The consumer guide says that `client.resendOf` offers only an argument that
+  is an object: a record, a variant or the tuple of several arguments. A
+  method whose one argument is a `nat`, `text` or `principal` is never
+  offered. The Writes guide and the doc comment said so already (#1039).
+- The Auth guide's example of a wallet that signs each call names
+  `await client.time(ledger)` as the source of `created_at_time`, where its
+  comment named `Date.now()`.
 - The client guide says that copies of the `ic_env` cookie that carry one
   environment are believed however they are encoded or ordered, that copies
   that differ are believed for nothing on a local page too, and that
@@ -120,6 +229,36 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### Examples (not published)
 
+- `vite-wallet`, `icrc-ledger` and `node-agent-tool` stamp `created_at_time`
+  with the IC's time, `await client.time(ledger)`, where they used the
+  machine's clock, as the guide has said to since 4.0.0 (#1039). A ledger
+  checks the stamp against its own time and refuses one too far from it
+  (`CreatedInFuture`, `TooOld`), so a clock far enough off failed every
+  transfer. The two pages read the time inside the mutation function, as the
+  transfer is sent: Send is off while it is read, an account that changes
+  meanwhile gets `caller_changed` with nothing sent, a time that cannot be
+  read is the mutation's error, and "Send the same transfer again" sends the
+  time the transfer was first sent with. Send is off from the press itself,
+  by the state each page sets there, and a test of each presses twice with
+  nothing in between. The Node tool reads the time beside its other reads.
+- `node-agent-tool` gives a new transfer a `memo` of its own, 16 random bytes.
+  The IC's time moves about once a second, so with that time alone two runs of
+  one `transfer` command within the same second would be one transfer and its
+  `Duplicate`. The command it prints to send an unknown outcome again pins
+  `--memo` beside `--fee` and `--created-at-time`. A transfer typed with
+  `--created-at-time` is sent as typed, with the `--memo` given or none.
+- `canister-studio`'s Safety lab stamps a transfer with `client.time(ledger)`,
+  in the code it shows and in the code it runs. Its base transfer has no
+  `created_at_time` now, and the three scenarios that depend on one (a lost
+  reply, reject code 3, a caller that changes) stamp theirs: their request
+  logs start with that read. The studio's own forms and write runner keep the
+  browser's clock, and the README says why: they fill any canister's
+  timestamps in the handler of the press, and the runner has no memo to add,
+  so its stamp alone tells a new write from an identical one sent just before
+  it.
+- `icrc-ledger`'s sandbox aims its "lost reply" fault at the transfer, as its
+  HTTP 429 faults were, so that a call the page makes while the time is read
+  does not use it up.
 - The five examples depend on `@icp-sdk/core` `^6.1.1`, where they had
   `^6.1.0`. Their code does not change.
 

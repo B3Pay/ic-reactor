@@ -1848,8 +1848,8 @@
       },
       {
         "file": "src/call.ts",
-        "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-        "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+        "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+        "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
       }
     ]
   },
@@ -4938,8 +4938,8 @@
     "testName": "counts the wait for the caller's identity, and sends nothing once the bound passed",
     "why": "client.time() starts its timeoutMs only once the caller's identity arrives, so a slow identity waits past the bound",
     "file": "src/options.ts",
-    "search": "    const read = readTime(where, () => timedOut)\n",
-    "replace": "    await internals.agentFor(internals.current().principal, where)\n    const read = readTime(where, () => timedOut)\n"
+    "search": "    const once = () => readTime(where, () => timedOut)\n",
+    "replace": "    await internals.agentFor(internals.current().principal, where)\n    const once = () => readTime(where, () => timedOut)\n"
   },
   {
     "id": "973-time-sent-after-timeout",
@@ -5178,8 +5178,8 @@
     "testName": "still waiting for its caller's identity",
     "why": "the wait for the caller's agent not ended by the timeout, so a call whose identity never arrives waits forever",
     "file": "src/call.ts",
-    "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-    "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+    "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
   },
   {
     "id": "875-timeout-direct-call-ignores-target",
@@ -5238,8 +5238,8 @@
     "testName": "a read aborted while it waits for its caller's identity",
     "why": "the wait for the caller's agent not ended by a read's abort signal, so an aborted read keeps waiting for an identity that may never come",
     "file": "src/call.ts",
-    "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-    "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+    "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
   },
   {
     "id": "875-timeout-resend-loses-unknown",
@@ -5608,8 +5608,8 @@
     "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
     "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
     "file": "src/client.ts",
-    "search": "            const again = internals.offered.get(vars as object)\n            throw fromCanister(",
-    "replace": "            const again = internals.offered.get(vars as object)\n            throw ((error: unknown, _canister: object) => error)("
+    "search": "            const again = internals.offered.get(vars as object)\n            const refused = fromCanister(",
+    "replace": "            const again = internals.offered.get(vars as object)\n            const refused = ((error: unknown, _canister: object) => error)("
   },
   {
     "id": "893-write-caller-read-when-sent-offline",
@@ -6851,6 +6851,195 @@
     "replace": "          caller !== state.principal,\n"
   },
   {
+    "id": "920-finished-write-still-shown",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "starts a finished write over for whoever shows it, and keeps it out of the cache, after a switch of account",
+    "why": "a change of caller resets no observer, so a useMutation goes on showing the last account's argument, result or error (an InsufficientFunds error carries its balance) to the next one",
+    "file": "src/client.ts",
+    "search": "      existing((observer) => {\n        if ((shows.get(observer) as number) < callerChanges) {\n          // It shows nothing after this, and stays held by its one `WeakRef`.\n          shows.set(observer, undefined)\n          observer.reset()\n        }\n      })\n",
+    "replace": ""
+  },
+  {
+    "id": "920-finished-write-kept-in-cache",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "starts a finished write over for whoever shows it, and keeps it out of the cache, after a sign-out",
+    "why": "a change of caller leaves the last caller's settled mutations in the client's cache, where useMutationState lists them for the next one",
+    "file": "src/client.ts",
+    "search": "          if (mutation.state.status === \"pending\") left.add(mutation)\n          else mutationCache.remove(mutation)\n",
+    "replace": "          if (mutation.state.status === \"pending\") left.add(mutation)\n"
+  },
+  {
+    "id": "920-writes-cleared-after-listeners",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "has done so before a listener hears of the change",
+    "why": "the writes are started over after the listeners were told, so the render a listener starts for the next caller still shows the last caller's write",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "      callerChanges++\n",
+        "replace": "      callerChanges++\n      queueMicrotask(() => {\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "          observer.reset()\n        }\n      })\n",
+        "replace": "          observer.reset()\n        }\n      })\n      })\n"
+      }
+    ]
+  },
+  {
+    "id": "920-pending-write-removed-at-once",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "starts a write still in flight over at once, keeps it in the cache while it runs, and removes it when it settles",
+    "why": "a pending mutation is removed from the cache when the caller changes: TanStack then never continues one that waits offline or behind its scope, so its promise never settles",
+    "file": "src/client.ts",
+    "search": "          if (mutation.state.status === \"pending\") left.add(mutation)\n          else mutationCache.remove(mutation)\n",
+    "replace": "          mutationCache.remove(mutation)\n"
+  },
+  {
+    "id": "920-settled-write-kept-in-cache",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "leaves a write that waits offline in the cache until it runs, refused and then removed, with nothing sent",
+    "why": "a mutation that was pending when the caller changed stays in the cache after it settles, with the last caller's argument and outcome, until TanStack collects it",
+    "file": "src/client.ts",
+    "search": "      type === \"updated\" &&\n      mutation.state.status !== \"pending\" &&\n",
+    "replace": "      false &&\n      mutation.state.status !== \"pending\" &&\n"
+  },
+  {
+    "id": "920-unheard-observer-keeps-last-write",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "starts over an observer nobody listens to, at the change and not when someone listens again",
+    "why": "the client forgets an observer as TanStack detaches it, so one that nobody listened to when the caller changed (a hidden Activity) keeps the last caller's write and renders it when its screen comes back; a TanStack Query before 5.102 never attaches it again",
+    "file": "src/client.ts",
+    "search": "    } else if (\n      type === \"updated\" &&\n",
+    "replace": "    } else if (type === \"observerRemoved\") {\n      shows.delete(event.observer)\n    } else if (\n      type === \"updated\" &&\n"
+  },
+  {
+    "id": "920-listener-write-started-over",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "leaves alone a write that a listener starts for the next caller while the last one's are started over",
+    "why": "every observer of one of the client's mutations is started over, also one that attached after the change: a write a listener starts for the next caller, while the others are being reset, is taken from its observer",
+    "file": "src/client.ts",
+    "search": "        if ((shows.get(observer) as number) < callerChanges) {\n",
+    "replace": "        if (shows.get(observer) !== undefined) {\n"
+  },
+  {
+    "id": "920-observer-told-again",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "tells whoever listens once for each change, however often the observer wrote",
+    "why": "an observer that was started over keeps the count of its last write, so every later change of caller resets it again and tells its listeners of nothing",
+    "file": "src/client.ts",
+    "search": "          // It shows nothing after this, and stays held by its one `WeakRef`.\n          shows.set(observer, undefined)\n",
+    "replace": ""
+  },
+  {
+    "id": "920-observer-held-twice",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "holds an observer through the one WeakRef still, after the caller has changed and it writes again",
+    "why": "an observer that was started over is dropped from the map while its reference stays, so its next write holds it through one more, and the references to a screen that stays grow with every change of caller",
+    "file": "src/client.ts",
+    "search": "          shows.set(observer, undefined)\n",
+    "replace": "          shows.delete(observer)\n"
+  },
+  {
+    "id": "920-observer-kept-alive",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "holds each observer through a WeakRef alone, and forgets one that is gone",
+    "why": "the client holds every observer itself, so each useMutation that ever wrote stays in memory with what it shows, for as long as the client lives",
+    "file": "src/client.ts",
+    "search": "        observers.add(new WeakRef(observer))\n",
+    "replace": "        observers.add({ deref: () => observer })\n"
+  },
+  {
+    "id": "920-observer-kept-alive-collection",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "keeps no observer alive: one the app lets go of is collected",
+    "why": "the client holds every observer itself, so a real garbage collection never frees one the app let go of",
+    "file": "src/client.ts",
+    "search": "        observers.add(new WeakRef(observer))\n",
+    "replace": "        observers.add({ deref: () => observer })\n"
+  },
+  {
+    "id": "920-gone-observer-never-forgotten",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "holds each observer through a WeakRef alone, and forgets one that is gone",
+    "why": "the reference to an observer that was collected is never dropped, so the set of them grows with every useMutation that ever wrote",
+    "file": "src/client.ts",
+    "search": "      else observers.delete(held)\n",
+    "replace": ""
+  },
+  {
+    "id": "920-gone-observers-pile-up",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "holds each observer through a WeakRef alone, and forgets one that is gone",
+    "why": "collected observers are forgotten only when the caller changes, so a session that never changes its caller keeps a reference for every one",
+    "file": "src/client.ts",
+    "search": "        existing(() => {})\n",
+    "replace": ""
+  },
+  {
+    "id": "920-no-weakref-throws",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "clears the cache and leaves what an observer shows where the runtime has no WeakRef",
+    "why": "WeakRef is used without looking for it, so in an ES2020 runtime without one every write through an observer throws a TypeError before it is sent",
+    "file": "src/client.ts",
+    "search": "      if (typeof WeakRef === \"function\" && !shows.has(observer)) {\n",
+    "replace": "      if (!shows.has(observer)) {\n"
+  },
+  {
+    "id": "920-stale-press-kept-in-cache",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "removes the mutation of a press from a render the caller has left, once it is refused",
+    "why": "a write pressed from a render the caller has left is refused and stays in the cache, with the argument the last caller's form was pressed with",
+    "file": "src/client.ts",
+    "search": "            left.add(refused)\n",
+    "replace": ""
+  },
+  {
+    "id": "920-app-stale-press-removed",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "leaves such a press in the cache under a key of the app's own",
+    "why": "a mutation under a key of the app's own that ends with the client's caller_changed refusal is removed from the cache, so the app's own list of its mutations loses an attempt whose onError it saw",
+    "file": "src/client.ts",
+    "search": "      isOwn(mutation) &&\n",
+    "replace": ""
+  },
+  {
+    "id": "920-app-mutations-started-over",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "leaves the app's own mutations, and the writes of a caller who stays",
+    "why": "a change of caller starts over every mutation in the QueryClient, the app's own under its own keys included",
+    "file": "src/client.ts",
+    "search": "    return key?.[0] === KEY_ROOT && key[1] === network.keySegment\n",
+    "replace": "    return key !== null\n"
+  },
+  {
+    "id": "920-next-caller-write-removed",
+    "package": "core",
+    "test": "tests/client-account-change.test.ts",
+    "testName": "keeps what the next caller writes",
+    "why": "every mutation under the client's keys leaves the cache as it settles, not only one that was pending when the caller changed: the next caller's own write is gone from it at once",
+    "file": "src/client.ts",
+    "search": "      (left.has(mutation) || left.has(mutation.state.error as object))\n",
+    "replace": "      true\n"
+  },
+  {
     "package": "core",
     "test": "tests/client-auth-network.test.ts",
     "file": "src/network.ts",
@@ -7208,5 +7397,155 @@
     "file": "src/options.ts",
     "search": "const TIME_SLACK = 300_000_000_000n\n",
     "replace": "const TIME_SLACK = 0n\n"
+  },
+  {
+    "id": "clock-refused-expiry-final-for-a-direct-read",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a signed read that is the first request",
+    "why": "a read the replica refused for its ingress expiry is final again, so on a device whose clock is minutes off a signed-in caller's first direct read rejects not_delivered, though the agent has read the IC's time and the same read asked again is answered",
+    "file": "src/errors.ts",
+    "search": "      : make(\"not_delivered\", false, reason, !update)\n",
+    "replace": "      : make(\"not_delivered\", false, reason)\n"
+  },
+  {
+    "id": "clock-refused-expiry-final-for-a-query",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read made with queryOptions in a browser page",
+    "why": "a read the replica refused for its ingress expiry is not marked retryable, so TanStack Query does not ask a queryOptions read again and a signed-in user's first read shows an error on a device whose clock is minutes off",
+    "file": "src/errors.ts",
+    "search": "      : make(\"not_delivered\", false, reason, !update)\n",
+    "replace": "      : make(\"not_delivered\", false, reason)\n"
+  },
+  {
+    "id": "clock-refused-write-marked-retryable",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "does not retry a write the replica refused for its ingress expiry",
+    "why": "a write the replica refused for its ingress expiry is marked retryable as a read is, so an app's own query around a direct write signs it again while the refused request can still become valid: two requests for one intent",
+    "file": "src/errors.ts",
+    "search": "      : make(\"not_delivered\", false, reason, !update)\n",
+    "replace": "      : make(\"not_delivered\", false, reason, true)\n"
+  },
+  {
+    "id": "clock-time-not-read-again",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "resolves client.time() as the first signed request",
+    "why": "client.time() does not read once more after the replica refused its read_state for the ingress expiry, so on a device whose clock is minutes off a signed-in caller's first client.time() rejects not_delivered and the transfer it would stamp is not sent",
+    "file": "src/options.ts",
+    "search": "      if (isRetryable(error)) return once()\n",
+    "replace": ""
+  },
+  {
+    "id": "clock-time-read-again-after-its-bound",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "sends no second read once the bound has passed",
+    "why": "the second read of client.time() does not check the canister object's timeoutMs, so a read_state is sent after the call rejected with code timeout",
+    "file": "src/options.ts",
+    "search": "    const once = () => readTime(where, () => timedOut)\n",
+    "replace": "    const once = () => readTime(where, () => false)\n"
+  },
+  {
+    "id": "clock-refused-read-resent-without-end",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "leaves a read refused after its two re-sends when the time cannot be read",
+    "why": "a direct read's re-sends have no limit, so a read the replica keeps refusing (a device whose clock changed, while the IC's time cannot be read again) is sent again without end",
+    "file": "src/call.ts",
+    "search": "            : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))\n",
+    "replace": "            : isRetryable(error))\n"
+  },
+  {
+    "id": "clock-time-not-read-again-after-a-later-refusal",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a signed read, sent again once the agent has read the time again",
+    "why": "the call path does not have the agent read the IC's time again after a refused ingress expiry, and an agent reads it on its first refusal only, so once a device's clock is changed with the page open every signed request is refused until a reload",
+    "file": "src/call.ts",
+    "search": "        await resync(\n          agent as HttpAgent,\n          synced,\n          call.effective,\n          asRecord(error).cause,\n          signal\n        )\n",
+    "replace": ""
+  },
+  {
+    "id": "clock-time-not-read-again-for-client-time",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "resolves client.time() on its second read, with the IC's time",
+    "why": "client.time() does not have the agent read the IC's time again after a refused ingress expiry, so once a device's clock is changed with the page open it rejects not_delivered until a reload, and the transfer it would stamp is not sent",
+    "file": "src/options.ts",
+    "search": "      await resync(agent, synced, where.canisterId, error)\n",
+    "replace": ""
+  },
+  {
+    "id": "clock-time-read-again-on-the-first-refusal",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "is not made for an agent's first refusal",
+    "why": "the client has the agent read the IC's time after every refused ingress expiry, the first included, when the agent has just read it itself: three more requests for every signed-in session on a device whose clock is off",
+    "file": "src/call.ts",
+    "search": "      OFF_CLOCK.test(String([code.name, code.error])) &&\n      synced === agent.hasSyncedTime()\n",
+    "replace": "      OFF_CLOCK.test(String([code.name, code.error]))\n"
+  },
+  {
+    "id": "clock-write-rejects-before-the-time-is-read",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "rejects a write not_delivered once, and sends it once when it is sent again",
+    "why": "a refused write rejects while the IC's time is still being read, so the same write sent again at once is signed by the clock that is off and refused again",
+    "file": "src/call.ts",
+    "search": "        await resync(\n          agent as HttpAgent,\n",
+    "replace": "        void resync(\n          agent as HttpAgent,\n"
+  },
+  {
+    "id": "clock-time-read-outlasts-the-bound",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "leaves a refused write not_delivered when its timeoutMs passes meanwhile",
+    "why": "the read of the IC's time is awaited without the call's signal, so a write the replica refused waits for that read past its timeoutMs",
+    "file": "src/call.ts",
+    "search": "          asRecord(error).cause,\n          signal\n        )\n",
+    "replace": "          asRecord(error).cause\n        )\n"
+  },
+  {
+    "id": "clock-time-not-read-for-a-stale-answer",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read after a clock that was behind is set right",
+    "why": "the client does not have the agent read the IC's time when a query's answer is signed more than five minutes before the agent's time, and the agent reads no time for that, so with no one signed in every read fails until a reload once a clock that was behind is set right",
+    "file": "src/call.ts",
+    "search": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime|synced/\n",
+    "replace": "const OFF_CLOCK = /IngressExpiry|CertificateTime|synced/\n"
+  },
+  {
+    "id": "clock-time-not-read-for-a-certificate-before-the-agents-time",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read of another canister after a clock that was behind is set right, when the certificate is checked first",
+    "why": "the client does not have the agent read the IC's time when a certificate is more than five minutes before the agent's time, which an agent that has read the time throws as final, so with no one signed in a read of a canister whose node keys the agent has yet to read fails until a reload",
+    "file": "src/call.ts",
+    "search": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime|synced/\n",
+    "replace": "const OFF_CLOCK = /IngressExpiry|Outdated|synced/\n"
+  },
+  {
+    "id": "clock-time-not-read-for-a-certificate-after-the-agents-time",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read of another canister after a clock that was ahead is set right",
+    "why": "the client does not have the agent read the IC's time when a certificate is more than five minutes after the agent's time, which an agent that has read the time throws as an unexpected error, so with no one signed in a read of a canister whose node keys the agent has yet to read fails until a reload once a clock that was ahead is set right",
+    "file": "src/call.ts",
+    "search": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime|synced/\n",
+    "replace": "const OFF_CLOCK = /IngressExpiry|Outdated|CertificateTime/\n"
+  },
+  {
+    "id": "clock-time-not-read-by-an-agent-that-read-none",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a read after the clock moved ahead, though the agent had read no time",
+    "why": "the client has the agent read the IC's time only when the agent had read it before, and an agent reads no time for a query's answer that is signed too long ago, so with no one signed in a read fails once the clock moves ahead with the page open",
+    "file": "src/call.ts",
+    "search": "      synced === agent.hasSyncedTime()\n",
+    "replace": "      synced\n"
   }
 ]

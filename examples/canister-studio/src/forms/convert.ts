@@ -49,7 +49,15 @@ export function tokenAmountText(
     : undefined
 }
 
-/** Now, in nanoseconds since the Unix epoch. Event handlers and effects only. */
+/**
+ * Now, in nanoseconds since the Unix epoch. Event handlers and effects only.
+ *
+ * It is the browser's clock, for a form that fills any timestamp of any
+ * canister as it is typed or submitted, with no request in between. A page
+ * that builds a ledger transfer of its own reads the IC's time for
+ * `created_at_time` instead, `await client.time(ledger)`, as the Safety lab
+ * does (`safety/scenarios.ts`): a ledger refuses a time too far from its own.
+ */
 export function nowNanos(): bigint {
   return BigInt(Date.now()) * 1_000_000n
 }

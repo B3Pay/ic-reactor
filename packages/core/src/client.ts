@@ -316,6 +316,15 @@ export interface Client {
    * server. Its dehydrate and hydrate defaults keep `bigint`, `Uint8Array`
    * and the floats JSON cannot write, so a server's `dehydrate()` survives
    * `JSON.stringify` and comes back exact.
+   *
+   * When the caller changes (a sign-in, a sign-out, an expired session, a
+   * switch of account), the client removes from it the reads made as anyone
+   * but the new caller and the anonymous one, and starts over the mutations
+   * under its mutation keys: their observers are reset, and they leave the
+   * cache once they have settled. Queries and mutations under keys of the
+   * app's own stay. An observer is reset whether or not anyone listens to it
+   * then. The client reaches it through a `WeakRef` and keeps none alive; in
+   * a runtime with no `WeakRef` it clears the cache and resets no observer.
    */
   readonly queryClient: QueryClient
   /** The principal calls go out as now, as text: the anonymous principal unless signed in. */
@@ -811,8 +820,12 @@ export interface Client {
    * `memo` as well.
    *
    * Its request carries an ingress expiry from the host's clock, as every
-   * request does: a host clock so far off that the IC refuses its requests
-   * gets `not_delivered` here too.
+   * request does. On a host whose clock is minutes off, the IC refuses a
+   * signed-in caller's request for that expiry. The agent then reads the
+   * IC's time and signs by it, and the time is read once more, so it
+   * resolves all the same, and a write after it is signed by the IC's time.
+   * It is read once more after any other failure that another attempt can
+   * change, too, such as a lost connection or an HTTP 408, 429 or 5xx.
    *
    * The certificate is verified against the network's root key, as every
    * reply is; its age is not compared with the host's clock, which may be the
@@ -948,11 +961,30 @@ export interface ClientInternals {
    * - A stale query signature. A query reply signed longer ago than the
    *   ingress expiry window no longer makes the agent sync its clock and ask
    *   again: it fails as a `Trust` error (`CertificateOutdatedErrorCode`),
-   *   which a read classifies as a retryable `not_delivered`, so a browser
-   *   read is asked again through `retryQuery` without a clock sync.
+   *   which a read classifies as a retryable `not_delivered`. The call path
+   *   has the agent read the IC's time after it (`resync`) and sends a
+   *   direct read again, and a browser read is asked again through
+   *   `retryQuery`.
    *
-   * Recovery from a refused ingress expiry (the agent syncs its clock once
-   * and sends again) does not depend on `retryTimes` and still happens.
+   * A refused ingress expiry (a host whose clock is minutes off) makes the
+   * agent read the IC's time whatever `retryTimes` says, once per agent, and
+   * sign by it from then on. What becomes of the request that was refused is
+   * the agent's own doing. A query it signs again, but it reads the subnet's
+   * node keys with the `read_state` it signed before, which the replica
+   * refuses again, so a signed read fails on that first request; a
+   * `read_state` (`client.time()`) it sends again as it was signed. The
+   * classifier marks the refusal retryable for a read, so the call path,
+   * `retryQuery` and `client.time()` ask again. A write the agent signs
+   * again only when the refused request's expiry had already passed; the
+   * call path never signs one again itself.
+   *
+   * The agent reads the IC's time once: on that first refusal, or for the
+   * first certificate whose time is minutes from the host's, and never for
+   * a query's answer signed minutes before it. So once the host's clock is
+   * changed, its requests can fail again: a signed one is refused, and an
+   * anonymous read, whose expiry a replica does not check, fails the
+   * agent's own check of the answer. The call path and `client.time()` have
+   * the agent read the time then (`resync`).
    */
   agentFor(principal: string, context: AgentContext): Promise<HttpAgent>
 }
@@ -1251,6 +1283,19 @@ const sameState = (a: AuthState, b: AuthState): boolean =>
 const MAX_TIMER_MS = 2 ** 31 - 1
 
 /**
+ * The part of ES2021's `WeakRef` used here. Declared in this module because
+ * the package compiles against ES2020's lib, and as possibly absent because
+ * an ES2020 runtime may have none.
+ */
+declare const WeakRef:
+  (new <T extends object>(target: T) => { deref(): T | undefined }) | undefined
+
+/** What the client uses of a TanStack `MutationObserver`. */
+interface Shows {
+  reset(): void
+}
+
+/**
  * Who `auth` says calls: its principal only while its status is `signed-in`
  * and that principal is not the anonymous one. Every other state, including
  * one this version does not know, is anonymous.
@@ -1400,6 +1445,67 @@ export function createClientWith(
       dehydrate: { serializeData },
       hydrate: { deserializeData },
     },
+  })
+
+  const mutationCache = queryClient.getMutationCache()
+  /** How often the caller has changed (see `onAuthChange`). */
+  let callerChanges = 0
+  /** Whether `mutation` was built under this client's keys. */
+  const isOwn = (mutation: {
+    readonly options: { readonly mutationKey?: readonly unknown[] }
+  }): boolean => {
+    const key = mutation.options.mutationKey
+    return key?.[0] === KEY_ROOT && key[1] === network.keySegment
+  }
+  /**
+   * What leaves the cache as it settles, of the mutations under this client's
+   * keys: one that was pending when the caller changed, and one that ends
+   * with one of these errors, which a view refused a write with because its
+   * caller was no longer current (see `viewAs`).
+   */
+  const left = new WeakSet<object>()
+  /**
+   * For each observer that has attached to a mutation of this cache, as a
+   * `useMutation` holds one: how often the caller had changed when it last
+   * attached to one of this client's mutations, or `undefined` once it shows
+   * none of them (it attached to a mutation of the app's since, or the
+   * client has reset it). It shows that mutation until it is reset, also
+   * once nobody listens to it (in a hidden `<Activity>`) and TanStack has
+   * detached it.
+   */
+  const shows = new WeakMap<Shows, number | undefined>()
+  /**
+   * Every observer that has attached to a mutation of this cache, each for
+   * as long as it exists: none is kept alive from here. A runtime with no
+   * `WeakRef` has nothing to hold them with, so there the cache is cleared
+   * and an observer keeps what it shows.
+   */
+  const observers = new Set<{ deref(): Shows | undefined }>()
+  /** Calls `each` with every observer that still exists, and forgets the rest. */
+  const existing = (each: (observer: Shows) => void): void =>
+    observers.forEach((held) => {
+      const observer = held.deref()
+      if (observer) each(observer)
+      else observers.delete(held)
+    })
+  mutationCache.subscribe((event) => {
+    const { mutation, type } = event
+    if (type === "observerAdded") {
+      const { observer } = event
+      if (typeof WeakRef === "function" && !shows.has(observer)) {
+        // One more to hold: those that are gone are forgotten first.
+        existing(() => {})
+        observers.add(new WeakRef(observer))
+      }
+      shows.set(observer, isOwn(mutation) ? callerChanges : undefined)
+    } else if (
+      type === "updated" &&
+      mutation.state.status !== "pending" &&
+      isOwn(mutation) &&
+      (left.has(mutation) || left.has(mutation.state.error as object))
+    ) {
+      mutationCache.remove(mutation)
+    }
   })
 
   /** Signs the anonymous principal's calls in `auth` mode and for `identity: "anonymous"`. */
@@ -1676,6 +1782,28 @@ export function createClientWith(
         queryKey: [KEY_ROOT, network.keySegment],
         predicate: ({ queryKey: [, , caller] }) =>
           caller !== state.principal && caller !== ANONYMOUS,
+      })
+      // The writes go too, with what they show: an argument, a result, an
+      // error that may hold the last caller's balance. A finished mutation
+      // under this client's keys leaves the cache now, and a pending one
+      // when it settles (removed now, a paused one would never run or
+      // settle). Every observer that shows one starts over, idle, whether
+      // or not anyone listens to it now: a `useMutation` built from
+      // `useClient()` does so by its key, but only once React has rendered
+      // and committed for the new caller.
+      callerChanges++
+      for (const mutation of mutationCache.getAll()) {
+        if (isOwn(mutation)) {
+          if (mutation.state.status === "pending") left.add(mutation)
+          else mutationCache.remove(mutation)
+        }
+      }
+      existing((observer) => {
+        if ((shows.get(observer) as number) < callerChanges) {
+          // It shows nothing after this, and stays held by its one `WeakRef`.
+          shows.set(observer, undefined)
+          observer.reset()
+        }
       })
     }
     clearRefusals(state.principal)
@@ -1971,10 +2099,15 @@ export function createClientWith(
             // call path does. Marked with the canister, as a call's error
             // is, so that `isReactorError(error, canister, method)` matches.
             const again = internals.offered.get(vars as object)
-            throw fromCanister(
+            const refused = fromCanister(
               again === undefined ? refusal : keptUnknown(again, refusal),
               canister as object
-            )
+            ) as object
+            // A press from a render the caller has left. A mutation under
+            // the client's keys that ends with this error leaves the cache
+            // as it settles.
+            left.add(refused)
+            throw refused
           }
           // `this` is the options TanStack called it on, by which the
           // client's function finds TanStack's record of a run it did not

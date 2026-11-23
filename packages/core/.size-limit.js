@@ -45,7 +45,10 @@ export default [
     // With an update whose call got no answer read back and sent again as the same request (#1036): measured 19,566 B (19,150 B before, +416 B), so the limit moved from 19,200 B to 19.6 kB.
     // With a retried write refused after an attempt that may have executed (#1037): measured 19,972 B (19,583 B before, +389 B), so the limit moved from 19,600 B to 20 kB.
     // With the @tanstack/query-core floor at 5.89 and the code for older releases removed: measured 19,617 B (19,972 B before, -355 B), so the limit moved from 20,000 B to 19.67 kB.
-    limit: "19.67 kB",
+    // With a caller's writes started over when the caller changes (#920): measured 19,890 B (19,617 B before, +273 B), so the limit moved from 19,670 B to 19.94 kB.
+    // With the IC's time read again when a clock changes with the page open (after a refused ingress expiry, or an answer that fails the agent's own check of its time): measured 20,063 B (19,922 B before, +141 B), so the limit moved from 19,940 B to 20.07 kB.
+    // With @icp-sdk/core 6.1.1 required and ic_env cookies that differ refused on a local page too: measured 20,078 B (20,063 B before, +15 B), so the limit moved from 20,070 B to 20.08 kB.
+    limit: "20.08 kB",
     gzip: true,
   },
 ]
