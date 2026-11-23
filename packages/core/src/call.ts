@@ -550,6 +550,10 @@ async function run(
   // The latest ingress expiry among this call's sends, for a write that ends
   // with no answer (`expiresAt`).
   const sends: Sent = {}
+  // The agent of the attempt that is out, and whether it had read the IC's
+  // time before that attempt was signed (`resync`).
+  let agent: HttpAgent | undefined
+  let synced = false
   try {
     for (let resends = 0; ; resends += 1) {
       try {
@@ -561,10 +565,11 @@ async function run(
         }
         // Asked again before every attempt: a re-send for a caller who is no
         // longer current is cancelled, not sent as them.
-        const agent = await untilAborted(
+        agent = await untilAborted(
           internals.agentFor(caller.principal, where),
           signal
         )
+        synced = agent.hasSyncedTime()
         if (signal?.aborted) throw notSent(where, "the call was cancelled")
         // agentFor checked for disposal before it returned the agent, but a
         // dispose() can still run in the microtask between that check and
@@ -590,6 +595,16 @@ async function run(
         if (signal?.aborted && !isReactorError(error)) {
           throw notSent(where, "the call was cancelled")
         }
+        // After `out`, so that a bound that passes while the time is read
+        // leaves the refusal as it was classified: nothing is out by then.
+        // `synced` is only ever `true` of an agent.
+        await resync(
+          agent as HttpAgent,
+          synced,
+          call.effective,
+          asRecord(error).cause,
+          signal
+        )
         const resend =
           request.resend &&
           (write
@@ -715,6 +730,41 @@ export function keepSigned(request: HttpAgentRequest, signed: unknown): void {
     signing.has(arg)
   ) {
     SIGNED.set(arg, signed as HttpAgentRequest)
+  }
+}
+
+/**
+ * Has `agent` read the IC's time again after `error`, when that is a replica
+ * refusing a request for its ingress expiry although the agent had read the
+ * time before it signed the request (`synced`). An agent reads the IC's time
+ * on its first such refusal and never again. Once the host's clock is changed
+ * after that (corrected, as often as not), the agent signs by a clock that is
+ * off again, and every signed request is refused until a new agent is built.
+ * With the time read again, the next request is signed by it: a read is asked
+ * again, and a write goes through when it is sent again.
+ *
+ * `error` is what the agent threw. Resolves whatever becomes of the read of
+ * the time, and as soon as `signal` aborts.
+ */
+export async function resync(
+  agent: HttpAgent,
+  synced: boolean,
+  canisterId: string,
+  error: unknown,
+  signal?: AbortSignal
+): Promise<void> {
+  if (
+    synced &&
+    asRecord(asRecord(error).code).name === "IngressExpiryInvalidErrorCode"
+  ) {
+    try {
+      await untilAborted(
+        agent.syncTime({ canisterId: Principal.fromText(canisterId) }),
+        signal
+      )
+    } catch {
+      // The request's own failure is what the caller is told.
+    }
   }
 }
 

@@ -193,10 +193,11 @@ apps a read as the caller comes first, or `await client.time(canister)` for a
 signed in is not affected: the IC does not check the expiry of an anonymous
 read.
 
-The agent reads the IC's time once. When the device's clock is changed by
-minutes after that, with the page still open, the IC refuses the caller's
-requests again. A reload of the page builds a new agent, which reads the time
-again.
+The agent reads the IC's time on that first refusal only. When the device's
+clock is changed by minutes after that, with the page still open, the IC
+refuses the caller's requests again, and the client has the agent read the
+time once more. A read is then asked again and answers, as above. A write
+rejects `not_delivered` once, and goes through when it is sent again.
 
 ### How long a call waits
 

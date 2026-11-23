@@ -965,7 +965,9 @@ export interface ClientInternals {
    * classifier marks the refusal retryable for a read, so the call path,
    * `retryQuery` and `client.time()` ask again. A write the agent signs
    * again in 6.1.0, and from 6.1.1 only when the refused request's expiry
-   * had already passed; the call path never signs one again itself.
+   * had already passed; the call path never signs one again itself. After a
+   * later refusal, when the host's clock was changed since, the call path
+   * and `client.time()` have the agent read the time again (`resync`).
    */
   agentFor(principal: string, context: AgentContext): Promise<HttpAgent>
 }

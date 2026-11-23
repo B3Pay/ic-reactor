@@ -10,6 +10,8 @@
  * request is refused. The agent then reads the IC's time and signs by it,
  * but the request that met the refusal fails all the same: the agent sends
  * its `read_state` again as it was signed, with the expiry that was refused.
+ * It reads the time on that first refusal only, so when the host's clock is
+ * changed later, the client has it read the time again.
  *
  * The fake replica checks no expiry, so `offClock` checks it in front of the
  * fake, with a replica's rule and a replica's answer. The clock it moves is
@@ -256,7 +258,8 @@ describe("a write the replica refuses for its ingress expiry", () => {
   it("rejects not_delivered and is not sent again, so nothing ran", async () => {
     const t = offClock(10 * MINUTE)
     // The agent has read the IC's time once. The host's clock then moves
-    // again, as when its owner sets it, and the agent reads no time twice.
+    // again, as when its owner sets it, so the agent signs by a clock that
+    // is off again.
     await t.balance()
     t.moveHost(10 * MINUTE)
     await expect(t.transfer()).rejects.toMatchObject({
@@ -277,49 +280,153 @@ describe("a write the replica refuses for its ingress expiry", () => {
   })
 })
 
-describe("a device whose clock changes after the agent has read the IC's time", () => {
-  it("sends a signed read three times at most, and answers after a reload", async () => {
+const REFUSED_READ = {
+  kind: "not_delivered",
+  mayHaveExecuted: false,
+  message: expect.stringContaining(
+    "the replica refused the request's ingress expiry"
+  ),
+}
+
+/** The anonymous `read_state` requests: an agent sends three for each read of the IC's time. */
+const timeReads = (t: ReturnType<typeof offClock>) =>
+  t.sent("read_state").filter((request) => !request.signed).length
+
+// The clock is ten minutes ahead when the agent reads the IC's time, on its
+// first refused request. An agent reads the time on that refusal and never
+// again, so once the clock is changed it signs by a clock that is off again,
+// and the client has it read the time once more.
+describe.each([
+  ["set right", -10 * MINUTE],
+  ["moved ten more minutes ahead", 10 * MINUTE],
+])(
+  "a device whose clock is %s after the agent has read the IC's time",
+  (_name, moveMs) => {
+    it("answers a signed read, sent again once the agent has read the time again", async () => {
+      const t = offClock(10 * MINUTE)
+      await t.balance()
+      const before = {
+        queries: t.sent("query").length,
+        timeReads: timeReads(t),
+      }
+      t.moveHost(moveMs)
+      await expect(t.balance()).resolves.toBe(START)
+      expect(t.sent("query").slice(before.queries)).toEqual([
+        { endpoint: "query", signed: true, refused: true },
+        { endpoint: "query", signed: true, refused: false },
+      ])
+      // One read of the time for the one refusal.
+      expect(timeReads(t) - before.timeReads).toBe(3)
+    })
+
+    it("answers a read made with queryOptions in a browser page, which TanStack asks again", async () => {
+      onPage()
+      const t = offClock(10 * MINUTE)
+      await t.balance()
+      t.moveHost(moveMs)
+      await expect(
+        t.client.queryClient.fetchQuery({
+          ...t.client.queryOptions(t.ledger, "icrc1_balance_of", t.account),
+          retryDelay: 0,
+        })
+      ).resolves.toBe(START)
+    })
+
+    it("rejects a read made with queryOptions on a server once, and answers the next", async () => {
+      const t = offClock(10 * MINUTE)
+      await t.balance()
+      t.moveHost(moveMs)
+      const read = () =>
+        t.client.queryClient.fetchQuery({
+          ...t.client.queryOptions(t.ledger, "icrc1_balance_of", t.account),
+          staleTime: 0,
+        })
+      await expect(read()).rejects.toMatchObject(REFUSED_READ)
+      await expect(read()).resolves.toBe(START)
+    })
+
+    it("resolves client.time() on its second read, with the IC's time", async () => {
+      const t = offClock(10 * MINUTE)
+      // A read, and not a time: what `offClock` moves is the IC's clock, and
+      // after a time read before it is set back, the next certificate would
+      // be an old one, which `client.time()` refuses.
+      await t.balance()
+      const before = t.sent("read_state").length
+      t.moveHost(moveMs)
+      const time = await t.client.time(t.ledger)
+      expect(offIcTime(time, t.icNowMs())).toBeLessThan(MINUTE)
+      expect(
+        t
+          .sent("read_state")
+          .slice(before)
+          .filter((request) => request.signed)
+      ).toEqual([
+        { endpoint: "read_state", signed: true, refused: true },
+        { endpoint: "read_state", signed: true, refused: false },
+      ])
+    })
+
+    it("rejects a write not_delivered once, and sends it once when it is sent again", async () => {
+      const t = offClock(10 * MINUTE)
+      await t.balance()
+      t.moveHost(moveMs)
+      await expect(t.transfer()).rejects.toMatchObject(REFUSED_READ)
+      expect(t.moved()).toBe(0n)
+      // The agent has read the time again by the time the write rejects, so
+      // the write sent again is signed by it. The client signs no second
+      // request for the first one.
+      await expect(t.transfer()).resolves.toBe(BLOCK)
+      expect(t.sent("call")).toEqual([
+        { endpoint: "call", signed: true, refused: true },
+        { endpoint: "call", signed: true, refused: false },
+      ])
+      expect(t.moved()).toBe(DEBIT)
+    })
+  }
+)
+
+describe("the client's own read of the IC's time", () => {
+  it("is not made for an agent's first refusal, when the agent reads the time itself", async () => {
+    const t = offClock(10 * MINUTE)
+    await t.balance()
+    expect(timeReads(t)).toBe(3)
+  })
+
+  it("leaves a read refused after its two re-sends when the time cannot be read", async () => {
     const t = offClock(10 * MINUTE)
     await t.balance()
     const before = t.sent("query").length
-    // The agent reads the IC's time once in its life, so it signs by a clock
-    // that is off again, and no re-send changes that.
-    t.moveHost(10 * MINUTE)
-    await expect(t.balance()).rejects.toMatchObject({
-      kind: "not_delivered",
-      mayHaveExecuted: false,
-      message: expect.stringContaining(
-        "the replica refused the request's ingress expiry"
-      ),
-    })
+    t.moveHost(-10 * MINUTE)
+    t.holdSync(() => Promise.reject(new Error("offline")))
+    await expect(t.balance()).rejects.toMatchObject(REFUSED_READ)
     // The call and its two re-sends, and no more.
     expect(t.sent("query").slice(before)).toEqual([
       { endpoint: "query", signed: true, refused: true },
       { endpoint: "query", signed: true, refused: true },
       { endpoint: "query", signed: true, refused: true },
     ])
-    // A reload builds a new client, whose agent reads the time again.
-    await expect(t.reload().balance()).resolves.toBe(START)
   })
 
-  it("rejects client.time() after its second read", async () => {
-    const t = offClock(10 * MINUTE)
-    await t.client.time(t.ledger)
-    const before = t.sent("read_state").length
-    t.moveHost(10 * MINUTE)
-    await expect(t.client.time(t.ledger)).rejects.toMatchObject({
-      kind: "not_delivered",
-      mayHaveExecuted: false,
-    })
-    expect(
-      t
-        .sent("read_state")
-        .slice(before)
-        .filter((request) => request.signed)
-    ).toEqual([
-      { endpoint: "read_state", signed: true, refused: true },
-      { endpoint: "read_state", signed: true, refused: true },
+  it("leaves a refused write not_delivered when its timeoutMs passes meanwhile", async () => {
+    const t = offClock(10 * MINUTE, { timeoutMs: 1_000 })
+    await t.balance()
+    t.moveHost(-10 * MINUTE)
+    // The read of the time gets no answer until the test lets it go.
+    let release = () => {}
+    t.holdSync(() => new Promise<void>((resolve) => (release = resolve)))
+    const started = Date.now()
+    // Not `cancelled` with `mayHaveExecuted: true`, as a write that is out
+    // when its bound passes is: the replica refused this one.
+    await expect(t.transfer()).rejects.toMatchObject(REFUSED_READ)
+    // At its bound: not at once, and not when the read of the time ends.
+    const waited = Date.now() - started
+    expect(waited).toBeGreaterThanOrEqual(900)
+    expect(waited).toBeLessThan(2_500)
+    expect(t.sent("call")).toEqual([
+      { endpoint: "call", signed: true, refused: true },
     ])
+    expect(t.moved()).toBe(0n)
+    release()
   })
 })
 

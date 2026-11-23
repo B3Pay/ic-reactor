@@ -50,7 +50,8 @@ export default [
     // With an update whose call got no answer read back and sent again as the same request (#1036): measured 94,523 B (94,097 B before, +426 B), so the limit moved from 94,150 B to 94.55 kB.
     // With a retried write refused after an attempt that may have executed (#1037): measured 94,943 B (94,542 B before, +401 B), so the limit moved from 94,550 B to 94.95 kB.
     // With the @tanstack/query-core floor at 5.89 and the code for older releases removed: measured 94,593 B (94,943 B before, -350 B), so the limit moved from 94,950 B to 94.65 kB.
-    limit: "94.65 kB",
+    // With the IC's time read again after a later refused ingress expiry (a clock changed with the page open): measured 94,701 B (94,618 B before, +83 B), so the limit moved from 94,650 B to 94.75 kB.
+    limit: "94.75 kB",
     gzip: true,
   },
   {
@@ -91,7 +92,8 @@ export default [
     // With an update whose call got no answer read back and sent again as the same request (#1036): measured 95,801 B (95,387 B before, +414 B), so the limit moved from 95,440 B to 95.84 kB.
     // With a retried write refused after an attempt that may have executed (#1037): measured 96,230 B (95,820 B before, +410 B), so the limit moved from 95,840 B to 96.24 kB.
     // With the @tanstack/query-core floor at 5.89 and the code for older releases removed: measured 95,857 B (96,230 B before, -373 B), so the limit moved from 96,240 B to 95.91 kB.
-    limit: "95.91 kB",
+    // With the IC's time read again after a later refused ingress expiry (a clock changed with the page open): measured 95,982 B (95,881 B before, +101 B), so the limit moved from 95,910 B to 96.03 kB.
+    limit: "96.03 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },

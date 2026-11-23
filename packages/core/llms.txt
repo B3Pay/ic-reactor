@@ -540,9 +540,10 @@ read again and `client.time()` reads once more, so both answer. It never
 signs a refused write a second time: that write rejects `not_delivered` (the
 canister ran nothing), and sending it again goes through. A write that
 follows a read as the caller, or `await client.time(canister)`, is not the
-one refused. The agent reads the IC's time once: a clock changed by minutes
-after that, with the page still open, gets the caller's requests refused
-again until the page is reloaded.
+one refused. When the clock is changed by minutes after that, with the page
+still open, the IC refuses the caller's requests again, and the client has
+the agent read the time once more: a read answers when it is asked again, and
+a write goes through when it is sent again.
 
 How long a call waits: unless the call has a `timeoutMs` (below), neither the
 client nor the agent puts a timeout on an HTTP request (the call or query, or a `read_state` that polls), so a request

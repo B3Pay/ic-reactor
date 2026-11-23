@@ -79,6 +79,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `not_delivered` (the canister ran nothing), and sending it again goes
   through. A visitor who is not signed in was not affected, and an app has
   nothing to change.
+- A device whose clock is changed while the page stays open no longer needs
+  a reload. An agent reads the IC's time on its first refused ingress expiry
+  and never again. So once the clock was corrected, or moved again, the agent
+  signed by a clock that was off once more, and the IC refused every request
+  of the signed-in caller until a new agent was built. Now the client has the
+  agent read the time again after such a refusal: a read is asked again and
+  answers, `client.time()` reads once more and resolves, and a write rejects
+  `not_delivered` once and goes through when it is sent again. The first
+  refusal is left to the agent, so nothing more is sent for it. Core is 90 B
+  larger for this, gzipped.
 
 ### Docs
 

@@ -7233,10 +7233,60 @@
     "id": "clock-refused-read-resent-without-end",
     "package": "core",
     "test": "tests/clock-skew.test.ts",
-    "testName": "sends a signed read three times at most",
-    "why": "a direct read's re-sends have no limit, so a read the replica keeps refusing (a device whose clock changed after the agent read the IC's time) is sent again without end",
+    "testName": "leaves a read refused after its two re-sends when the time cannot be read",
+    "why": "a direct read's re-sends have no limit, so a read the replica keeps refusing (a device whose clock changed, while the IC's time cannot be read again) is sent again without end",
     "file": "src/call.ts",
     "search": "            : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))\n",
     "replace": "            : isRetryable(error))\n"
+  },
+  {
+    "id": "clock-time-not-read-again-after-a-later-refusal",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "answers a signed read, sent again once the agent has read the time again",
+    "why": "the call path does not have the agent read the IC's time again after a refused ingress expiry, and an agent reads it on its first refusal only, so once a device's clock is changed with the page open every signed request is refused until a reload",
+    "file": "src/call.ts",
+    "search": "        await resync(\n          agent as HttpAgent,\n          synced,\n          call.effective,\n          asRecord(error).cause,\n          signal\n        )\n",
+    "replace": ""
+  },
+  {
+    "id": "clock-time-not-read-again-for-client-time",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "resolves client.time() on its second read, with the IC's time",
+    "why": "client.time() does not have the agent read the IC's time again after a refused ingress expiry, so once a device's clock is changed with the page open it rejects not_delivered until a reload, and the transfer it would stamp is not sent",
+    "file": "src/options.ts",
+    "search": "      await resync(agent, synced, where.canisterId, error)\n",
+    "replace": ""
+  },
+  {
+    "id": "clock-time-read-again-on-the-first-refusal",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "is not made for an agent's first refusal",
+    "why": "the client has the agent read the IC's time after every refused ingress expiry, the first included, when the agent has just read it itself: three more requests for every signed-in session on a device whose clock is off",
+    "file": "src/call.ts",
+    "search": "    synced &&\n    asRecord(asRecord(error).code).name === \"IngressExpiryInvalidErrorCode\"\n",
+    "replace": "    asRecord(asRecord(error).code).name === \"IngressExpiryInvalidErrorCode\"\n"
+  },
+  {
+    "id": "clock-write-rejects-before-the-time-is-read",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "rejects a write not_delivered once, and sends it once when it is sent again",
+    "why": "a refused write rejects while the IC's time is still being read, so the same write sent again at once is signed by the clock that is off and refused again",
+    "file": "src/call.ts",
+    "search": "        await resync(\n          agent as HttpAgent,\n",
+    "replace": "        void resync(\n          agent as HttpAgent,\n"
+  },
+  {
+    "id": "clock-time-read-outlasts-the-bound",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "leaves a refused write not_delivered when its timeoutMs passes meanwhile",
+    "why": "the read of the IC's time is awaited without the call's signal, so a write the replica refused waits for that read past its timeoutMs",
+    "file": "src/call.ts",
+    "search": "          asRecord(error).cause,\n          signal\n        )\n",
+    "replace": "          asRecord(error).cause\n        )\n"
   }
 ]

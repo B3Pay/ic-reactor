@@ -874,10 +874,11 @@ const withDetail = (lead: string, detail: string): string =>
  * expiry, which an agent takes from the host's clock: that clock is minutes
  * off. A replica checks the expiry of every call, and of a query or a
  * `read_state` whose sender is not anonymous. The agent answers the first
- * such refusal by reading the IC's time, and signs by it from then on, so a
- * read asked again is answered: it is retryable. A write is not. One signed
- * again while the request that was refused can still become valid (an expiry
- * too far ahead is valid later) would be two requests for one intent.
+ * such refusal by reading the IC's time, and signs by it from then on; after
+ * a later one the call path has it read the time again. So a read asked
+ * again is answered: it is retryable. A write is not. One signed again while
+ * the request that was refused can still become valid (an expiry too far
+ * ahead is valid later) would be two requests for one intent.
  *
  * An abort during an update is `cancelled` with `mayHaveExecuted: true`: the
  * request may already have been delivered. Use
