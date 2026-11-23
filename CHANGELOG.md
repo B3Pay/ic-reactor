@@ -86,9 +86,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   5.89, and the support table names `@tanstack/query-core` 5.89.0.
 - The Errors guide has a section on a device whose clock is off, and the
   classification table gives `IngressExpiryInvalid` a row of its own. The
-  Writes guide and the reference of `client.time()` no longer say that no
-  call works on such a device until its clock is fixed: the agent corrects
-  itself after the first refusal.
+  Writes guide no longer says that no call works on such a device until its
+  clock is fixed: the agent corrects itself after the first refusal. The
+  reference of `client.time()` says what it does there.
 
 ## core, react, vite-plugin, mcp 4.4.0
 
