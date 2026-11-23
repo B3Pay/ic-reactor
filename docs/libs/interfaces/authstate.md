@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [core/src/client.ts:159](https://github.com/B3Pay/ic-reactor/blob/dd94aaa13622dd127a60cb2711e922b0832df648/packages/core/src/client.ts#L159)
+Defined in: [core/src/client.ts:159](https://github.com/B3Pay/ic-reactor/blob/2adc2f76010801d0192a7579138ecc075bd00b5e/packages/core/src/client.ts#L159)
 
 Who a client calls as, and why. [Client.authState](/docs/ic-reactor/libs/interfaces/client/#authstate) returns it.
 
@@ -29,7 +29,7 @@ an explicit `AnonymousIdentity`. A client on a server reports
 
 > `readonly` **status**: `"signed-in"` \| `"signed-in-elsewhere"` \| `"expired"` \| `"anonymous"`
 
-Defined in: [core/src/client.ts:169](https://github.com/B3Pay/ic-reactor/blob/dd94aaa13622dd127a60cb2711e922b0832df648/packages/core/src/client.ts#L169)
+Defined in: [core/src/client.ts:169](https://github.com/B3Pay/ic-reactor/blob/2adc2f76010801d0192a7579138ecc075bd00b5e/packages/core/src/client.ts#L169)
 
 - `anonymous`: nobody is signed in (the auth says `signed-out`, or a state
   the client does not know), the client runs on a server, or it was built
@@ -45,7 +45,7 @@ Defined in: [core/src/client.ts:169](https://github.com/B3Pay/ic-reactor/blob/dd
 
 > `readonly` **principal**: `string`
 
-Defined in: [core/src/client.ts:171](https://github.com/B3Pay/ic-reactor/blob/dd94aaa13622dd127a60cb2711e922b0832df648/packages/core/src/client.ts#L171)
+Defined in: [core/src/client.ts:171](https://github.com/B3Pay/ic-reactor/blob/2adc2f76010801d0192a7579138ecc075bd00b5e/packages/core/src/client.ts#L171)
 
 The principal calls go out as, as text.
 
@@ -55,7 +55,7 @@ The principal calls go out as, as text.
 
 > `readonly` `optional` **expiresAt?**: `number`
 
-Defined in: [core/src/client.ts:185](https://github.com/B3Pay/ic-reactor/blob/dd94aaa13622dd127a60cb2711e922b0832df648/packages/core/src/client.ts#L185)
+Defined in: [core/src/client.ts:185](https://github.com/B3Pay/ic-reactor/blob/2adc2f76010801d0192a7579138ecc075bd00b5e/packages/core/src/client.ts#L185)
 
 When the session ends, in milliseconds since the epoch (`Date.now()`'s
 scale; `new Date(expiresAt)` for a date), so an app can show "signed in
