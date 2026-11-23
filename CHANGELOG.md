@@ -142,6 +142,68 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   Writes guide no longer says that no call works on such a device until its
   clock is fixed: the agent corrects itself after the first refusal. The
   reference of `client.time()` says what it does there.
+- "Build an ICRC-1 wallet" sends one transfer when Send is pressed twice. It
+  awaited `client.time()` in the submit handler, before `mutate()`. While that
+  read was on its way nothing was pending and the Send button stayed on, so a
+  second press built a second transfer, with a memo of its own, and both were
+  paid: on the test replica, two presses during the read ran two transfers.
+  The page now reads the time inside the mutation function: `newTransfer`
+  leaves `created_at_time` empty, and a new `stamped` sets it as the transfer
+  is sent and leaves a transfer that has its time, one sent again, as it is.
+  The press calls `mutate()` at once, the transfer goes out as the account
+  that pressed, and a time that cannot be read is the mutation's error. Its
+  submit handler also asks the cache first whether a transfer is on its way,
+  with `client.queryClient.isMutating`, and sends nothing then. `isPending`
+  reaches the page from a timer, a moment after `mutate()`, and two presses
+  with nothing between them could both find the button on: under a parent
+  that had just rendered again, they ran two transfers. Migration: an app that
+  copied the guide's `Send.tsx` moves the read into its `mutationFn` and adds
+  that check to its submit handler, as the page shows.
+- The Writes guide and the consumer guide (`packages/core/llms.txt`) say where
+  a form reads the time for `created_at_time`: as a step of the mutation
+  function, and never between the press and `mutate()`. They also say that a
+  button disabled while `isPending` is off a moment after the press, not at
+  once, and what the submit handler asks the cache first.
+- The consumer guide says that `client.resendOf` offers only an argument that
+  is an object: a record, a variant or the tuple of several arguments. A
+  method whose one argument is a `nat`, `text` or `principal` is never
+  offered. The Writes guide and the doc comment said so already (#1039).
+- The Auth guide's example of a wallet that signs each call names
+  `await client.time(ledger)` as the source of `created_at_time`, where its
+  comment named `Date.now()`.
+
+### Examples (not published)
+
+- `vite-wallet`, `icrc-ledger` and `node-agent-tool` stamp `created_at_time`
+  with the IC's time, `await client.time(ledger)`, where they used the
+  machine's clock, as the guide has said to since 4.0.0 (#1039). A ledger
+  checks the stamp against its own time and refuses one too far from it
+  (`CreatedInFuture`, `TooOld`), so a clock far enough off failed every
+  transfer. The two pages read the time inside the mutation function, as the
+  transfer is sent: Send is off while it is read, an account that changes
+  meanwhile gets `caller_changed` with nothing sent, a time that cannot be
+  read is the mutation's error, and "Send the same transfer again" sends the
+  time the transfer was first sent with. Send is off from the press itself,
+  by the state each page sets there, and a test of each presses twice with
+  nothing in between. The Node tool reads the time beside its other reads.
+- `node-agent-tool` gives a new transfer a `memo` of its own, 16 random bytes.
+  The IC's time moves about once a second, so with that time alone two runs of
+  one `transfer` command within the same second would be one transfer and its
+  `Duplicate`. The command it prints to send an unknown outcome again pins
+  `--memo` beside `--fee` and `--created-at-time`. A transfer typed with
+  `--created-at-time` is sent as typed, with the `--memo` given or none.
+- `canister-studio`'s Safety lab stamps a transfer with `client.time(ledger)`,
+  in the code it shows and in the code it runs. Its base transfer has no
+  `created_at_time` now, and the three scenarios that depend on one (a lost
+  reply, reject code 3, a caller that changes) stamp theirs: their request
+  logs start with that read. The studio's own forms and write runner keep the
+  browser's clock, and the README says why: they fill any canister's
+  timestamps in the handler of the press, and the runner has no memo to add,
+  so its stamp alone tells a new write from an identical one sent just before
+  it.
+- `icrc-ledger`'s sandbox aims its "lost reply" fault at the transfer, as its
+  HTTP 429 faults were, so that a call the page makes while the time is read
+  does not use it up.
 
 ## core, react, vite-plugin, mcp 4.4.0
 

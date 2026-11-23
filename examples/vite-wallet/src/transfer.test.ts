@@ -17,7 +17,7 @@ import {
   SEED_1,
   type TestWallet,
 } from "./test/test-wallet.tsx"
-import { describeTransferError, readTransferForm } from "./transfer.ts"
+import { describeTransferError, readTransferForm, stamped } from "./transfer.ts"
 import { ICP_LEDGER } from "./use-canisters.ts"
 
 const token = { symbol: "ICP", decimals: 8, fee: FEE }
@@ -30,12 +30,11 @@ afterEach(() => {
 })
 
 describe("reading the transfer form", () => {
-  it("makes an argument with the fee shown, a memo and a created_at_time for deduplication", () => {
+  it("makes an argument with the fee shown and a memo, and leaves created_at_time for the send to stamp", () => {
     const memo = new Uint8Array(16).fill(7)
     const read = readTransferForm(
       { to: ` ${BOB} `, amount: "1.5" },
       token,
-      1_700_000_000_000,
       memo
     )
     expect(read).toEqual({
@@ -46,15 +45,15 @@ describe("reading the transfer form", () => {
         fee: FEE,
         memo,
         from_subaccount: null,
-        created_at_time: 1_700_000_000_000_000_000n,
+        created_at_time: null,
       },
     })
   })
 
-  it("gives each transfer its own 16-byte memo, even in the same millisecond", () => {
+  it("gives each transfer its own 16-byte memo", () => {
     const form = { to: BOB, amount: "1" }
-    const first = readTransferForm(form, token, 1_700_000_000_000)
-    const second = readTransferForm(form, token, 1_700_000_000_000)
+    const first = readTransferForm(form, token)
+    const second = readTransferForm(form, token)
     if (!first.ok || !second.ok) throw new Error("refused")
     expect(first.arg.memo).toHaveLength(16)
     expect(second.arg.memo).toHaveLength(16)
@@ -134,21 +133,75 @@ describe("the ledger's refusals, worded", () => {
   })
 })
 
+describe("the time a transfer is sent with", () => {
+  const read = (): TransferArg => {
+    const form = readTransferForm({ to: BOB, amount: "1" }, token)
+    if (!form.ok) throw new Error(`refused: ${form.reason}`)
+    return form.arg
+  }
+  const ledgerOf = (made: TestWallet) =>
+    made.client.canister<Ledger>(ledgerActor, { id: ICP_LEDGER })
+
+  it("stamps a new transfer with the time the client reads from the IC", async () => {
+    const made = (wallet = createTestWallet())
+    const ledger = ledgerOf(made)
+    // A time no `Date.now()` gives: it is not a whole millisecond.
+    const asked: unknown[] = []
+    const ic = {
+      time: (canister: unknown) => {
+        asked.push(canister)
+        return Promise.resolve(1_700_000_000_123_456_789n)
+      },
+    }
+    const arg = read()
+
+    expect(await stamped(ic, ledger, arg)).toEqual({
+      ...arg,
+      created_at_time: 1_700_000_000_123_456_789n,
+    })
+    // The time is the ledger's subnet's, and the form's argument is left as
+    // it was.
+    expect(asked).toEqual([ledger])
+    expect(arg.created_at_time).toBeNull()
+  })
+
+  it("reads that time from the replica, through the real client", async () => {
+    const made = (wallet = createTestWallet())
+    const before = BigInt(Date.now()) * 1_000_000n
+    const sent = await stamped(made.client, ledgerOf(made), read())
+    // The in-memory replica runs on this process's clock.
+    expect(sent.created_at_time).toBeGreaterThanOrEqual(before)
+    expect(sent.created_at_time).toBeLessThan(before + 60_000_000_000n)
+  })
+
+  it("hands back a transfer that has its time as it is, and asks for no time", async () => {
+    const made = (wallet = createTestWallet())
+    const never = {
+      time: () => Promise.reject(new Error("asked for the time")),
+    }
+    const sent = { ...read(), created_at_time: 5n }
+    // The same object: `client.resendOf` holds a re-send to it.
+    expect(await stamped(never, ledgerOf(made), sent)).toBe(sent)
+  })
+})
+
 describe("deduplication on the ledger", () => {
   const arg = (read: ReturnType<typeof readTransferForm>): TransferArg => {
     if (!read.ok) throw new Error(`refused: ${read.reason}`)
     return read.arg
   }
 
-  it("executes two transfers of the same amount made in the same millisecond, and answers a re-send Duplicate of its own block", async () => {
+  it("executes two transfers of the same amount stamped with the same time, and answers a re-send Duplicate of its own block", async () => {
     const made = createTestWallet()
     wallet = made
     made.setBalance(SEED_1, 7n * ICP)
     const ledger = made.client.canister<Ledger>(ledgerActor, { id: ICP_LEDGER })
-    const nowMs = Date.now()
+    // The IC's time moves about once a second: two presses within that
+    // second are stamped alike, and only their memos tell them apart.
+    const created_at_time = await made.client.time(ledger)
     const form = { to: BOB, amount: "1" }
-    const first = arg(readTransferForm(form, token, nowMs))
-    const second = arg(readTransferForm(form, token, nowMs))
+    const first = { ...arg(readTransferForm(form, token)), created_at_time }
+    const second = { ...arg(readTransferForm(form, token)), created_at_time }
 
     // The first one runs (block 0), but its reply is lost.
     made.dropNextReply()

@@ -21,7 +21,11 @@ import {
   type Fault,
   type Sandbox,
 } from "./sandbox.ts"
-import { readTransferForm, type TransferForm } from "./transfer-form.ts"
+import {
+  readTransferForm,
+  stamped,
+  type TransferForm,
+} from "./transfer-form.ts"
 
 const FAULTS: ReadonlyArray<{ value: Fault | "none"; label: string }> = [
   { value: "none", label: "Nothing: the transfer goes through" },
@@ -254,7 +258,9 @@ interface Attempt {
   /**
    * The argument as sent, its own `memo` and `created_at_time` included: a
    * re-send sends this again, and each press of Send reads the form anew, so
-   * a new transfer is never taken for the duplicate of another.
+   * a new transfer is never taken for the duplicate of another. It is the
+   * form's argument, with no time yet, until the transfer is stamped as it
+   * is sent (see the mutation function).
    */
   readonly arg: TransferArg
   /**
@@ -299,9 +305,28 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
     data?: bigint
     error: ReactorError<TransferError> | null
   }>()
+  const [attempt, setAttempt] = useState<Attempt>()
   const options = client.mutationOptions(ledger, "icrc1_transfer")
   const transfer = useMutation({
     ...options,
+    // A step before the write: a new transfer gets the IC's time
+    // (`stamped`), and the attempt keeps the argument as it is sent, which is
+    // the one a re-send sends again. The press has called `mutate()` by now,
+    // so Send is disabled while the time is read: read in `onSubmit`
+    // instead, between the press and `mutate()`, it would leave a moment in
+    // which a second press builds a second transfer, with a memo of its own,
+    // and both are paid. The context goes on to the client's function, which
+    // knows the run by it, so the transfer still goes out as whoever pressed,
+    // or not at all.
+    mutationFn: async (arg: TransferArg, context) => {
+      const sent = await stamped(client, ledger, arg)
+      if (sent !== arg) {
+        setAttempt((last) =>
+          last?.arg === arg ? { ...last, arg: sent } : last
+        )
+      }
+      return options.mutationFn(sent, context)
+    },
     onSuccess: (data) => setKept({ isPending: true, data, error: null }),
     onError: (error) => {
       setFailure(error)
@@ -326,7 +351,6 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
   })
   const [fault, setFault] = useState<Fault | "none">("none")
   const [refusal, setRefusal] = useState<{ field: string; reason: string }>()
-  const [attempt, setAttempt] = useState<Attempt>()
 
   const send = (arg: TransferArg, armed: Fault | "none") => {
     // Who is signed in now, read from the sandbox's own client: the client
@@ -348,6 +372,12 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
     // A refusal before sending (nobody signed in) would leave the fault
     // armed for whatever comes next, so it is armed only for a real send.
     if (armed !== "none" && signedIn) sandbox.arm(armed)
+    // This and the attempt above are set at the press: React draws the page
+    // again before another press can arrive, and that render reads the
+    // mutation as it is by then, pending. TanStack Query itself tells React
+    // of a new mutation from a timer, after `mutate()` has returned: a button
+    // that waited for that would still be on for a second press with nothing
+    // in between.
     setKept({ isPending: true, error: null })
     transfer.mutate(arg)
   }

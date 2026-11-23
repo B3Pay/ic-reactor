@@ -6,6 +6,7 @@ import type { MockLedger } from "../mock-ledger.ts"
 import {
   createCli,
   generatePem,
+  MEMO_HEX,
   NOW,
   type Doc,
   type TestClient,
@@ -312,7 +313,7 @@ describe("a re-send that does not go through settles nothing", () => {
       expect(text).toMatch(/never send a new one blindly/)
       expect(text).toMatch(/Do not make a new transfer\. Re-send this same one/)
       expect(text).toContain(
-        `node src/cli.ts transfer ${TO} 6 --fee 0.0001 --created-at-time ${NOW}`
+        `node src/cli.ts transfer ${TO} 6 --fee 0.0001 --created-at-time ${NOW} --memo ${MEMO_HEX}`
       )
       // Nothing the re-send alone would advise: it moved nothing, the first may have.
       expect(text).not.toMatch(
@@ -353,6 +354,8 @@ describe("a re-send that does not go through settles nothing", () => {
         "0.0001",
         "--created-at-time",
         String(NOW),
+        "--memo",
+        MEMO_HEX,
         "--ledger",
         "icp",
         "--pem",

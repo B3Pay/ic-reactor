@@ -19,7 +19,14 @@
 //   From another account, or to another ledger, it would be a new transfer,
 //   paid in full. Each press of Send reads the form again into a new
 //   argument, so a new transfer gets a new memo, and is never taken for the
-//   duplicate of another one of the same amount made in the same millisecond.
+//   duplicate of another one of the same amount stamped with the same time.
+// - `created_at_time` is the IC's time, read as the transfer is sent: a step
+//   of the mutation function, before the write (`stamped` in transfer.ts).
+//   The press calls `mutate()` at once, so the button is disabled and the
+//   sender is fixed while the time is read. Read in the submit handler
+//   instead, between the press and `mutate()`, it would leave a moment in
+//   which a second press builds a second transfer, with a memo of its own,
+//   and both are paid.
 // - No `retry` is added: the client re-sends an update only when the failure
 //   proves it never arrived, and any other re-send could pay twice.
 import type { ReactorError } from "@ic-reactor/core"
@@ -32,6 +39,7 @@ import { showAmount, useToken, type Token } from "./token.ts"
 import {
   describeTransferError,
   readTransferForm,
+  stamped,
   type TransferForm,
 } from "./transfer.ts"
 import { useCanisters } from "./use-canisters.ts"
@@ -64,6 +72,11 @@ export function useTransfer() {
   const options = client.mutationOptions(ledger, "icrc1_transfer")
   const transfer = useMutation({
     ...options,
+    // A step before the write: a new transfer gets the IC's time. The
+    // context goes on to the client's function, which knows the run by it,
+    // so the transfer still goes out as whoever pressed, or not at all.
+    mutationFn: async (arg: TransferArg, context) =>
+      options.mutationFn(await stamped(client, ledger, arg), context),
     onSuccess: (data, variables) =>
       setKept({ variables, isPending: true, data, error: null }),
     onError: (error, variables) =>
@@ -96,6 +109,11 @@ export function useTransfer() {
     { dedupedBy }
   )
   const mutate = (arg: TransferArg) => {
+    // Set at the press: React draws the page again before another press can
+    // arrive, and that render reads the mutation as it is by then, pending.
+    // TanStack Query itself tells React of a new mutation from a timer, after
+    // `mutate()` has returned: a button that waited for that would still be
+    // on for a second press with nothing in between.
     setKept({ variables: arg, isPending: true, error: null })
     transfer.mutate(arg)
   }
