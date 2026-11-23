@@ -630,9 +630,9 @@ export interface Client {
    * returned `mutationFn`).
    *
    * `onSettled` invalidates the reads the write may have changed, on the
-   * `QueryClient` the mutation ran on (which TanStack Query 5.89 and later
-   * hands it; an app's own `QueryClientProvider` nested inside the client's)
-   * and on this client's `queryClient`, for every caller, certified or not,
+   * `QueryClient` the mutation ran on (which TanStack Query hands it; an
+   * app's own `QueryClientProvider` nested inside the client's) and on this
+   * client's `queryClient`, for every caller, certified or not,
    * and waits for the active ones to refetch: after a success, a
    * `canister_err`, and any failure whose `mayHaveExecuted` is `true` (a lost
    * reply: the re-read shows whether it happened). Not after a failure that proves nothing ran
@@ -653,12 +653,10 @@ export interface Client {
    * from it with every argument it gets; to add your own `onMutate`, call
    * this one from it with both and spread its result into yours:
    * `{ ...options.onMutate(variables, context), previous }`. An `onMutate`
-   * that replaces this one keeps the write and its invalidation together
-   * from TanStack Query 5.89 on, which hands `mutationFn` and `onSettled` the
-   * same run context: `mutationFn` resolves the targets when it starts, and
-   * `onSettled` reads them from there. Before 5.89 it leaves `mutationFn` and
-   * `onSettled` each to resolve the targets when it runs, so a cookie
-   * rewritten between the two can split the write from its invalidation.
+   * that replaces this one keeps the write and its invalidation together:
+   * TanStack Query hands `mutationFn` and `onSettled` the same run context,
+   * so `mutationFn` resolves the targets when it starts, and `onSettled`
+   * reads them from there.
    *
    * @throws TypeError for a canister of another client, a method a service
    * does not have, or a third argument other than `{ invalidates }`.
@@ -884,15 +882,14 @@ export interface ClientInternals {
   disposed(): boolean
   /**
    * The caller current when each mutation run of the client's `queryClient`
-   * started, by its `Mutation` and (TanStack Query 5.89 and later) by the
-   * function context TanStack made for the run. Read by the `MutationCache`'s
-   * own `onMutate`, which `mutate()` runs before the mutation's `onMutate`
-   * and which a mutation's options cannot replace. A run on another
-   * `QueryClient` has an entry by its context too, written by the `onMutate`
-   * of `mutationOptions` when TanStack runs it there. So a context with an
-   * entry is a run the client saw start. Weak, so an entry lives as long as
-   * its mutation. A restored mutation (hydrated from a persister) has none:
-   * TanStack runs no `onMutate` for it.
+   * started, by the function context TanStack Query made for the run. Read
+   * by the `MutationCache`'s own `onMutate`, which `mutate()` runs before the
+   * mutation's `onMutate` and which a mutation's options cannot replace. A
+   * run on another `QueryClient` has an entry by its context too, written by
+   * the `onMutate` of `mutationOptions` when TanStack runs it there. So a
+   * context with an entry is a run the client saw start. Weak, so an entry
+   * lives as long as its run's context. A restored mutation (hydrated from a
+   * persister) has none: TanStack runs no `onMutate` for it.
    */
   readonly mutationCallers: WeakMap<object, Caller>
   /**
@@ -1373,8 +1370,7 @@ export function createClientWith(
   const queryClient = new QueryClient({
     mutationCache: new MutationCache({
       // Only for a write of this client's `mutationOptions`: a mutation of
-      // the app's never builds the auth, and never fails here. Before 5.89
-      // TanStack passes no context.
+      // the app's never builds the auth, and never fails here.
       onMutate: (
         _vars: unknown,
         mutation: { readonly options: { readonly mutationFn?: unknown } },
@@ -1382,17 +1378,20 @@ export function createClientWith(
       ) => {
         const fn = mutation.options.mutationFn
         if (typeof fn !== "function" || !ownMutationFns.has(fn)) return
-        let caller: Caller
+        // A TanStack Query older than the peer range passes no context.
+        // Without one the write's mutationFn would take the run for a call
+        // by hand: sent as whoever is current by then, and again for a
+        // `retry`. The run fails here instead, before anything is sent.
+        if (typeof context !== "object" || context === null) {
+          throw new TypeError(
+            "[ic-reactor] client.mutationOptions() needs @tanstack/query-core 5.89 or newer; the write was not sent."
+          )
+        }
         try {
-          caller = current()
+          mutationCallers.set(context, current())
         } catch {
           // The write's own mutationFn reads the caller again, and fails
           // as a call does.
-          return
-        }
-        mutationCallers.set(mutation, caller)
-        if (typeof context === "object" && context !== null) {
-          mutationCallers.set(context, caller)
         }
       },
     }),
@@ -1952,7 +1951,6 @@ export function createClientWith(
             // attempts: TanStack's record of the pending runs is read for
             // one it did not see start, which a persister restored.
             const earlier = earlierAttempt(
-              queryClient,
               this,
               vars,
               context,
@@ -1979,7 +1977,8 @@ export function createClientWith(
             )
           }
           // `this` is the options TanStack called it on, by which the
-          // client's function finds the caller of a run with no context.
+          // client's function finds TanStack's record of a run it did not
+          // see start.
           return built.mutationFn.call(this, vars, context)
         }
         // The client's `MutationCache` reads the caller of a run of this

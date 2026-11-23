@@ -18,7 +18,51 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Changed
+
+- Peer `@tanstack/query-core` at `^5.89.0`, where it was `^5.62.0`. TanStack
+  Query 5.89 is the first that passes a mutation's `onMutate`, `mutationFn`
+  and `onSettled` one function context for a run, and that context is how the
+  client knows a run: who started it, the canister it resolved, and whether
+  an earlier attempt of it may have executed. For the releases before it the
+  client went by the options object a run's functions are called on, with the
+  four limits the Writes guide listed: pending runs of one observer with the
+  same argument could not be told apart, a retried attempt could be sent on
+  another `QueryClient`, a run given new options there was refused
+  `caller_changed`, and a `mutationFn` of your own kept neither rule. The
+  limits go with the code that served them: core is 355 B smaller, gzipped.
+  `@ic-reactor/react` already needs `@tanstack/react-query` 5.90.2, so an app
+  that uses it has nothing to change. Migration: an app on a
+  `@tanstack/query-core` older than 5.89 updates it. Installing core, npm
+  updates it where the app's range allows it and stops with `ERESOLVE` where
+  the app pins it; pnpm and yarn warn. A floor rises only in a minor, so this
+  ships in one.
+- On a TanStack Query older than 5.89, a `mutate()` of the client's mutation
+  options on `client.queryClient` fails with a `TypeError` before anything is
+  sent. Such a release passes no run context, and without one the client's
+  `mutationFn` would take the run for a call by hand: sent as whoever is
+  signed in by then, and sent again for a `retry`. Migration: none on a
+  supported TanStack Query.
+- A call of the client's `mutationFn` with no context is a call by hand
+  whatever was called before it: it goes out as whoever is signed in when it
+  is made, and each call is a new one. Before, a call of the client's
+  `onMutate` with the argument alone made the client keep that caller for a
+  later call of `mutationFn` with the argument alone on the same options
+  object, refuse such a call on another options object of the method, and
+  refuse a second call with the same argument after a failure that may have
+  executed. That served TanStack Query before 5.89, which called both that
+  way. Migration: none for a mutation that TanStack Query runs with the
+  client's options. A function of your own that calls the client's `onMutate`
+  or `mutationFn` passes on the context it got, as the Writes guide says:
+  `options.onMutate(variables, context)` and
+  `options.mutationFn(variables, context)`.
+
+### Docs
+
+- The Writes guide no longer lists what differs on TanStack Query before
+  5.89, and the support table names `@tanstack/query-core` 5.89.0.
 
 ## core, react, vite-plugin, mcp 4.4.0
 
