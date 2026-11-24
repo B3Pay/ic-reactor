@@ -11,7 +11,9 @@ canisters through that module, and the React hooks are TanStack Query's own.
 
 1.x and 2.x export the same names, so this page covers both. 2.x raised the
 peer dependencies to `@dfinity/*` 3.1 and React 19, corrected the spelling of
-one type and added `noop`. The 2.x docs stay at
+one type and added `noop`. It also added an `is` form beside each state field
+(`isLoading` beside `loading`, `isAuthenticated` beside `authenticated`) and
+renamed `formRequired` to `isFormRequired`. The 2.x docs stay at
 [ic-reactor.b3pay.net/v2](https://ic-reactor.b3pay.net/v2/).
 
 Where a change is the same as it was for 3.x, this page links to
@@ -35,12 +37,17 @@ Where a change is the same as it was for 3.x, this page links to
 - **Values have new shapes.** This is usually the largest part of the work,
   because it reaches every place an app reads a reply.
 - **Results are unwrapped.** A method that returns `variant { Ok; Err }`
-  resolves with the `Ok` value and rejects with the `Err` value.
+  resolves with the `Ok` value and rejects with a `ReactorError` whose `err`
+  is the `Err` value.
 - **New dependencies.** Replace `@dfinity/agent`, `@dfinity/auth-client`,
   `@dfinity/candid`, `@dfinity/identity` and `@dfinity/principal` with
   `@icp-sdk/core` and `@icp-sdk/auth`, and add `@tanstack/react-query`. Remove
   `zustand` and `zustand-utils` unless your own code uses them, and
   `@ic-reactor/visitor` and `@ic-reactor/parser` if you installed them.
+  [Install](/v4/guides/getting-started/#1-install) has the full list, with
+  `@meantjs/schema`, `@tanstack/query-core` and the versions to pin. Install
+  `@icp-sdk/auth@^10`, and note that `@ic-reactor/react` 4 needs React 18 or
+  later.
 
 ### Values
 
@@ -58,7 +65,8 @@ shows them.
 
 ## Moving an app
 
-1. Replace the dependencies, then generate a module for each `.did` file.
+1. Replace the dependencies, as [Install](/v4/guides/getting-started/#1-install)
+   lists them, then generate a module for each `.did` file.
 2. Build one client for the tab, or one per request on a server.
 3. Replace `createReactor` and its context with `ReactorProvider`, `useClient`
    and `client.canister<Actor>(actor, { id })`.
@@ -99,7 +107,7 @@ const { data: supply, refetch } = useQueryCall({
   refetchInterval: 5000,
 })
 
-const { call: send, isLoading } = useUpdateCall({
+const { call: send, loading } = useUpdateCall({
   functionName: "icrc1_transfer",
   args: [arg],
   onSuccessResult: (block) => console.log("Sent in block", block),
@@ -187,8 +195,14 @@ export function Send({ arg }: { arg: TransferArg }) {
 - `refetchOnMount: true` was the old default and is TanStack's, so it goes.
 - `refetchInterval` keeps its name. TanStack pauses it while the tab is hidden,
   and `refetchIntervalInBackground: true` turns that off.
-- `isLoading` on an update becomes `isPending`. `call` becomes `refetch` on a
-  read and `mutate` on a write.
+- `loading` on an update (also `isLoading` in 2.x) becomes `isPending`. `call`
+  becomes `refetch` on a read and `mutate` on a write. Where the code awaited
+  `call()` for the reply, use `mutateAsync`: it resolves with the `Ok` value and
+  rejects with the `ReactorError`.
+- The example names the mainnet ledger. The old `canisterId` came from the dfx
+  declarations and followed the network. In 4 the id is yours to supply for each
+  network, for example from an environment variable, or as `{ name }` where the
+  `ic_env` cookie carries the ids: see [Networks](/v4/guides/client/#networks).
 - `onSuccess` now receives the `Ok` value, and `error.err` holds the `Err`
   value, so `onSuccessResult` and `onErrorResult` have no direct replacement.
 - A write refreshes the canister's reads by itself. See
@@ -197,7 +211,7 @@ export function Send({ arg }: { arg: TransferArg }) {
 ## Every 1.x and 2.x name
 
 These tables list what `@ic-reactor/react` and `@ic-reactor/core` export in
-1.16 and 2.0, including their `helpers`, `core`, `classes`, `types` and `utils`
+their last 1.x and 2.x releases, including their `helpers`, `core`, `classes`, `types` and `utils`
 namespaces. "Removed" means 4 has no equivalent.
 
 ### Setup
@@ -205,7 +219,7 @@ namespaces. "Removed" means 4 has no equivalent.
 | 1.x and 2.x name                                                                                                                      | Use in 4                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `createReactor`, `createReactorCore`, `createReactorStore`                                                                            | `createClient`, then `client.canister<Actor>(actor, { id })`: see the [recipe](/v4/migrating-from-3/#recipe-clientmanager-and-definereactor)                                |
-| `canisterId`, `idlFactory` options                                                                                                    | `{ id }` and the generated `actor`                                                                                                                                          |
+| `canisterId`, `idlFactory` options                                                                                                    | `{ id }` and the generated `actor`. The id no longer follows the network by itself: supply one for each network                                                             |
 | `withLocalEnv`, `host`, `port` options                                                                                                | `network: { host: "http://127.0.0.1:4943" }` for dfx, or `network: "local"` for icp-cli                                                                                     |
 | `withProcessEnv` option                                                                                                               | `network: "env"`: see [Networks](/v4/guides/client/#networks)                                                                                                               |
 | `withDevtools` option                                                                                                                 | TanStack Query Devtools, over `client.queryClient`                                                                                                                          |
@@ -220,17 +234,18 @@ namespaces. "Removed" means 4 has no equivalent.
 
 ### Calls and state
 
-| 1.x and 2.x name                                                         | Use in 4                                                                                                                                                           |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `useQueryCall`                                                           | `useQuery(client.queryOptions(canister, method, vars))`                                                                                                            |
-| `useUpdateCall`                                                          | `useMutation(client.mutationOptions(canister, method))`                                                                                                            |
-| `useMethod`                                                              | `useQuery` for a query, `useMutation` for an update. Its `isFormRequired`, `validateArgs` and `visit` are removed                                                  |
-| `queryCall`, `updateCall`, `callMethod`, `call`, `callMethodWithOptions` | `ledger.icrc1_fee()`, one method per Candid method. For a cached read, `client.queryClient.fetchQuery(client.queryOptions(...))`                                   |
-| `useActorStore`, `useActorState`                                         | Removed: there is no store. Read TanStack's result, or `client.queryClient`                                                                                        |
-| `useActorInterface`, `useMethodNames`, `useMethodAttributes`             | Removed. The generated `Actor` types each method and whether it is a query. [Canister Studio](/v4/examples/canister-studio/) reads a canister's methods at runtime |
-| `useVisitMethod`, `useVisitService`                                      | Removed. [Canister Studio](/v4/examples/canister-studio/) builds forms from the generated schemas                                                                  |
-| `onSuccessResult`, `onErrorResult`, `onLoading`, `throwOnError` options  | `onSuccess` and `onError`, or `isPending` and TanStack's `throwOnError`. `onSuccess` receives the `Ok` value; `error.err` holds the `Err` value                    |
-| `compileResult`, `requestKey`, `reset`                                   | `isSuccess` and `isError`, `client.queryKey(...)`, and `reset` on a mutation                                                                                       |
+| 1.x and 2.x name                                                         | Use in 4                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useQueryCall`                                                           | `useQuery(client.queryOptions(canister, method, vars))`. The old hook also accepted an update method: make that a `useMutation`, or pass `{ update: "idempotent" }` as [Update methods](/v4/guides/reads/#update-methods) describes                                         |
+| `useUpdateCall`                                                          | `useMutation(client.mutationOptions(canister, method))`                                                                                                                                                                                                                     |
+| `useMethod`                                                              | `useQuery` for a query, `useMutation` for an update. Its `formRequired` (`isFormRequired` in 2.x), `validateArgs` and `visit` are removed                                                                                                                                   |
+| `queryCall`, `updateCall`, `callMethod`, `call`, `callMethodWithOptions` | `ledger.icrc1_fee()`, one method per Candid method. For a cached read, `client.queryClient.fetchQuery(client.queryOptions(...))`                                                                                                                                            |
+| `useActorStore`, `useActorState`                                         | Removed: there is no store. Read TanStack's result, or `client.queryClient`                                                                                                                                                                                                 |
+| `useActorInterface`, `useMethodNames`, `useMethodAttributes`             | Removed. The generated `Actor` types each method and whether it is a query. [Canister Studio](/v4/examples/canister-studio/) reads a canister's methods at runtime                                                                                                          |
+| `useVisitMethod`, `useVisitService`, `getVisitFunction`                  | Removed. [Canister Studio](/v4/examples/canister-studio/) builds forms from the generated schemas                                                                                                                                                                           |
+| `onSuccessResult`, `onErrorResult`, `onLoading`, `throwOnError` options  | `onSuccess` and `onError`, and `isPending`. `onSuccess` receives the `Ok` value; `error.err` holds the `Err` value. `throwOnError` made `call()` reject: await `mutateAsync` in a `try` instead. TanStack's own `throwOnError` is different: it throws to an error boundary |
+| `getState`, `subscribeActorState`, `dataPromise`                         | `client.queryClient`: `getQueryData(client.queryKey(...))`, `getQueryCache().subscribe(...)` and `fetchQuery(client.queryOptions(...))`                                                                                                                                     |
+| `compileResult`, `requestKey`, `reset`                                   | `isSuccess` and `isError`, `client.queryKey(...)`, and `reset` on a mutation                                                                                                                                                                                                |
 
 ### Auth and the agent
 
@@ -246,6 +261,9 @@ namespaces. "Removed" means 4 has no equivalent.
 | `useAuthState`                                                                           | `useAuth()`                                                                                                                                      |
 | `useUserPrincipal`, `getPrincipal`                                                       | `useAuth().principal`, or `client.caller()`. Both are text                                                                                       |
 | `useAgent`, `getAgent`                                                                   | Removed. The client keeps one agent per principal and does not hand it out. Code that needs one builds an `HttpAgent` from `@icp-sdk/core/agent` |
+| `getAuthState`, `subscribeAuthState`, `getAgentState`, `subscribeAgentState`             | `client.authState()` and `client.subscribe(listener)`                                                                                            |
+| `getAuth`                                                                                | Your own reference to the `AuthClient`: see [Auth](/v4/guides/auth/#your-own-reference-to-the-authclient)                                        |
+| `updateAgent`                                                                            | Removed. Build another client with `createClient`                                                                                                |
 | `useAgentState`, `getNetwork`                                                            | `client.network`. There is nothing to wait for before a call                                                                                     |
 
 ### Candid at runtime
@@ -264,7 +282,7 @@ namespaces. "Removed" means 4 has no equivalent.
 | `getNetworkByHostname`, `getProcessEnvNetwork`, `isInLocalOrDevelopment`                                          | `network: "env"`, or your bundler's own variable such as `import.meta.env.DEV`                                                                  |
 | `IC_INTERNET_IDENTITY_PROVIDER`, `LOCAL_INTERNET_IDENTITY_PROVIDER`                                               | The `identityProvider` the `auth` factory is handed. See [Auth](/v4/guides/auth/#the-network-the-factory-is-handed)                             |
 | `generateHash`, `generateRequestHash`, `generateActorHash`, `stringToHash`, `createSimpleHash`, `stringifyStable` | `client.queryKey(canister, method?, vars?)`: see the [recipe](/v4/migrating-from-3/#recipe-query-keys)                                          |
-| `createCompiledResult`, `extractOkResult`                                                                         | Nothing to call: a reply is already the `Ok` value, and an `Err` value rejects                                                                  |
+| `createCompiledResult`, `extractOkResult`                                                                         | Nothing to call: a reply is already the `Ok` value, and an `Err` value rejects as a `ReactorError`                                              |
 | The helper that writes JSON text                                                                                  | `JSON.stringify` with a replacer: see the [recipe](/v4/migrating-from-3/#recipe-types-and-small-helpers)                                        |
 | `isQuery`                                                                                                         | The generated `Actor` types each method's mode. `useQuery` accepts only a read                                                                  |
 | `createStoreWithOptionalDevtools`, `noop`                                                                         | Removed                                                                                                                                         |
@@ -287,13 +305,14 @@ the types of `@ic-reactor/core`, and TanStack Query's own.
 | `ActorQuery`, `ActorQueryParameters`, `ActorQueryReturnType`, `ActorUpdate`, `ActorUpdateParameters`, `ActorUpdateReturnType`, `ActorMethodCall`, `ActorMethodType`, `ActorCallFunction`, `CallActorMethod`                                                                                                                                                                                                                                                                | `Canister<Actor>`                                                              |
 | `CanisterId`                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `CanisterTarget`                                                               |
 | `UseQueryCall`, `UseQueryCallParameters`, `UseQueryCallReturnType`, `UseUpdateCall`, `UseUpdateCallParameters`, `UseUpdateCallReturnType`, `UseSharedCall`, `UseSharedCallParameters`, `UseSharedCallReturnType`, `UseSharedCallState`, `UseMethod`, `UseMethodParameters`, `UseMethodReturnType`, `DynamicDataArgs`                                                                                                                                                       | TanStack's `UseQueryResult` and `UseMutationResult`                            |
-| `UseAuthParameters`, `UseAuthReturnType`, `LoginParameters`, `LoginState`, `LogoutParameters`                                                                                                                                                                                                                                                                                                                                                                              | `AuthState`, plus `signIn` and `signOut`                                       |
+| `UseAuthParameters`, `UseAuthReturnType`, `LoginState`, `LogoutParameters`                                                                                                                                                                                                                                                                                                                                                                                                 | `AuthState`, plus `signIn` and `signOut`                                       |
 | `AuthState`                                                                                                                                                                                                                                                                                                                                                                                                                                                                | The name stays, with `status`, `principal` and `expiresAt`                     |
 | `ActorProviderProps`, `AgentProviderProps`, `ActorManagerProviderProps`, `ActorHookProviderProps`, `ActorChildrenProps`                                                                                                                                                                                                                                                                                                                                                    | `ReactorProviderProps`                                                         |
 | `Principal`                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `Principal` from `@meantjs/schema`, which is text                              |
 | `HttpAgent`, `HttpAgentOptions`, `Identity`, `ActorSubclass`, `ActorMethod`                                                                                                                                                                                                                                                                                                                                                                                                | `@icp-sdk/core/agent`                                                          |
 | `IDL`                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `@icp-sdk/core/candid`. An app that uses the generated module does not need it |
-| `AuthClient`, `AuthClientLoginOptions`                                                                                                                                                                                                                                                                                                                                                                                                                                     | `@icp-sdk/auth/client`                                                         |
+| `AuthClientLoginOptions`, `LoginParameters`                                                                                                                                                                                                                                                                                                                                                                                                                                | `AuthClientSignInOptions` from `@icp-sdk/auth/client`                          |
+| `AuthClient`                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `@icp-sdk/auth/client`                                                         |
 | `ActorState`, `ActorStore`, `ActorMethodState`, `ActorMethodStates`, `ActorGetStateFunction`, `ActorSubscribeFunction`, `AgentState`, `AgentStore`, `AuthStore`, `StoreApiWithMiddleware`, `StoreWithAllMiddleware`, `StoreWithMiddleware`, `StoreWithSubscribeOnly`, `WithDevtools`, `WithSubscribeSelector`, `UseActorStore`, `UseActorStateReturnType`, `UseActorParameters`, `UseActorReturn`, `UseActorManagerParameters`, `UseActorManagerReturn`, `InitializeActor` | Removed: there is no store                                                     |
 | `CandidAdapterContextType`, `CandidAdapterProviderProps`, `CreateCandidAdapterCotextParameters`, `CreateCandidAdapterContextParameters`, `CreateCandidAdapterContextReturnType`, `UseCandidEvaluationReturnType`, `CandidDefenition`, `ReactorParser`, `MethodAttributes`, `VisitService`, `VisitorType`, `UseVisitMethod`, `UseVisitService`                                                                                                                              | Removed. See [Candid at runtime](#candid-at-runtime)                           |
 
