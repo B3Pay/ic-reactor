@@ -236,6 +236,25 @@ describe.each([
     expect(queries[queries.length - 1]).toMatchObject({ refused: false })
   })
 
+  it("counts each request of that read in the end event client.onCall hands out, the refused one included", async () => {
+    const t = offClock(hostAheadMs)
+    const ends: unknown[] = []
+    t.client.onCall((event) => {
+      if (event.phase !== "start") ends.push(event)
+    })
+
+    await expect(t.balance()).resolves.toBe(START)
+
+    // One call, however the second request came about: signed anew by the
+    // agent itself, once it had read the IC's time, or sent again by the
+    // client.
+    const queries = t.sent("query")
+    expect(queries.length).toBeGreaterThan(1)
+    expect(ends).toMatchObject([
+      { phase: "success", data: START, sends: queries.length },
+    ])
+  })
+
   it("answers a read made with queryOptions in a browser page, which TanStack asks again", async () => {
     onPage()
     const t = offClock(hostAheadMs)

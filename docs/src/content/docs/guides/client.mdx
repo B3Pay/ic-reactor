@@ -496,11 +496,104 @@ gives, with the `Ok` payload as the result. The type argument is not checked.
 The [ICRC-1 ledger example](/v4/examples/icrc-ledger/) does this in
 `src/blocks.ts`.
 
+## Call events
+
+`client.onCall(listener)` hears every canister call the client makes, by
+whichever route: the query function of `queryOptions`, the mutation function
+of `mutationOptions`, a direct call, a function of `client.func`, and a
+re-send `client.resendOf()` offered. It is the one place for a log, a metric
+or a trace of the calls, and it returns the function that removes the
+listener.
+
+```ts
+import type { CallEvent } from "@ic-reactor/core"
+import { client } from "./ledger"
+
+type Start = Extract<CallEvent, { phase: "start" }>
+const started = new Map<number, Start>()
+
+const stop = client.onCall((event) => {
+  if (event.phase === "start") {
+    started.set(event.id, event)
+    return
+  }
+  const call = started.get(event.id)
+  started.delete(event.id)
+  console.log(
+    call?.method,
+    call?.caller,
+    event.phase,
+    `${Math.round(event.ms)} ms`,
+    `${event.sends} sent`
+  )
+})
+// later: stop()
+```
+
+A call is two events with the same `id`: a `start` as the call is made, then
+exactly one end. Narrow on `phase`:
+
+| `phase`       | When                                                                                                | What it carries                                                                        |
+| ------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `"start"`     | The call is made.                                                                                   | `via`, `canisterId`, `method`, `mode`, `certified`, `caller`, `args`, `resendOf`, `at` |
+| `"success"`   | The call resolved.                                                                                  | `data`, `sends`, `ms`                                                                  |
+| `"error"`     | The call rejected: a `canister_err` and a `timeoutMs` that passed among them.                       | `error`, `sends`, `ms`                                                                 |
+| `"cancelled"` | The call was given up: the caller changed, a query was aborted or removed, the client was disposed. | `error`, `sends`, `ms`                                                                 |
+
+- `via` is `"query"`, `"mutation"`, `"direct"` or `"func"`. The `send()` of a
+  `resendOf` offer is `"direct"`, and every re-send of an offered write has
+  `resendOf: true`.
+- `canisterId` is the canister's id as text, or `$unresolved:<name>` for a
+  `{ name }` the cookie does not resolve, as an error's `canisterId` says it.
+- `mode` is the method's mode in the `.did`, and `certified` says whether a
+  query method went as a certified read.
+- `caller` is the principal the call is made as. A listener on the client
+  hears the calls of every view of it, which is what `useClient()` returns, so
+  a switch of account needs no new listener. Two clients keep their listeners
+  apart.
+- `args` is the list of arguments as the app gave them. `data` is what the
+  caller receives: the `Ok` payload for a method that returns a result.
+  `error` is the `ReactorError` the caller receives, and
+  `isReactorError(event.error, canister, method)` types its `err`.
+- `sends` is how many requests the call sent. It is 0 when the client refused
+  the call first or the signer declined to sign it, and more than 1 when a
+  request failed in a way that proves it was not delivered and the client
+  sent the call again ([Re-sends](#re-sends)). The reads of an update's
+  status that follow its request are not counted. A retry TanStack Query
+  makes of a query function is a new call, with an `id` of its own.
+- `at` is `Date.now()` when the call was made. `ms` is how long the call took,
+  on a clock that a correction of the device's time does not move.
+
+The calls the client refuses before anything is sent are reported too, with
+`sends: 0`: arguments that do not encode, a write while signed out, a retry of
+a write that may have executed, a call made as a principal who is no longer
+the caller. A query built with `skipToken` never runs, so it has no events.
+Nor do `client.time()` and `client.encode()`, which call no canister method.
+
+A listener only observes:
+
+- It cannot change, delay or stop a call. Listeners run in the order they
+  were added, as the event happens. Nothing waits for a promise a listener
+  returns, and what a listener throws is dropped: the call, its result and
+  the other listeners are unaffected.
+- A listener added or removed while an event is handed out counts from the
+  next event. A listener added while a call is under way hears that call's
+  end only when another listener heard its start.
+- The client keeps no event, and each event is frozen. `args` and `data` are
+  the app's own objects, handed over as they are: do not change them. They
+  may hold personal data, so choose what a log keeps. No event holds an
+  identity, a delegation, a signature or the bytes of a request.
+- While nobody listens, a call does nothing for its events but check that.
+- A listener that calls a canister through the same client hears that call
+  too.
+
 ## Dispose
 
 `client.dispose()` releases everything the client holds. It stops listening to
-the auth and disposes it, clears the `QueryClient`, and drops the agents. Calling
-it again does nothing.
+the auth and disposes it, clears the `QueryClient`, and drops the agents. It
+drops the listeners of `onCall` once every call that had started has reported
+its end, the calls it cancels among them, and `onCall` adds none after it.
+Calling it again does nothing.
 
 Afterwards every call on the client rejects as `cancelled` with code
 `client_disposed` and `mayHaveExecuted: false`, and sends nothing. That covers a

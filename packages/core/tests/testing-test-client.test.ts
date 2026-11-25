@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { c, principal, type WithMode } from "@meantjs/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { internalsOf } from "../src/client.js"
-import { isReactorError } from "../src/index.js"
+import { isReactorError, type CallEvent } from "../src/index.js"
 import { createTestClient, type TestHandlers } from "../src/testing/index.js"
 import {
   ANONYMOUS,
@@ -963,6 +963,108 @@ describe("a refusal aimed at one method or canister", () => {
     ])
     // The read is not an update: its handler ran for both requests.
     expect(test.runs).toMatchObject({ fee: 2, transfer: 1 })
+  })
+})
+
+describe("the calls client.onCall reports", () => {
+  it("are the calls a test makes, with no setup of its own: who a handler was told called, the reply, and the requests the fake saw", async () => {
+    const test = withShapes({
+      who: ({ caller }) => caller,
+      bump: (n) => ({ tag: "ok", value: n }),
+    })
+    const events: CallEvent[] = []
+    const stop = test.client.onCall((event) => {
+      events.push(event)
+    })
+
+    await expect(test.canister.who()).resolves.toBe(SEED_1)
+    test.auth.switchTo(2)
+    // Refused once before the canister sees it: the client sends it again.
+    test.refuseNext(429)
+    await expect(test.canister.bump(5n)).resolves.toBe(5n)
+
+    expect(events).toMatchObject([
+      {
+        phase: "start",
+        id: 1,
+        via: "direct",
+        canisterId: SHAPES,
+        method: "who",
+        mode: "query",
+        caller: SEED_1,
+        args: [],
+      },
+      { phase: "success", id: 1, data: SEED_1, sends: 1 },
+      {
+        phase: "start",
+        id: 2,
+        via: "direct",
+        canisterId: SHAPES,
+        method: "bump",
+        mode: "update",
+        caller: SEED_2,
+        args: [5n],
+      },
+      // The request the fake refused and the one it let through.
+      { phase: "success", id: 2, data: 5n, sends: 2 },
+    ])
+    expect(canisterRequests(test)).toHaveLength(3)
+
+    stop()
+    await test.canister.who()
+    expect(events).toHaveLength(4)
+  })
+
+  it("end as an error for the failures a test makes happen: a reject(), a lost reply, an Err a handler returns", async () => {
+    const test = withShapes({
+      one: () => test.reject(4, "not today"),
+      bump: (n) =>
+        n === 0n
+          ? { tag: "err", value: "nothing to bump" }
+          : { tag: "ok", value: n },
+    })
+    const ends: Exclude<CallEvent, { phase: "start" }>[] = []
+    test.client.onCall((event) => {
+      if (event.phase !== "start") ends.push(event)
+    })
+
+    await expect(test.canister.one(1n)).rejects.toMatchObject({
+      kind: "rejected",
+    })
+    await expect(test.canister.bump(0n)).rejects.toMatchObject({
+      kind: "canister_err",
+    })
+    test.dropNextReply()
+    await expect(test.canister.bump(1n)).rejects.toMatchObject({
+      kind: "outcome_unknown",
+    })
+
+    expect(ends).toMatchObject([
+      {
+        phase: "error",
+        id: 1,
+        sends: 1,
+        error: { kind: "rejected", rejectCode: 4, method: "one" },
+      },
+      {
+        phase: "error",
+        id: 2,
+        sends: 1,
+        error: { kind: "canister_err", err: "nothing to bump" },
+      },
+      {
+        phase: "error",
+        id: 3,
+        sends: 1,
+        error: { kind: "outcome_unknown", mayHaveExecuted: true },
+      },
+    ])
+    // The error of an event is the one the test's own call rejected with.
+    const [, refused] = ends
+    expect(
+      refused?.phase === "error" &&
+        isReactorError(refused.error, test.canister, "bump")
+    ).toBe(true)
   })
 })
 

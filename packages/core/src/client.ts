@@ -5,9 +5,10 @@
  * `QueryClient` every read is cached in.
  *
  * Public: {@link createClient}, {@link Client}, {@link ClientOptions},
- * {@link AuthLike} and {@link AuthState}. {@link internalsOf} and the types it
- * returns are for the canister builders of this package (`canister.ts`,
- * `options.ts`, `call.ts`) and are not exported from the package entry.
+ * {@link AuthLike}, {@link AuthState} and {@link CallEvent}.
+ * {@link internalsOf} and the types it returns are for the canister builders
+ * of this package (`canister.ts`, `options.ts`, `call.ts`) and are not
+ * exported from the package entry.
  *
  * Who calls is decided in one place, {@link ClientInternals.agentFor}, and by
  * one rule: a call goes out signed by the principal it was made for, or not at
@@ -28,10 +29,12 @@ import {
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
 import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
 import {
+  asRecord,
   createReactorError,
   fromCanister,
   notSigned,
   retryDefault,
+  type ReactorError,
 } from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
@@ -48,11 +51,13 @@ import {
 import {
   keepSigned,
   keptUnknown,
+  refused,
   retriedWrite,
   slotOf,
   type CallRequest,
+  type Reported,
 } from "./call.js"
-import { readTarget, recordOf } from "./canister.js"
+import { describe, methodOf, readTarget, recordOf } from "./canister.js"
 import { createBuilders, earlierAttempt } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
 import type {
@@ -295,6 +300,144 @@ export type ClientOptions = {
       readonly identity?: never
     }
 )
+
+/**
+ * One event of a canister call, as {@link Client.onCall} hands it to a
+ * listener. A call is two events with the same `id`: a `start`, and then
+ * exactly one of `success`, `error` and `cancelled`.
+ *
+ * Narrow on `phase`. The `start` says what was called, how and as whom; the
+ * end says what became of it, and repeats nothing of the start, so a listener
+ * that wants both keeps the start by its `id` until the end arrives.
+ *
+ * `args` and `data` are handed over as they are, not copied: they are the
+ * objects the app gave and the caller receives, they may hold personal data,
+ * and a listener must not change them. No event holds an identity, a
+ * delegation, a signature or the bytes of a request, and the client keeps no
+ * event.
+ *
+ * @example
+ * ```ts
+ * const methods = new Map<number, string>()
+ * client.onCall((event: CallEvent) => {
+ *   if (event.phase === "start") {
+ *     methods.set(event.id, event.method)
+ *   } else {
+ *     console.log(methods.get(event.id), event.phase, Math.round(event.ms))
+ *     methods.delete(event.id)
+ *   }
+ * })
+ * ```
+ */
+export type CallEvent =
+  | {
+      /** The call was made. Its end comes in a later event with the same `id`. */
+      readonly phase: "start"
+      /**
+       * Pairs this event with the one that ends the call. Unique among the
+       * calls of a client and its views, and never used again.
+       */
+      readonly id: number
+      /**
+       * What made the call: `"query"` for the query function of
+       * {@link Client.queryOptions}, `"mutation"` for the mutation function
+       * of {@link Client.mutationOptions}, `"direct"` for a method of a
+       * canister object and for the `send()` of {@link Client.resendOf}, and
+       * `"func"` for a function of {@link Client.func}.
+       */
+      readonly via: "query" | "mutation" | "direct" | "func"
+      /**
+       * The canister called, as text: its id, or `$unresolved:<name>` for a
+       * `{ name }` the `ic_env` cookie does not resolve, as a
+       * `ReactorError`'s `canisterId` says it.
+       */
+      readonly canisterId: string
+      /** The Candid method called. */
+      readonly method: string
+      /** The method's mode in the service's interface. */
+      readonly mode: "query" | "composite_query" | "update" | "oneway"
+      /**
+       * Whether this is a certified read: a `query` method of a canister made
+       * with `certified: true`, which is sent as a replicated call.
+       */
+      readonly certified: boolean
+      /**
+       * The principal the call is made as, as text: the only one it is ever
+       * signed by. For a write refused because nobody knows who started it,
+       * the caller current when it was refused.
+       */
+      readonly caller: string
+      /** The arguments, as a list, as the app gave them: not copied, not encoded. */
+      readonly args: readonly unknown[]
+      /** Whether the call sends again a write {@link Client.resendOf} offered. */
+      readonly resendOf: boolean
+      /** When the call was made: `Date.now()` then. */
+      readonly at: number
+    }
+  | {
+      /** The call resolved. */
+      readonly phase: "success"
+      /** The `id` of the call's `start` event. */
+      readonly id: number
+      /**
+       * What the caller receives: the reply as the generated `Actor` types
+       * it, with the `Ok` payload in place of a result variant.
+       */
+      readonly data: unknown
+      /**
+       * How many requests the call sent: 1, or more when a request failed in
+       * a way that proves it was not delivered and the client sent the call
+       * again. The call's own requests count, a query or a call request, and
+       * not the reads of an update's status that follow one.
+       */
+      readonly sends: number
+      /** How long the call took, in milliseconds, on a clock that only moves forward. */
+      readonly ms: number
+    }
+  | {
+      /**
+       * The call rejected, with any `ReactorError` but a cancellation: a
+       * `canister_err` (whose `err` is the canister's `Err`), and a
+       * `timeoutMs` that passed (code `"timeout"`) among them.
+       */
+      readonly phase: "error"
+      /** The `id` of the call's `start` event. */
+      readonly id: number
+      /**
+       * What the caller receives. `isReactorError(error, canister, method)`
+       * types its `err`.
+       */
+      readonly error: ReactorError<unknown>
+      /**
+       * How many requests the call sent: 0 when nothing was sent, because
+       * the client refused the call first or the signer declined to sign it.
+       * A request counts once, also one the client sent again unchanged
+       * while it read back a lost answer.
+       */
+      readonly sends: number
+      /** How long the call took, in milliseconds, on a clock that only moves forward. */
+      readonly ms: number
+    }
+  | {
+      /**
+       * The call was given up: it rejected `cancelled` with any code but
+       * `"timeout"`, such as `caller_changed`, `client_disposed`, or none for
+       * a query whose signal aborted (its observer left, or the query was
+       * removed while it fetched).
+       */
+      readonly phase: "cancelled"
+      /** The `id` of the call's `start` event. */
+      readonly id: number
+      /** What the caller receives: its `code` says why. */
+      readonly error: ReactorError<unknown>
+      /** How many requests the call sent: 0 when nothing was sent. */
+      readonly sends: number
+      /** How long the call took, in milliseconds, on a clock that only moves forward. */
+      readonly ms: number
+    }
+
+/** What made a call: {@link CallEvent}'s `via`. Not part of the package entry. */
+export type CallVia = Extract<CallEvent, { readonly phase: "start" }>["via"]
 
 /** What the `auth` factory is handed: `network` in `(network) => new AuthClient(network)`. */
 type AuthNetworkArgument = Parameters<
@@ -851,6 +994,62 @@ export interface Client {
    * `fetch` in use does.
    */
   time(canister: Canister<object>): Promise<bigint>
+
+  /**
+   * Calls `listener` at the start and at the end of every canister call this
+   * client makes, whichever way it is made: a method of a canister object,
+   * the query function of {@link Client.queryOptions}, the mutation function
+   * of {@link Client.mutationOptions}, the `send()` of
+   * {@link Client.resendOf} and a function of {@link Client.func}. It is the
+   * one place for a call log, metrics or a test's assertions. Returns a
+   * function that stops listening; calling it again does nothing.
+   *
+   * ```ts
+   * const stop = client.onCall((event) => {
+   *   if (event.phase === "start") console.log(event.id, event.method, event.args)
+   *   else console.log(event.id, event.phase, event.ms)
+   * })
+   * ```
+   *
+   * Each call is two events with the same `id` (see {@link CallEvent}): a
+   * `start`, and then exactly one of `success`, `error` and `cancelled`. That
+   * holds for a call the client refuses before anything is sent, such as
+   * `invalid_args`, `unauthenticated`, and a write held back because its
+   * caller changed or because an earlier attempt of it may have executed:
+   * its end says `sends: 0`. A call the client sends again by itself, after a
+   * failure that proves a request was not delivered, stays one call, and its
+   * end counts the requests in `sends`. Every run of a query function is
+   * a call of its own, also a retry or a refetch by TanStack Query. A query
+   * built with `skipToken` never runs, so it has no events, and
+   * {@link Client.time} and {@link Client.encode} call no canister method
+   * and have none either.
+   *
+   * A listener only observes. It runs synchronously, in the order the
+   * listeners were added, and nothing waits for what it returns. What it
+   * throws is dropped, and so is the rejection of a promise it returns: the
+   * call, its result and the other listeners are not affected. A listener
+   * added or removed while an event is handed out counts from the next
+   * event. An event is a frozen object. A call has read its arguments before
+   * its `start` is handed out, so a listener that changes one changes
+   * nothing of that call; `args` and `data` are still the app's own objects,
+   * to be read and not changed. A listener that calls a canister through
+   * this client hears that call too.
+   *
+   * A view of the client (what `useClient()` returns) listens on the client
+   * it was made over. One listener therefore hears the calls of every
+   * caller, each event naming its `caller`, and a sign-in or a switch of
+   * account needs no new listener. Another client has its own listeners. A
+   * listener hears the events that come after it was added: of a call
+   * already under way, the end only if another listener heard its start.
+   * While no listener is registered, a call does no work for any of this.
+   *
+   * {@link Client.dispose} drops the listeners once every call that had
+   * started has reported its end, the calls it cancels among them. On a
+   * disposed client this adds nothing.
+   *
+   * @throws TypeError for a `listener` that is not a function.
+   */
+  onCall(listener: (event: CallEvent) => void): () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -917,6 +1116,26 @@ export interface ClientInternals {
    */
   readonly offered: WeakMap<object, CallRequest>
   /**
+   * The listeners of {@link Client.onCall}. The call path reads how many
+   * there are before each call, and reports the call
+   * ({@link ClientInternals.report}) only when there is one: with none, a
+   * call allocates nothing for its events.
+   */
+  readonly watchers: { readonly size: number }
+  /**
+   * Tells the listeners of {@link Client.onCall} of one call: its `start`
+   * now, and its end once `settled` has settled. Returns the promise the
+   * caller is handed in place of `settled`: it settles the same way, after
+   * the listeners heard the end. `sent` counts the requests the call path
+   * has sent (`keepSigned` in `call.ts`); a call refused before the call
+   * path comes without it, and reports none.
+   */
+  report(
+    request: Reported,
+    settled: Promise<unknown>,
+    sent?: { readonly count?: number }
+  ): Promise<unknown>
+  /**
    * The agent that signs as `principal`, and only as `principal`. It is the
    * one place the client enforces "a call goes out as the principal it was
    * made for, or not at all".
@@ -940,8 +1159,10 @@ export interface ClientInternals {
    * the old one, which is never handed out again. Every agent is built with
    * `retryTimes: 0`, so it never re-sends a request on its own: the call path
    * decides every re-send from the classified failure. Its identity hands
-   * each call request it signs for a write to `keepSigned`, so the call path
-   * can send that same request again when its answer is lost (#1036).
+   * every request it signs to `keepSigned`: the call path keeps a write's
+   * call request, so that it can send that same request again when its
+   * answer is lost (#1036), and counts the requests of a call it reports to
+   * the listeners of {@link Client.onCall}.
    *
    * `retryTimes` also governs the agent's other requests, and setting it to 0
    * costs two recoveries the call path (`call.ts`) has to make up for
@@ -1941,6 +2162,81 @@ export function createClientWith(
     return source
   }
 
+  /**
+   * The listeners of {@link Client.onCall}, in the order they were added:
+   * one entry for each call of it, so a function added twice is two.
+   */
+  const watchers = new Set<(event: CallEvent) => Promise<void>>()
+  /** How many calls have been reported: the `id` of the latest. */
+  let reported = 0
+  /**
+   * How many reported calls have not ended. A disposed client keeps its
+   * listeners until this is 0, so each of those calls still reports its end.
+   */
+  let underWay = 0
+
+  /**
+   * Hands `event`, frozen, to every listener there is now: over a copy, so
+   * that one a listener adds or removes counts from the next event. A
+   * listener's failure is dropped: it observes, and its failure is not the
+   * call's.
+   */
+  const emit = (event: CallEvent): void => {
+    Object.freeze(event)
+    for (const watcher of [...watchers]) void watcher(event).catch(() => {})
+  }
+
+  const report: ClientInternals["report"] = (request, settled, sent) => {
+    const id = ++reported
+    const began = performance.now()
+    const { method } = request
+    underWay++
+    emit({
+      phase: "start",
+      id,
+      via: request.via,
+      canisterId: slotOf(request.target),
+      method: method.name,
+      mode: method.mode,
+      certified: request.certified && method.mode === "query",
+      caller: request.caller.principal,
+      args: request.values,
+      resendOf: request.again !== undefined,
+      at: Date.now(),
+    })
+    const end = (
+      phase: "success" | "error" | "cancelled",
+      outcome: { readonly data: unknown } | { readonly error: unknown }
+    ): void => {
+      underWay--
+      emit({
+        phase,
+        id,
+        ...outcome,
+        sends: sent?.count ?? 0,
+        ms: performance.now() - began,
+      } as CallEvent)
+      // Disposed while this call was under way: the last such call to end
+      // takes the listeners with it.
+      if (disposed && !underWay) watchers.clear()
+    }
+    return settled.then(
+      (data) => {
+        end("success", { data })
+        return data
+      },
+      (error: unknown) => {
+        // Read as a record: what a call rejects with is a ReactorError, but
+        // nothing here may throw for a value that is not.
+        const { kind, code } = asRecord(error)
+        // Given up, unless what passed is the bound the app set itself.
+        const givenUp = kind === "cancelled" && code !== "timeout"
+        end(givenUp ? "cancelled" : "error", { error })
+        throw error
+      }
+    )
+  }
+
   const internals: ClientInternals = Object.freeze({
     network,
     maxDepth,
@@ -1950,6 +2246,8 @@ export function createClientWith(
     mutationCallers,
     ownMutationFns,
     offered: new WeakMap(),
+    watchers,
+    report,
     agentFor,
   })
 
@@ -2063,11 +2361,12 @@ export function createClientWith(
         ) {
           const now = current().principal
           if (now !== principal) {
-            const target = recordOf(
+            const record = recordOf(
               canister,
               internals,
               "client.mutationOptions()"
-            ).resolve()
+            )
+            const target = record.resolve()
             const where = {
               method: String(method),
               canisterId: slotOf(target),
@@ -2084,30 +2383,39 @@ export function createClientWith(
               context,
               mutationCallers.has(context as object)
             )
-            if (earlier !== undefined) {
-              throw fromCanister(
-                retriedWrite(earlier, where),
-                canister as object
-              )
-            }
-            const refusal = createReactorError("cancelled", {
-              ...where,
-              code: "caller_changed",
-              reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
-            })
-            // A re-send `resendOf` offered leaves its write unknown, as the
-            // call path does. Marked with the canister, as a call's error
-            // is, so that `isReactorError(error, canister, method)` matches.
             const again = internals.offered.get(vars as object)
-            const refused = fromCanister(
-              again === undefined ? refusal : keptUnknown(again, refusal),
-              canister as object
-            ) as object
-            // A press from a render the caller has left. A mutation under
-            // the client's keys that ends with this error leaves the cache
-            // as it settles.
-            left.add(refused)
-            throw refused
+            let refusal: ReactorError
+            if (earlier !== undefined) {
+              refusal = retriedWrite(earlier, where)
+            } else {
+              const stale = createReactorError("cancelled", {
+                ...where,
+                code: "caller_changed",
+                reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
+              })
+              // A re-send `resendOf` offered leaves its write unknown, as the
+              // call path does.
+              refusal = again === undefined ? stale : keptUnknown(again, stale)
+              // A press from a render the caller has left. A mutation under
+              // the client's keys that ends with this error leaves the cache
+              // as it settles.
+              left.add(refusal)
+            }
+            // Refused here, before the call path: a listener of `onCall` is
+            // told of a call made as `principal` that sent nothing, of the
+            // method `own` checked as it built the options. Marked with the
+            // canister, as a call's error is, so that
+            // `isReactorError(error, canister, method)` matches.
+            return refused(
+              internals,
+              fromCanister(refusal, canister as object),
+              methodOf(record, method, ""),
+              target,
+              record.certified,
+              caller,
+              vars,
+              again
+            )
           }
           // `this` is the options TanStack called it on, by which the
           // client's function finds TanStack's record of a run it did not
@@ -2213,8 +2521,28 @@ export function createClientWith(
       expiryTimer = undefined
       snapshot = notified = ANONYMOUS_STATE
       queryClient.clear()
+      // The listeners of `onCall` stay while a reported call is under way,
+      // one that `clear()` just cancelled included: the last of them to end
+      // drops them (`report`).
+      if (!underWay) watchers.clear()
       unsubscribe?.()
       source?.dispose?.()
+    },
+    onCall(listener: (event: CallEvent) => void): () => void {
+      if (typeof listener !== "function") {
+        throw new TypeError(
+          `[ic-reactor] client.onCall() takes a listener function, got ${describe(listener)}.`
+        )
+      }
+      if (disposed) return () => {}
+      // One entry for this call of `onCall`, whatever else `listener` is
+      // registered as. Async, so that what `listener` throws is a rejection,
+      // as that of a promise it returns is: `emit` drops both.
+      const watcher = async (event: CallEvent): Promise<void> => listener(event)
+      watchers.add(watcher)
+      return () => {
+        watchers.delete(watcher)
+      }
     },
   }
   // The stamps and the seam `@ic-reactor/react` reads (see `CLIENTS_CREATED`), defined

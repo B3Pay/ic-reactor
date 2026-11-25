@@ -320,6 +320,7 @@ describe("createClient options", () => {
       "func",
       "mutationOptions",
       "network",
+      "onCall",
       "queryClient",
       "queryKey",
       "queryOptions",

@@ -2950,8 +2950,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "the offer's send() goes out as the caller current when it is pressed, not as the attempt's sender",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
-    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, caller: internals.current() }),"
+    "search": "invoke(internals, { ...attempt, again: attempt, via: \"direct\" }),",
+    "replace": "invoke(internals, { ...attempt, again: attempt, via: \"direct\", caller: internals.current() }),"
   },
   {
     "id": "ir850-no-dedupe-key-offered",
@@ -3235,8 +3235,8 @@
     "testName": "sends the bytes the attempt sent, whatever became of its argument since, and offers nothing once it changed",
     "why": "send() encodes the attempt's argument objects again instead of sending the bytes the attempt sent, so an argument the app changed since goes out with a new dedupe key and the ledger runs the transfer a second time",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
-    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, encoded: undefined }),"
+    "search": "invoke(internals, { ...attempt, again: attempt, via: \"direct\" }),",
+    "replace": "invoke(internals, { ...attempt, again: attempt, via: \"direct\", encoded: undefined }),"
   },
   {
     "id": "ir850-c1-offered-after-change",
@@ -3295,8 +3295,8 @@
     "testName": "keeps a { name } canister's re-send on the canister the write went to after the name moves",
     "why": "send() resolves the canister object again, so after the ic_env cookie maps the name elsewhere it sends the transfer to a ledger that has never seen it",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
-    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, target: record.resolve() }),"
+    "search": "invoke(internals, { ...attempt, again: attempt, via: \"direct\" }),",
+    "replace": "invoke(internals, { ...attempt, again: attempt, via: \"direct\", target: record.resolve() }),"
   },
   {
     "id": "ir850-c1-effective-not-kept",
@@ -3394,8 +3394,8 @@
     "testName": "keeps the unknown outcome when a mutation of a view pinned to the sender refuses the re-send after a switch",
     "why": "a pinned view's mutation refuses a re-send after a switch cancelled with mayHaveExecuted: false, so the write it re-sends, which may have run, is no longer offered and its reads are not refreshed",
     "file": "src/client.ts",
-    "search": "again === undefined ? refusal : keptUnknown(again, refusal)",
-    "replace": "refusal"
+    "search": "again === undefined ? stale : keptUnknown(again, stale)",
+    "replace": "stale"
   },
   {
     "id": "960-resend-expiry-not-latest",
@@ -5268,7 +5268,7 @@
     "testName": "keeps a re-send resendOf offered outcome_unknown",
     "why": "resendOf().send() not marked as a re-send of the attempt, so a timeout before it goes out drops the attempt's unknown outcome",
     "file": "src/options.ts",
-    "search": "invoke(internals, { ...attempt, again: attempt })",
+    "search": "invoke(internals, { ...attempt, again: attempt, via: \"direct\" })",
     "replace": "invoke(internals, attempt)"
   },
   {
@@ -5608,8 +5608,8 @@
     "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
     "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
     "file": "src/client.ts",
-    "search": "            const again = internals.offered.get(vars as object)\n            const refused = fromCanister(",
-    "replace": "            const again = internals.offered.get(vars as object)\n            const refused = ((error: unknown, _canister: object) => error)("
+    "search": "              fromCanister(refusal, canister as object),\n              methodOf(record, method, \"\"),\n",
+    "replace": "              refusal,\n              methodOf(record, method, \"\"),\n"
   },
   {
     "id": "893-write-caller-read-when-sent-offline",
@@ -5765,8 +5765,8 @@
     "testName": "is never re-sent by a mutation given retry after its reply was lost",
     "why": "the mutation function sends every attempt TanStack Query makes for a retry of the app's, so a write whose reply was lost goes out again as a new request and the ledger books it twice (#1037)",
     "file": "src/options.ts",
-    "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
-    "replace": "      if (false) {\n        return Promise.reject("
+    "search": "      if (earlier !== undefined) {\n        return refused(",
+    "replace": "      if (false) {\n        return refused("
   },
   {
     "id": "1037-attempt-not-kept",
@@ -5854,8 +5854,8 @@
     "testName": "does not send the retry of a re-send whose reply was lost again, and still offers the write",
     "why": "a run that re-sends an offered write is left out of the rule, so its retry sends the write a third time without the user asking (#1037)",
     "file": "src/options.ts",
-    "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
-    "replace": "      if (earlier !== undefined && again === undefined) {\n        return Promise.reject("
+    "search": "      if (earlier !== undefined) {\n        return refused(",
+    "replace": "      if (earlier !== undefined && again === undefined) {\n        return refused("
   },
   {
     "id": "1037-view-retry-says-nothing-ran",
@@ -5864,8 +5864,8 @@
     "testName": "refuses the retry through a view pinned to its caller as a retried write, whoever is current by then",
     "why": "a view's mutation function refuses a retried attempt after an account switch as caller_changed with mayHaveExecuted: false, though an earlier attempt of the run may have executed (#1037)",
     "file": "src/client.ts",
-    "search": "            if (earlier !== undefined) {\n              throw fromCanister(",
-    "replace": "            if (false) {\n              throw fromCanister("
+    "search": "            if (earlier !== undefined) {\n              refusal = retriedWrite(earlier, where)\n",
+    "replace": "            if (false) {\n              refusal = retriedWrite(earlier, where)\n"
   },
   {
     "id": "1037-switched-retry-says-nothing-ran",
@@ -5874,8 +5874,8 @@
     "testName": "refuses the retry of a write that may have run as a retried write, not as its caller's",
     "why": "a retried attempt is refused as one only while its caller is current, so after an account switch the run ends cancelled (caller_changed) with mayHaveExecuted: false, though its first attempt may have executed (#1037)",
     "file": "src/options.ts",
-    "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
-    "replace": "      if (\n        earlier !== undefined &&\n        caller?.principal === internals.current().principal\n      ) {\n        return Promise.reject("
+    "search": "      if (earlier !== undefined) {\n        return refused(",
+    "replace": "      if (\n        earlier !== undefined &&\n        caller?.principal === internals.current().principal\n      ) {\n        return refused("
   },
   {
     "id": "1037-switched-retry-leaves-reads",
@@ -5884,8 +5884,8 @@
     "testName": "refreshes the canister's reads when the run ends on the refusal after an account switch",
     "why": "a run retried after an account switch ends on an error that says nothing ran, so the reads of the canister are not invalidated though the write may have changed them (#1037)",
     "file": "src/options.ts",
-    "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
-    "replace": "      if (\n        earlier !== undefined &&\n        caller?.principal === internals.current().principal\n      ) {\n        return Promise.reject("
+    "search": "      if (earlier !== undefined) {\n        return refused(",
+    "replace": "      if (\n        earlier !== undefined &&\n        caller?.principal === internals.current().principal\n      ) {\n        return refused("
   },
   {
     "id": "1037-disposed-retry-says-nothing-ran",
@@ -5894,8 +5894,8 @@
     "testName": "refuses the retry on a disposed client as a retried write",
     "why": "on a disposed client a retried attempt is refused as client_disposed with mayHaveExecuted: false, though an earlier attempt of the run may have executed (#1037)",
     "file": "src/options.ts",
-    "search": "      if (earlier !== undefined) {\n        return Promise.reject(",
-    "replace": "      if (earlier !== undefined && !internals.disposed()) {\n        return Promise.reject("
+    "search": "      if (earlier !== undefined) {\n        return refused(",
+    "replace": "      if (earlier !== undefined && !internals.disposed()) {\n        return refused("
   },
   {
     "id": "1037-sibling-run-taken-for-retry",
@@ -7006,7 +7006,7 @@
     "testName": "removes the mutation of a press from a render the caller has left, once it is refused",
     "why": "a write pressed from a render the caller has left is refused and stays in the cache, with the argument the last caller's form was pressed with",
     "file": "src/client.ts",
-    "search": "            left.add(refused)\n",
+    "search": "              left.add(refusal)\n",
     "replace": ""
   },
   {
@@ -7547,5 +7547,281 @@
     "file": "src/call.ts",
     "search": "      synced === agent.hasSyncedTime()\n",
     "replace": "      synced\n"
+  },
+  {
+    "id": "on-call-failed-call-has-no-end",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "ends as an error with the canister's typed Err for a canister_err",
+    "why": "a call that rejects reports its start and no end, as when only a call that resolves is reported, so a log of the calls keeps every failed call as under way for good",
+    "file": "src/client.ts",
+    "search": "        end(givenUp ? \"cancelled\" : \"error\", { error })\n",
+    "replace": ""
+  },
+  {
+    "id": "on-call-given-up-call-ends-twice",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "ends as cancelled for a read whose caller is no longer the one signed in",
+    "why": "a call that was given up is reported as cancelled and then as an error as well, as when the branch for it does not return: one call with two ends, which a log counts as a cancellation and as a failure",
+    "file": "src/client.ts",
+    "search": "        end(givenUp ? \"cancelled\" : \"error\", { error })\n",
+    "replace": "        if (givenUp) end(\"cancelled\", { error })\n        end(\"error\", { error })\n"
+  },
+  {
+    "id": "on-call-retried-write-refusal-unreported",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "reports the attempt a retry of the app's asks for after one that may have executed: refused, with sends: 0",
+    "why": "the attempt the client refuses after one that may have executed is rejected without being reported, so the listeners of onCall miss a rejection the app received",
+    "file": "src/options.ts",
+    "search": "        return refused(\n          internals,\n          fromCanister(retriedWrite(earlier, where), canister as object),\n          prepared,\n          target,\n          record.certified,\n          caller,\n          vars,\n          again\n        )\n",
+    "replace": "        return Promise.reject(\n          fromCanister(retriedWrite(earlier, where), canister as object)\n        )\n"
+  },
+  {
+    "id": "on-call-unknown-caller-refusal-unreported",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "reports a write refused because nobody knows who started it, as the caller current then",
+    "why": "a write refused because its caller is not known is rejected without being reported, so the listeners of onCall miss a rejection the app received",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "        return refused(\n          internals,\n          fromCanister(\n            createReactorError(\"cancelled\", {\n",
+        "replace": "        return Promise.reject(\n          fromCanister(\n            createReactorError(\"cancelled\", {\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "            canister as object\n          ),\n          prepared,\n          target,\n          record.certified,\n          caller,\n          vars,\n          again\n        )\n",
+        "replace": "            canister as object\n          )\n        )\n"
+      }
+    ]
+  },
+  {
+    "id": "on-call-view-write-refusal-unreported",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "reports a write through a view whose principal is no longer the caller, as that principal",
+    "why": "a view's refusal of a write whose principal is no longer the caller is thrown without being reported, so the listeners of onCall miss a rejection the app received",
+    "file": "src/client.ts",
+    "search": "            return refused(\n              internals,\n              fromCanister(refusal, canister as object),\n              methodOf(record, method, \"\"),\n              target,\n              record.certified,\n              caller,\n              vars,\n              again\n            )\n",
+    "replace": "            throw fromCanister(refusal, canister as object)\n"
+  },
+  {
+    "id": "on-call-view-retried-write-refusal-unreported",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "reports the retry a view refuses after an attempt that may have executed, whoever is current by then",
+    "why": "a view's refusal of an attempt after one that may have executed is thrown without being reported, so the listeners of onCall miss a rejection the app received",
+    "file": "src/client.ts",
+    "search": "            return refused(\n              internals,\n              fromCanister(refusal, canister as object),\n              methodOf(record, method, \"\"),\n              target,\n              record.certified,\n              caller,\n              vars,\n              again\n            )\n",
+    "replace": "            throw fromCanister(refusal, canister as object)\n"
+  },
+  {
+    "id": "on-call-refusal-changed-by-a-listener",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "leaves a refusal as it is when what was refused cannot be read: an auth that throws when asked who is signed in",
+    "why": "what reading the refused call throws reaches the app while onCall has a listener, in place of the refusal it receives without one: a listener changes what a call rejects with",
+    "file": "src/call.ts",
+    "search": "  } catch {\n    // Not reported: a listener must not change what the app receives.\n  }\n  return rejected\n",
+    "replace": "  } finally {\n    // Nothing is caught.\n  }\n  return rejected\n"
+  },
+  {
+    "id": "on-call-timeout-reported-as-cancelled",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "ends as an error, not as cancelled, when the timeoutMs of a read passes",
+    "why": "a read whose timeoutMs passed ends as cancelled, like a read that was given up, though the bound the app set is what passed",
+    "file": "src/client.ts",
+    "search": "        const givenUp = kind === \"cancelled\" && code !== \"timeout\"\n",
+    "replace": "        const givenUp = kind === \"cancelled\"\n"
+  },
+  {
+    "id": "on-call-attempts-counted-for-requests",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "ends as an error with sends: 0 for a write the signer declines to sign",
+    "why": "sends counts the attempts the call path hands to the agent, not the requests that were signed and sent, so a write the signer declined says one request went out",
+    "edits": [
+      {
+        "file": "src/call.ts",
+        "search": "  if (sending.sent.count !== undefined) sending.sent.count += 1\n",
+        "replace": ""
+      },
+      {
+        "file": "src/call.ts",
+        "search": "        out = true\n        reply = await dispatch(",
+        "replace": "        out = true\n        if (sends.count !== undefined) sends.count += 1\n        reply = await dispatch("
+      }
+    ]
+  },
+  {
+    "id": "on-call-requests-of-a-query-uncounted",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "reports a direct call: its start as it is made, then its success with the reply",
+    "why": "a query is not known by its argument to the identity that signs it, so none of its requests is counted and a read that was answered says sends: 0",
+    "file": "src/call.ts",
+    "search": "      if (sent.count !== undefined) signing.set(call.arg, { sent })\n",
+    "replace": ""
+  },
+  {
+    "id": "on-call-duration-by-the-wall-clock",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "measures how long a call took on performance.now(), which a correction of the device's clock does not move",
+    "why": "ms is the difference of two readings of Date.now(), which a correction of the device's clock during the call makes negative or hours long",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "    const began = performance.now()\n",
+        "replace": "    const began = Date.now()\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "        ms: performance.now() - began,\n",
+        "replace": "        ms: Date.now() - began,\n"
+      }
+    ]
+  },
+  {
+    "id": "on-call-certified-said-of-a-write",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "names the mode of the method, and a certified read",
+    "why": "an update of a canister made with certified: true is reported as a certified read",
+    "file": "src/client.ts",
+    "search": "      certified: request.certified && method.mode === \"query\",\n",
+    "replace": "      certified: request.certified,\n"
+  },
+  {
+    "id": "on-call-thrown-by-a-listener-fails-the-call",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "cannot fail a call: what it throws is dropped, and so is the rejection of a promise it returns",
+    "why": "what a listener throws is thrown into the call that is being reported, which rejects with the listener's error",
+    "file": "src/client.ts",
+    "search": "      const watcher = async (event: CallEvent): Promise<void> => listener(event)\n",
+    "replace": "      const watcher = (event: CallEvent): Promise<void> =>\n        Promise.resolve(listener(event))\n"
+  },
+  {
+    "id": "on-call-failure-of-a-listener-unhandled",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "cannot fail a call: what it throws is dropped, and so is the rejection of a promise it returns",
+    "why": "what a listener throws, and the rejection of a promise it returns, are left as unhandled rejections, which end a Node process",
+    "file": "src/client.ts",
+    "search": "    for (const watcher of [...watchers]) void watcher(event).catch(() => {})\n",
+    "replace": "    for (const watcher of [...watchers]) void watcher(event)\n"
+  },
+  {
+    "id": "on-call-rejection-reported-on-the-side",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "leaves a call's rejection to its caller, as without a listener: once the caller handles it, nothing is left unhandled",
+    "why": "a call is reported on a promise of its own that nobody handles, so every call that rejects while onCall has a listener leaves an unhandled rejection, though its caller handled the call's",
+    "file": "src/call.ts",
+    "search": "  return counted ? internals.report(request, settled, counted) : settled\n",
+    "replace": "  if (counted) void internals.report(request, settled, counted)\n  return settled\n"
+  },
+  {
+    "id": "on-call-listener-added-during-an-event-hears-it",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "counts from the next event when it is added or removed while an event is handed out",
+    "why": "an event is handed out over the live set of listeners, so one a listener adds hears the event that is being handed out, and one a listener removes misses it",
+    "file": "src/client.ts",
+    "search": "    for (const watcher of [...watchers]) void watcher(event).catch(() => {})\n",
+    "replace": "    for (const watcher of watchers) void watcher(event).catch(() => {})\n"
+  },
+  {
+    "id": "on-call-event-not-frozen",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "is handed frozen events, and cannot change a call that has read its arguments",
+    "why": "an event is handed out unfrozen, so one listener changes what the listeners after it are told",
+    "file": "src/client.ts",
+    "search": "    Object.freeze(event)\n",
+    "replace": ""
+  },
+  {
+    "id": "on-call-start-handed-out-before-the-arguments-are-read",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "is handed frozen events, and cannot change a call that has read its arguments",
+    "why": "the start is handed out before the call path has encoded the arguments, so a listener that changes an argument changes what is sent",
+    "file": "src/call.ts",
+    "search": "  const settled = run(internals, request, counted).catch((error: unknown) => {\n",
+    "replace": "  const settled = Promise.resolve()\n    .then(() => run(internals, request, counted))\n    .catch((error: unknown) => {\n"
+  },
+  {
+    "id": "on-call-unheard-call-reported",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "costs a call nothing while nobody listens: such a call takes no id",
+    "why": "a call is reported whether or not onCall has a listener, so every call pays for events nobody hears",
+    "file": "src/call.ts",
+    "search": "  const counted: Sent | undefined =\n    internals.watchers.size > 0 ? { count: 0 } : undefined\n",
+    "replace": "  const counted: Sent | undefined = { count: 0 }\n"
+  },
+  {
+    "id": "on-call-listeners-dropped-before-the-cancelled-calls-ended",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "drops the listeners after the calls it cancels have reported cancelled",
+    "why": "dispose() drops the listeners at once, before the reads it cancels have ended, so their cancelled events reach nobody",
+    "file": "src/client.ts",
+    "search": "      if (!underWay) watchers.clear()\n",
+    "replace": "      watchers.clear()\n"
+  },
+  {
+    "id": "on-call-listeners-kept-by-a-disposed-client",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "drops the listeners after the calls it cancels have reported cancelled",
+    "why": "the last call under way when the client was disposed does not drop the listeners as it ends, so a disposed client holds them, and what they close over, for good",
+    "file": "src/client.ts",
+    "search": "      if (disposed && !underWay) watchers.clear()\n",
+    "replace": ""
+  },
+  {
+    "id": "on-call-listeners-kept-by-dispose",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "drops the listeners at once when no call is under way, and onCall adds none after it",
+    "why": "dispose() leaves the listeners of onCall registered when no call is under way, so a disposed client holds them, and what they close over, for good",
+    "file": "src/client.ts",
+    "search": "      if (!underWay) watchers.clear()\n",
+    "replace": ""
+  },
+  {
+    "id": "on-call-listener-added-to-a-disposed-client",
+    "package": "core",
+    "test": "tests/on-call.test.ts",
+    "testName": "drops the listeners at once when no call is under way, and onCall adds none after it",
+    "why": "onCall registers a listener on a disposed client, which nothing drops again",
+    "file": "src/client.ts",
+    "search": "      if (disposed) return () => {}\n      // One entry for this call of `onCall`",
+    "replace": "      // One entry for this call of `onCall`"
+  },
+  {
+    "id": "on-call-requests-of-a-refused-read-uncounted",
+    "package": "core",
+    "test": "tests/clock-skew.test.ts",
+    "testName": "counts each request of that read in the end event client.onCall hands out, the refused one included",
+    "why": "sends counts the attempts the call path hands to the agent, so a request the agent signs anew by itself, after a replica refused the first for its ingress expiry, goes uncounted",
+    "edits": [
+      {
+        "file": "src/call.ts",
+        "search": "  if (sending.sent.count !== undefined) sending.sent.count += 1\n",
+        "replace": ""
+      },
+      {
+        "file": "src/call.ts",
+        "search": "        out = true\n        reply = await dispatch(",
+        "replace": "        out = true\n        if (sends.count !== undefined) sends.count += 1\n        reply = await dispatch("
+      }
+    ]
   }
 ]

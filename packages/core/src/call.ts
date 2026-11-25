@@ -104,7 +104,7 @@ import {
   type SubmitResponse,
 } from "@icp-sdk/core/agent"
 import { Principal } from "@icp-sdk/core/principal"
-import type { Caller, ClientInternals } from "./client.js"
+import type { CallVia, Caller, ClientInternals } from "./client.js"
 import {
   UPDATE_RESEND_DELAYS_MS,
   asRecord,
@@ -296,6 +296,13 @@ export interface CallRequest {
    * errors from any other's.
    */
   readonly canister?: object
+  /**
+   * What made the call, as a listener of `Client.onCall` is told: the query
+   * function of `queryOptions`, the mutation function of `mutationOptions`,
+   * a function of `func`, or a direct call, which the `send()` of
+   * `resendOf` is too, whatever made the write it sends again.
+   */
+  readonly via: CallVia
 }
 
 /**
@@ -397,12 +404,22 @@ export const retriedWrite = (
  *
  * A re-send of an offered write ({@link CallRequest.again}) that did not run,
  * and that the canister did not answer, rejects {@link keptUnknown}.
+ *
+ * While `Client.onCall` has a listener, the call is reported to it
+ * (`ClientInternals.report`): its start, and its end with how many requests
+ * it sent, counted in `counted` as each is signed ({@link keepSigned}). The
+ * start is reported once `run` has read the arguments, which it encodes
+ * before it first waits, so a listener that changes an argument object
+ * changes nothing of this call. With no listener the call allocates nothing
+ * for its events.
  */
 export const invoke = (
   internals: ClientInternals,
   request: CallRequest
-): Promise<unknown> =>
-  run(internals, request).catch((error: unknown) => {
+): Promise<unknown> => {
+  const counted: Sent | undefined =
+    internals.watchers.size > 0 ? { count: 0 } : undefined
+  const settled = run(internals, request, counted).catch((error: unknown) => {
     const again = request.again
     if (
       again !== undefined &&
@@ -430,10 +447,64 @@ export const invoke = (
     }
     throw fromCanister(error, request.canister)
   })
+  return counted ? internals.report(request, settled, counted) : settled
+}
+
+/** What `ClientInternals.report` reads of a call. */
+export type Reported = Pick<
+  CallRequest,
+  "method" | "target" | "certified" | "caller" | "values" | "again" | "via"
+>
+
+/**
+ * Rejects with `error`, for a write of `method` the client refuses before
+ * {@link invoke}: an attempt after one that may have executed, a run whose
+ * caller is not known, a write of a view whose principal is no longer the
+ * caller.
+ *
+ * While `Client.onCall` has a listener, the refusal is reported as a call
+ * that sent nothing: one with the variables `vars`, made as `caller`, or, for
+ * a run whose caller is not known, as the caller current now. What was
+ * refused is read only then, so a refusal costs nothing more while nobody
+ * listens. Should reading it throw (an auth that throws when asked who is
+ * signed in), the refusal is the app's all the same, and goes unreported.
+ */
+export const refused = (
+  internals: ClientInternals,
+  error: unknown,
+  method: PreparedMethod,
+  target: ResolvedTarget,
+  certified: boolean,
+  caller: Caller | undefined,
+  vars: unknown,
+  again: CallRequest | undefined
+): Promise<unknown> => {
+  const rejected = Promise.reject(error)
+  try {
+    if (internals.watchers.size > 0) {
+      return internals.report(
+        {
+          method,
+          target,
+          certified,
+          caller: caller ?? internals.current(),
+          values: valuesOf(method, vars),
+          again,
+          via: "mutation",
+        },
+        rejected
+      )
+    }
+  } catch {
+    // Not reported: a listener must not change what the app receives.
+  }
+  return rejected
+}
 
 async function run(
   internals: ClientInternals,
-  request: CallRequest
+  request: CallRequest,
+  counted?: Sent
 ): Promise<unknown> {
   const { method, target, caller } = request
   const name = method.name
@@ -548,8 +619,8 @@ async function run(
 
   let reply: Uint8Array | undefined
   // The latest ingress expiry among this call's sends, for a write that ends
-  // with no answer (`expiresAt`).
-  const sends: Sent = {}
+  // with no answer (`expiresAt`), and their count when the call is reported.
+  const sends: Sent = counted ?? {}
   // The agent of the attempt that is out, and whether it had read the IC's
   // time before that attempt was signed (`resync`).
   let agent: HttpAgent | undefined
@@ -667,9 +738,16 @@ interface Outgoing {
   readonly again: boolean
 }
 
-/** What the sends of one call record: the latest ingress expiry they were signed with. */
+/** What the sends of one call record. */
 interface Sent {
+  /** The latest ingress expiry a call request of a write was signed with. */
   expiresAt?: bigint
+  /**
+   * How many requests the call has sent, for its end event: there only while
+   * `Client.onCall` has a listener ({@link invoke}), and counted as each
+   * request is signed ({@link keepSigned}).
+   */
+  count?: number
 }
 
 /** Records the ingress expiry a send was signed with, keeping the latest. */
@@ -682,8 +760,9 @@ function recordExpiry(sent: Sent, expiry: unknown): void {
 }
 
 /**
- * The writes being sent, by the encoded argument the agent puts into their
- * call requests, for {@link watchSends}.
+ * The calls being sent, by the encoded argument the agent puts into their
+ * requests: every write, for {@link watchSends}, and every call that counts
+ * its requests ({@link Sent.count}), for {@link keepSigned}.
  */
 const signing = new WeakMap<
   Uint8Array,
@@ -718,17 +797,26 @@ function watchSends(agent: HttpAgent): void {
 const SIGNED = new WeakMap<Uint8Array, HttpAgentRequest>()
 
 /**
- * Keeps `signed`, a write's call request as its caller's identity signed it,
- * for {@link reconcile}. `ClientInternals.agentFor` calls it from the identity
- * it builds every agent with; any other request is not kept.
+ * Notes `signed`, a request as its caller's identity signed it, which the
+ * agent sends next. `ClientInternals.agentFor` calls it from the identity it
+ * builds every agent with.
+ *
+ * A request of a call that counts its requests is counted: a call request or
+ * a query, the only ones with an argument. That is one for each request the
+ * call path has an agent send, and one for a request the agent signs anew by
+ * itself, after it read the IC's time. A request the signer declined is never
+ * counted, nor one sent again as it was signed ({@link reconcile}, which
+ * hands the agent an identity of its own).
+ *
+ * A write's call request is kept for {@link reconcile}; any other request is
+ * not kept.
  */
 export function keepSigned(request: HttpAgentRequest, signed: unknown): void {
   const arg = (request.body as { arg?: unknown }).arg
-  if (
-    (request.endpoint as string) === "call" &&
-    arg instanceof Uint8Array &&
-    signing.has(arg)
-  ) {
+  const sending = arg instanceof Uint8Array && signing.get(arg)
+  if (!sending) return
+  if (sending.sent.count !== undefined) sending.sent.count += 1
+  if ((request.endpoint as string) === "call") {
     SIGNED.set(arg, signed as HttpAgentRequest)
   }
 }
@@ -807,6 +895,8 @@ async function dispatch(
     // here when the signal aborts. The request itself is not torn down, but
     // nobody waits for its answer.
     if (send === "query") {
+      // Known by its argument only to be counted: a query records no expiry.
+      if (sent.count !== undefined) signing.set(call.arg, { sent })
       const response = await untilAborted(
         agent.query(call.canisterId, {
           methodName: call.methodName,

@@ -56,11 +56,11 @@ const failuresAbout = (result, text) =>
   result.failures.filter((failure) => failure.includes(text))
 
 describe("the budget", () => {
-  it("is the planned surface: core 13, testing 2, react 4 of 5, vite-plugin 2", () => {
+  it("is the planned surface: core 14, testing 2, react 4 of 5, vite-plugin 2", () => {
     assert.deepEqual(
       ENTRIES.map(({ id, cap, planned }) => [id, cap, planned.length]),
       [
-        ["@ic-reactor/core", 13, 13],
+        ["@ic-reactor/core", 14, 14],
         ["@ic-reactor/core/testing", 2, 2],
         ["@ic-reactor/react", 5, 4],
         ["@ic-reactor/vite-plugin", 2, 2],
@@ -75,13 +75,13 @@ describe("the budget", () => {
 })
 
 describe("an entry that exports too much", () => {
-  it("fails on a 14th core export", () => {
+  it("fails on a 15th core export", () => {
     const result = run([
       exporting(CORE, [...CORE.planned, "createStore"]),
       ...complete().slice(1),
     ])
     assert.equal(
-      failuresAbout(result, "over its cap of 13").length,
+      failuresAbout(result, "over its cap of 14").length,
       1,
       result.failures.join("\n")
     )

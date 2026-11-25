@@ -287,6 +287,7 @@ export function canisterFactory(
             timeoutMs,
             resend: true,
             canister,
+            via: "direct",
           }),
       })
     }

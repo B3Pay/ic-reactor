@@ -11,6 +11,7 @@ export {
   createClient,
   type AuthLike,
   type AuthState,
+  type CallEvent,
   type Client,
   type ClientOptions,
 } from "./client.js"

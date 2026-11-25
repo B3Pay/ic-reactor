@@ -28,7 +28,7 @@ exactly to published stable releases.
 
 | Package                   | Directory              | State on `main`                                                                                                                |
 | ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `@ic-reactor/core`        | `packages/core`        | `4.5.0`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient` |
+| `@ic-reactor/core`        | `packages/core`        | `4.5.0`; `createClient`, `ReactorError`, the units helpers and their types (14 names), and `./testing` with `createTestClient` |
 | `@ic-reactor/react`       | `packages/react`       | `4.5.0`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                              |
 | `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.5.0`; generates the module with `@meantjs/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy            |
 | `@ic-reactor/mcp`         | `packages/mcp`         | `4.5.0`; the `ic-reactor-mcp` command, an MCP server for any canister that sends an update only after the person approves it   |
