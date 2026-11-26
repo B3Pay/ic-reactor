@@ -68,9 +68,9 @@
     "@meantjs/cli": "0.5.1",
     "@icp-sdk/core": "^6.1.1",
     "@noble/curves": "^2.2.0",
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.6",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
-    "vitest": "^5.0.0"
+    "vitest": "^5.1.1"
   }
 }
