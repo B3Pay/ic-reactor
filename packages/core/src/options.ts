@@ -33,6 +33,7 @@ import {
   isWrite,
   prepareMethod,
   notEncoded,
+  refused,
   resync,
   retriedWrite,
   slotOf,
@@ -486,6 +487,7 @@ export function createBuilders(
           timeoutMs: record.timeoutMs,
           resend: false,
           canister: canister as object,
+          via: "query",
         })
         return pinned ? keepOnRefusal(context, read) : read
       },
@@ -617,16 +619,26 @@ export function createBuilders(
       // would be a new request, and the canister would run the write again.
       // Checked before anything else, so that the run ends saying the write
       // may have executed whoever is current by now, and on a disposed
-      // client too.
+      // client too. Like the refusal after it, it is made here, before the
+      // call path, and `refused` tells a listener of `client.onCall` of a
+      // call that sent nothing.
       const earlier = earlierAttempt(this, vars, context, caller !== undefined)
       if (earlier !== undefined) {
-        return Promise.reject(
-          fromCanister(retriedWrite(earlier, where), canister as object)
+        return refused(
+          internals,
+          fromCanister(retriedWrite(earlier, where), canister as object),
+          prepared,
+          target,
+          record.certified,
+          caller,
+          vars,
+          again
         )
       }
       // A disposed client cancels every call itself (`client_disposed`).
       if (caller === undefined && !internals.disposed()) {
-        return Promise.reject(
+        return refused(
+          internals,
           fromCanister(
             createReactorError("cancelled", {
               ...where,
@@ -634,7 +646,13 @@ export function createBuilders(
               reason: "who started this write is not known; it was not sent",
             }),
             canister as object
-          )
+          ),
+          prepared,
+          target,
+          record.certified,
+          caller,
+          vars,
+          again
         )
       }
       return invoke(internals, {
@@ -647,6 +665,7 @@ export function createBuilders(
         resend: true,
         canister: canister as object,
         again,
+        via: "mutation",
       }).catch((error: unknown) => {
         // Kept for the attempts after it, under the run's context.
         if (key && mayHaveRun(error)) unknownAttempts.set(key, error)
@@ -774,7 +793,8 @@ export function createBuilders(
       // The attempt itself: its canister id and the bytes it sent.
       // Marked as a re-send of itself, which it is: a timeout before it
       // goes out keeps its unknown outcome (see `run`).
-      send: () => invoke(internals, { ...attempt, again: attempt }),
+      send: () =>
+        invoke(internals, { ...attempt, again: attempt, via: "direct" }),
     }
   }
 
@@ -849,6 +869,7 @@ export function createBuilders(
         caller: internals.current(),
         values: args,
         resend: true,
+        via: "func",
       })
   }
 

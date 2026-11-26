@@ -41,7 +41,9 @@ export const ENTRIES = [
     id: "@ic-reactor/core",
     package: "packages/core",
     subpath: ".",
-    cap: 13,
+    // 14 since `CallEvent` (#1093), the type of what `client.onCall` hands
+    // its listeners: the owner raised the cap from 13 for it.
+    cap: 14,
     planned: [
       // Runtime.
       "createClient",
@@ -58,6 +60,7 @@ export const ENTRIES = [
       "ReactorError",
       "ReactorErrorKind",
       "CanisterTarget",
+      "CallEvent",
     ],
   },
   {

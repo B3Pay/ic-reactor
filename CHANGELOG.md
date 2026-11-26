@@ -18,7 +18,49 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Added
+
+- `client.onCall(listener)` hears every canister call a client makes, by
+  whichever route: the query function of `queryOptions`, the mutation
+  function of `mutationOptions`, a direct call, a function of `client.func`
+  and a re-send `client.resendOf()` offered (#1093). It returns the function
+  that removes the listener. Each call is two events with one `id`: a `start`
+  (`via`, `canisterId`, `method`, `mode`, `certified`, `caller`, `args`,
+  `resendOf`, `at`), then exactly one of `success` (`data`, what the caller
+  receives), `error` and `cancelled` (`error`, the `ReactorError` the caller
+  receives), each with `sends` and `ms`. `cancelled` is a call that was given
+  up (the caller changed, a query was aborted or removed, the client was
+  disposed); a `timeoutMs` that passed is an `error`. `sends` is how many
+  requests the call sent: 0 for a call the client refused first or whose
+  signer declined to sign it, and more than 1 when a request failed in a way
+  that proves it was not delivered and the client sent the call again. A
+  retry TanStack Query makes of a query function is a new call. The writes
+  the client refuses before its call path are reported too, with `sends: 0`:
+  a retry after an attempt that may have executed, a run whose caller is not
+  known, and a write through a `useClient()` view whose principal is no
+  longer the caller. A query built with `skipToken`, `client.time()` and
+  `client.encode()` call no canister method and have no events. A listener on
+  the client hears the calls of every view of it, each event naming its
+  `caller`, and another client has its own listeners. A listener only
+  observes: it runs as the event happens, in the order the listeners were
+  added, nothing waits for a promise it returns, and what it throws is
+  dropped, so it cannot change, delay or fail a call. The client keeps no
+  event, an event is frozen, `args` and `data` are the app's own objects
+  handed over as they are, and no event holds an identity, a delegation, a
+  signature or the bytes of a request. `dispose()` drops the listeners once
+  every call that had started has reported its end. While nobody listens, a
+  call does nothing for its events but check that. The test client of
+  `@ic-reactor/core/testing` needs nothing extra for it. Migration: none;
+  nothing changes for an app that adds no listener.
+- The type `CallEvent`, what a listener of `client.onCall` is handed: a union
+  to narrow on `phase`. It is a new export, so `@ic-reactor/core` has 14
+  names where it had 13, and the export budget caps the entry at 14 (the
+  owner's decision on #1093). Core's size limit is raised to 20.63 kB
+  (20,628 B measured, +550 B for `onCall`), and the app checks to 96.22 kB
+  (96,215 B, +580 B) and 97.54 kB (97,530 B, +582 B). React's own code is
+  unchanged.
 
 ## core, react, vite-plugin, mcp 4.5.0
 

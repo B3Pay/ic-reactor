@@ -488,6 +488,7 @@ describe("a client pinned to a principal", () => {
       "network",
       "queryClient",
       "subscribe",
+      "onCall",
       "signIn",
       "signOut",
       "dispose",

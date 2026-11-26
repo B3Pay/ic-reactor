@@ -11,14 +11,18 @@ import { expectTypeOf } from "vitest"
 import * as entry from "../src/index.js"
 import {
   createClient,
+  isReactorError,
   type AuthLike,
   type AuthState,
+  type CallEvent,
   type Client,
   type ClientOptions,
+  type ReactorError,
 } from "../src/index.js"
 import { internalsOf } from "../src/client.js"
 import type { CanisterIdResolution } from "../src/network.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
+import * as icrc1 from "./fixtures/icrc1.js"
 
 const identity = Ed25519KeyIdentity.generate()
 
@@ -178,4 +182,78 @@ export const options: ClientOptions = { network: "env", identity: "anonymous" }
   expectTypeOf(answer).toEqualTypeOf<CanisterIdResolution>()
   // @ts-expect-error a target is { id } or { name }, never both
   client.canisterId({ id: "aaaaa-aa", name: "backend" })
+}
+
+// client.onCall takes a listener of the events of every call, and returns the
+// function that removes it. An event narrows on `phase`.
+{
+  const client = createClient({ network: "ic", identity: "anonymous" })
+  const ledger = client.canister<icrc1.Actor>(icrc1.actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const stop = client.onCall((event) => {
+    expectTypeOf(event).toEqualTypeOf<CallEvent>()
+    expectTypeOf(event.id).toEqualTypeOf<number>()
+    expectTypeOf(event.phase).toEqualTypeOf<
+      "start" | "success" | "error" | "cancelled"
+    >()
+    if (event.phase === "start") {
+      expectTypeOf(event.via).toEqualTypeOf<
+        "query" | "mutation" | "direct" | "func"
+      >()
+      expectTypeOf(event.canisterId).toEqualTypeOf<string>()
+      expectTypeOf(event.method).toEqualTypeOf<string>()
+      expectTypeOf(event.mode).toEqualTypeOf<
+        "query" | "composite_query" | "update" | "oneway"
+      >()
+      expectTypeOf(event.certified).toEqualTypeOf<boolean>()
+      expectTypeOf(event.caller).toEqualTypeOf<string>()
+      expectTypeOf(event.args).toEqualTypeOf<readonly unknown[]>()
+      expectTypeOf(event.resendOf).toEqualTypeOf<boolean>()
+      expectTypeOf(event.at).toEqualTypeOf<number>()
+      // @ts-expect-error a start says nothing of how the call ends
+      void event.sends
+      return
+    }
+    // The three ends say how many requests went out and how long it took,
+    // and repeat nothing of the start.
+    expectTypeOf(event.sends).toEqualTypeOf<number>()
+    expectTypeOf(event.ms).toEqualTypeOf<number>()
+    // @ts-expect-error an end does not name the method: its start did
+    void event.method
+    if (event.phase === "success") {
+      expectTypeOf(event.data).toEqualTypeOf<unknown>()
+      // @ts-expect-error a success has no error
+      void event.error
+      return
+    }
+    expectTypeOf(event.phase).toEqualTypeOf<"error" | "cancelled">()
+    expectTypeOf(event.error).toEqualTypeOf<ReactorError<unknown>>()
+    // @ts-expect-error a call that rejected has no data
+    void event.data
+    // The guard's three-argument form types the canister's Err, as it does
+    // where the call is awaited.
+    const { error } = event
+    if (
+      isReactorError(error, ledger, "icrc1_transfer") &&
+      error.kind === "canister_err"
+    ) {
+      expectTypeOf(error.err).toEqualTypeOf<icrc1.TransferError>()
+    }
+    // @ts-expect-error an event is read, never written
+    event.id = 2
+  })
+  expectTypeOf(stop).toEqualTypeOf<() => void>()
+  // A view (what useClient() returns) has the same member.
+  expectTypeOf<Client["onCall"]>().toEqualTypeOf<
+    (listener: (event: CallEvent) => void) => () => void
+  >()
+  // A listener takes the one event, and need not read it.
+  client.onCall(() => {})
+  // @ts-expect-error a listener is a function
+  client.onCall("log")
+  // @ts-expect-error onCall takes a listener
+  client.onCall()
+  // @ts-expect-error a listener is handed an event, not a second argument
+  client.onCall((_event: CallEvent, _more: string) => {})
 }

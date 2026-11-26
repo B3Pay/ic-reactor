@@ -478,6 +478,74 @@ describe("useClient()", () => {
     expect(callers).toEqual([ANONYMOUS, first, second, ANONYMOUS])
   })
 
+  it("returns views whose onCall is the client's: a listener added through one view hears the calls of every caller's view, each named", async () => {
+    const test = replica({ seed: 1 })
+    const heard: string[] = []
+    function Reads() {
+      const client = useClient()
+      // Added once, through the view of the caller this first rendered for,
+      // and before the read below starts: effects run in the order of their
+      // hooks.
+      const [first] = useState(client)
+      useEffect(
+        () =>
+          first.onCall((event) => {
+            if (event.phase === "start") {
+              heard.push(`${event.via} ${event.method} as ${event.caller}`)
+            }
+          }),
+        [first]
+      )
+      const who = client.canister<Who>(WHO, { id: CANISTER })
+      const read = useQuery(client.queryOptions(who, "whoami"))
+      const stamp = useMutation(client.mutationOptions(who, "stamp"))
+      return (
+        <>
+          <p data-testid="read">{read.data ?? "loading"}</p>
+          <button onClick={() => stamp.mutate()}>stamp</button>
+          <p data-testid="stamp">{stamp.data ?? "none"}</p>
+        </>
+      )
+    }
+    render(
+      <ReactorProvider client={() => test.client}>
+        <Reads />
+      </ReactorProvider>
+    )
+    const first = test.auth.getPrincipal()?.toText()
+    await waitFor(() =>
+      expect(screen.getByTestId("read").textContent).toBe(`read by ${first}`)
+    )
+
+    act(() => {
+      test.auth.switchTo(2)
+    })
+    const second = test.auth.getPrincipal()?.toText()
+    expect(second).not.toBe(first)
+    await waitFor(() =>
+      expect(screen.getByTestId("read").textContent).toBe(`read by ${second}`)
+    )
+    fireEvent.click(screen.getByText("stamp"))
+    await waitFor(() =>
+      expect(screen.getByTestId("stamp").textContent).toBe(
+        `written by ${second}`
+      )
+    )
+
+    // The view of the first caller is no longer the one rendered with, and
+    // its listener heard the second caller's read and write all the same:
+    // it listens on the provider's client. The write invalidates the read,
+    // which is asked again.
+    await waitFor(() =>
+      expect(heard).toEqual([
+        `query whoami as ${first}`,
+        `query whoami as ${second}`,
+        `mutation stamp as ${second}`,
+        `query whoami as ${second}`,
+      ])
+    )
+  })
+
   it("returns one object per caller: another after a sign-in, a switch, a sign-out and an expiry, the same across renders for one caller", async () => {
     const test = replica({ seed: 1 })
     const seen: Client[] = []
