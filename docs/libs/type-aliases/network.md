@@ -7,7 +7,7 @@ prev: true
 
 > **Network** = `"ic"` \| `"local"` \| `"env"` \| \{ `host`: `string`; `rootKey?`: `Uint8Array`; `name?`: `string`; `fetchRootKey?`: `boolean`; \}
 
-Defined in: [core/src/network.ts:91](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/network.ts#L91)
+Defined in: [core/src/network.ts:91](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/network.ts#L91)
 
 Where the canisters are.
 

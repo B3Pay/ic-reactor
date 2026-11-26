@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [core/src/client.ts:451](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L451)
+Defined in: [core/src/client.ts:451](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L451)
 
 A client made by [createClient](/docs/ic-reactor/libs/functions/createclient/): one per browser tab, or one per
 request on a server, so that no cache or agent is shared between users.
@@ -16,7 +16,7 @@ request on a server, so that no cache or agent is shared between users.
 
 > `readonly` **network**: `string`
 
-Defined in: [core/src/client.ts:453](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L453)
+Defined in: [core/src/client.ts:453](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L453)
 
 The network's segment in query keys: `"ic"`, `"local"`, a custom network's `name ?? host`, or the resolved host for `"env"`.
 
@@ -26,7 +26,7 @@ The network's segment in query keys: `"ic"`, `"local"`, a custom network's `name
 
 > `readonly` **queryClient**: `QueryClient`
 
-Defined in: [core/src/client.ts:472](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L472)
+Defined in: [core/src/client.ts:472](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L472)
 
 The `QueryClient` this client owns. Its default `retry` retries a
 `ReactorError` only after a failure that proves it was not delivered, and
@@ -51,7 +51,7 @@ a runtime with no `WeakRef` it clears the cache and resets no observer.
 
 > **caller**(): `string`
 
-Defined in: [core/src/client.ts:474](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L474)
+Defined in: [core/src/client.ts:474](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L474)
 
 The principal calls go out as now, as text: the anonymous principal unless signed in.
 
@@ -65,7 +65,7 @@ The principal calls go out as now, as text: the anonymous principal unless signe
 
 > **authState**(): [`AuthState`](/docs/ic-reactor/libs/interfaces/authstate/)
 
-Defined in: [core/src/client.ts:480](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L480)
+Defined in: [core/src/client.ts:480](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L480)
 
 Who calls go out as, and why. The object is the same until the status,
 the principal or `expiresAt` changes, so it can be read with
@@ -81,7 +81,7 @@ the principal or `expiresAt` changes, so it can be read with
 
 > **subscribe**(`listener`): () => `void`
 
-Defined in: [core/src/client.ts:492](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L492)
+Defined in: [core/src/client.ts:492](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L492)
 
 Calls `listener` once after each change of [Client.authState](#authstate), and
 never for a notification of the auth that changed none of the status,
@@ -109,7 +109,7 @@ it adds nothing.
 
 > **signIn**(`options?`): `Promise`\<`void`\>
 
-Defined in: [core/src/client.ts:509](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L509)
+Defined in: [core/src/client.ts:509](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L509)
 
 Signs in through the client's auth, passing `options` on. Listeners are
 told once the auth settles, even if the auth itself did not notify.
@@ -142,7 +142,7 @@ signs in again.
 
 > **signOut**(`options?`): `Promise`\<`void`\>
 
-Defined in: [core/src/client.ts:514](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L514)
+Defined in: [core/src/client.ts:514](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L514)
 
 Signs out through the client's auth, passing `options` on (such as
 `AuthClient`'s `{ returnTo }`). Rejects like [Client.signIn](#signin).
@@ -163,7 +163,7 @@ Signs out through the client's auth, passing `options` on (such as
 
 > **dispose**(): `void`
 
-Defined in: [core/src/client.ts:528](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L528)
+Defined in: [core/src/client.ts:528](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L528)
 
 Releases everything the client holds: it stops listening to its auth and
 disposes it, clears the `QueryClient`, and drops its agents. Calling it
@@ -187,7 +187,7 @@ already sent settles as the replica answers; a read the client's
 
 > **canister**\<`A`\>(`service`, `target`): [`Canister`](/docs/ic-reactor/libs/type-aliases/canister/)\<`A`\>
 
-Defined in: [core/src/client.ts:561](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L561)
+Defined in: [core/src/client.ts:561](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L561)
 
 A canister to call: a frozen object with one plain async method per
 Candid method of `service`, typed from the generated `Actor` you name.
@@ -247,7 +247,7 @@ principal text.
 
 > **canisterId**(`target`): \{ `ok`: `true`; `id`: `string`; \} \| \{ `ok`: `false`; `reason`: `"no_browser"` \| `"untrusted_host"` \| `"absent"`; `message`: `string`; \}
 
-Defined in: [core/src/client.ts:593](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L593)
+Defined in: [core/src/client.ts:593](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L593)
 
 The canister id a target resolves to now, by the same resolver the calls
 of `client.canister(service, target)` use, without making a call.
@@ -296,7 +296,7 @@ whose `id` is not principal text.
 
 > **queryKey**\<`A`, `M`\>(`canister`, `method?`, `vars?`): readonly `unknown`[]
 
-Defined in: [core/src/client.ts:627](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L627)
+Defined in: [core/src/client.ts:627](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L627)
 
 The query key of a read, or the prefix of a group of reads, for
 `queryClient.invalidateQueries`, `getQueryData` and filters:
@@ -361,7 +361,7 @@ service does not have.
 
 > **queryOptions**\<`A`, `M`\>(`canister`, `method`, ...`args`): `CanisterQueryOptions`\<`DataOf`\<`A`, `M`\>, `ErrorOf`\<`A`, `M`\>, `never`\>
 
-Defined in: [core/src/client.ts:702](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L702)
+Defined in: [core/src/client.ts:702](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L702)
 
 TanStack Query options for a read: `useQuery(client.queryOptions(ledger,
 "icrc1_balance_of", account))`, `queryClient.fetchQuery(...)`, a
@@ -465,7 +465,7 @@ method's mode.
 
 > **queryOptions**\<`A`, `M`\>(`canister`, `method`, ...`args`): `CanisterQueryOptions`\<`DataOf`\<`A`, `M`\>, `ErrorOf`\<`A`, `M`\>\>
 
-Defined in: [core/src/client.ts:716](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L716)
+Defined in: [core/src/client.ts:716](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L716)
 
 TanStack Query options for a read whose variables may be `skipToken`
 (`V | SkipToken`, or `skipToken` itself): the options' `queryFn` is
@@ -509,7 +509,7 @@ TypeError as the call with variables that cannot be skipped.
 
 > **queryOptions**\<`A`, `M`\>(`canister`, `method`, ...`args`): `CanisterQueryOptions`\<`DataOf`\<`A`, `M`\>, `ErrorOf`\<`A`, `M`\>, `never`\>
 
-Defined in: [core/src/client.ts:738](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L738)
+Defined in: [core/src/client.ts:738](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L738)
 
 TanStack Query options for an update read like a query, with
 `{ update: "idempotent" }`: only for an update that returns the same
@@ -561,7 +561,7 @@ TypeError as the call without the opt-in, except for an update.
 
 > **queryOptions**\<`A`, `M`\>(`canister`, `method`, ...`args`): `CanisterQueryOptions`\<`DataOf`\<`A`, `M`\>, `ErrorOf`\<`A`, `M`\>\>
 
-Defined in: [core/src/client.ts:750](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L750)
+Defined in: [core/src/client.ts:750](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L750)
 
 The opt-in read of an update, with variables that may be `skipToken`:
 its `queryFn` is `skipToken` for a skipped read. Otherwise the same as
@@ -605,7 +605,7 @@ TypeError as the call without the opt-in, except for an update.
 
 > **mutationOptions**\<`A`, `M`\>(`canister`, `method`, `options?`): `CanisterMutationOptions`\<`VarsOf`\<`A`, `M`\>, `DataOf`\<`A`, `M`\>, `ErrorOf`\<`A`, `M`\>\>
 
-Defined in: [core/src/client.ts:816](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L816)
+Defined in: [core/src/client.ts:816](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L816)
 
 TanStack Query options for a write: `useMutation(client.mutationOptions(
 ledger, "icrc1_transfer"))`, then `mutate(arg)` with the same argument
@@ -702,7 +702,7 @@ does not have, or a third argument other than `{ invalidates }`.
 
 > **resendOf**\<`A`, `M`\>(`error`, `canister`, `method`, `options`): `Resend`\<`VarsOf`\<`A`, `M`\>, `DataOf`\<`A`, `M`\>\> \| `undefined`
 
-Defined in: [core/src/client.ts:883](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L883)
+Defined in: [core/src/client.ts:883](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L883)
 
 The write `error` reports, offered to send again exactly as it was sent,
 by whoever sent it, when its outcome is unknown; `undefined` when there
@@ -804,7 +804,7 @@ does not have, or no `dedupedBy` function.
 
 > **encode**\<`A`, `M`\>(`canister`, `method`, `vars`): `Uint8Array`
 
-Defined in: [core/src/client.ts:918](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L918)
+Defined in: [core/src/client.ts:918](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L918)
 
 The Candid bytes a call of `method` with `vars` sends, as a `Uint8Array`:
 made by the call path's own encoder with its own variables rule (the
@@ -872,7 +872,7 @@ service does not have.
 
 > **func**\<`F`\>(`funcSchema`, `ref`): `F`
 
-Defined in: [core/src/client.ts:946](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L946)
+Defined in: [core/src/client.ts:946](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L946)
 
 An async function for a func reference a reply carried, such as an ICRC
 ledger's archive callback:
@@ -923,7 +923,7 @@ whose principal is not principal text or whose method is not a name.
 
 > **time**(`canister`): `Promise`\<`bigint`\>
 
-Defined in: [core/src/client.ts:996](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L996)
+Defined in: [core/src/client.ts:996](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L996)
 
 The IC's time, in nanoseconds since the epoch (the unit of an ICRC-1
 `created_at_time`), from a certified `read_state` of the `time` path,
@@ -985,7 +985,7 @@ the waiting stops, and one not sent yet is never sent. Without
 
 > **onCall**(`listener`): () => `void`
 
-Defined in: [core/src/client.ts:1052](https://github.com/B3Pay/ic-reactor/blob/faea96d6979f27f7ffa20d39c211a7bba7bbc30f/packages/core/src/client.ts#L1052)
+Defined in: [core/src/client.ts:1052](https://github.com/B3Pay/ic-reactor/blob/edc35b1a76fd51091dea096f49776161b58730da/packages/core/src/client.ts#L1052)
 
 Calls `listener` at the start and at the end of every canister call this
 client makes, whichever way it is made: a method of a canister object,
