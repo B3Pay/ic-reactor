@@ -123,7 +123,7 @@ importers:
         version: link:../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.1
-        version: 6.1.1
+        version: 6.1.2
       '@meantjs/schema':
         specifier: 0.6.0
         version: 0.6.0
@@ -141,8 +141,8 @@ importers:
         specifier: 0.5.1
         version: 0.5.1(@meantjs/schema@0.6.0)
       '@tanstack/react-query':
-        specifier: ^5.102.8
-        version: 5.102.8(react@19.3.1)
+        specifier: ^5.108.4
+        version: 5.108.4(@types/react@19.3.0)(react@19.3.1)
       '@testing-library/react':
         specifier: ^16.3.3
         version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -181,10 +181,10 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^11.2.0
-        version: 11.2.0(@icp-sdk/core@6.1.1)
+        version: 11.2.0(@icp-sdk/core@6.1.2)
       '@icp-sdk/core':
         specifier: ^6.1.1
-        version: 6.1.1
+        version: 6.1.2
       '@meantjs/cli':
         specifier: 0.5.1
         version: 0.5.1(@meantjs/schema@0.6.0)
@@ -193,16 +193,16 @@ importers:
         version: 0.6.0
       '@noble/curves':
         specifier: ^2.2.0
-        version: 2.3.0
+        version: 2.4.0
       '@tanstack/react-query':
-        specifier: ^5.102.8
-        version: 5.102.8(react@19.3.1)
+        specifier: ^5.108.4
+        version: 5.108.4(@types/react@19.3.0)(react@19.3.1)
       '@tanstack/react-router':
         specifier: ^1.170.46
         version: 1.170.46(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-router-ssr-query':
         specifier: ^1.167.3
-        version: 1.167.3(@tanstack/query-core@5.102.8)(@tanstack/react-query@5.102.8(react@19.3.1))(@tanstack/react-router@1.170.46(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@tanstack/router-core@1.171.39)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 1.167.3(@tanstack/query-core@5.108.4)(@tanstack/react-query@5.108.4(@types/react@19.3.0)(react@19.3.1))(@tanstack/react-router@1.170.46(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@tanstack/router-core@1.171.39)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-start':
         specifier: ^1.169.7
         version: 1.169.7(@types/react@19.3.0)(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.3.3)(rollup@4.60.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
@@ -260,16 +260,16 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.1
-        version: 6.1.1
+        version: 6.1.2
       '@meantjs/schema':
         specifier: 0.6.0
         version: 0.6.0
       '@noble/curves':
         specifier: ^2.2.0
-        version: 2.3.0
+        version: 2.4.0
       '@tanstack/react-query':
-        specifier: ^5.102.8
-        version: 5.102.8(react@19.3.1)
+        specifier: ^5.108.4
+        version: 5.108.4(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: ^19.3.0
         version: 19.3.1
@@ -324,16 +324,16 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^11.2.0
-        version: 11.2.0(@icp-sdk/core@6.1.1)
+        version: 11.2.0(@icp-sdk/core@6.1.2)
       '@icp-sdk/core':
         specifier: ^6.1.1
-        version: 6.1.1
+        version: 6.1.2
       '@meantjs/schema':
         specifier: 0.6.0
         version: 0.6.0
       '@tanstack/react-query':
-        specifier: ^5.102.8
-        version: 5.102.8(react@19.3.1)
+        specifier: ^5.108.4
+        version: 5.108.4(@types/react@19.3.0)(react@19.3.1)
       next:
         specifier: ^16.4.6
         version: 16.4.6(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -349,7 +349,7 @@ importers:
         version: 0.5.1(@meantjs/schema@0.6.0)
       '@noble/curves':
         specifier: ^2.2.0
-        version: 2.3.0
+        version: 2.4.0
       '@testing-library/dom':
         specifier: ^10.4.2
         version: 10.4.2
@@ -388,16 +388,16 @@ importers:
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.1.1
-        version: 6.1.1
+        version: 6.1.2
       '@meantjs/schema':
         specifier: 0.6.0
         version: 0.6.0
       '@noble/curves':
         specifier: ^2.2.0
-        version: 2.3.0
+        version: 2.4.0
       '@tanstack/query-core':
-        specifier: ^5.102.8
-        version: 5.102.8
+        specifier: ^5.108.4
+        version: 5.108.4
     devDependencies:
       '@icp-sdk/icp-cli':
         specifier: 1.2.0
@@ -425,16 +425,16 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^11.2.0
-        version: 11.2.0(@icp-sdk/core@6.1.1)
+        version: 11.2.0(@icp-sdk/core@6.1.2)
       '@icp-sdk/core':
         specifier: ^6.1.1
-        version: 6.1.1
+        version: 6.1.2
       '@meantjs/schema':
         specifier: 0.6.0
         version: 0.6.0
       '@tanstack/react-query':
-        specifier: ^5.102.8
-        version: 5.102.8(react@19.3.1)
+        specifier: ^5.108.4
+        version: 5.108.4(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: ^19.3.0
         version: 19.3.1
@@ -453,7 +453,7 @@ importers:
         version: 0.5.1(@meantjs/schema@0.6.0)
       '@noble/curves':
         specifier: ^2.2.0
-        version: 2.3.0
+        version: 2.4.0
       '@testing-library/dom':
         specifier: ^10.4.2
         version: 10.4.2
@@ -489,22 +489,22 @@ importers:
     devDependencies:
       '@icp-sdk/auth':
         specifier: ^11.2.0
-        version: 11.2.0(@icp-sdk/core@6.1.1)
+        version: 11.2.0(@icp-sdk/core@6.1.2)
       '@icp-sdk/core':
         specifier: ^6.1.1
-        version: 6.1.1
+        version: 6.1.2
       '@meantjs/schema':
         specifier: 0.6.0
         version: 0.6.0
       '@noble/curves':
         specifier: ^2.2.0
-        version: 2.3.0
+        version: 2.4.0
       '@size-limit/preset-small-lib':
         specifier: ^13.0.3
         version: 13.0.3(size-limit@13.0.3)
       '@tanstack/query-core':
-        specifier: ^5.102.8
-        version: 5.102.8
+        specifier: ^5.108.4
+        version: 5.108.4
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -522,7 +522,7 @@ importers:
         version: link:../core
       '@icp-sdk/core':
         specifier: ^6.1.1
-        version: 6.1.1
+        version: 6.1.2
       '@meantjs/cli':
         specifier: 0.5.1
         version: 0.5.1(@meantjs/schema@0.6.0)
@@ -534,10 +534,10 @@ importers:
         version: 2.4.0
       '@noble/curves':
         specifier: ^2.2.0
-        version: 2.3.0
+        version: 2.4.0
       '@tanstack/query-core':
         specifier: ^5.102.8
-        version: 5.102.8
+        version: 5.108.4
     devDependencies:
       '@modelcontextprotocol/client':
         specifier: ^2.4.0
@@ -564,8 +564,8 @@ importers:
         specifier: ^13.0.3
         version: 13.0.3(size-limit@13.0.3)
       '@tanstack/react-query':
-        specifier: ^5.102.8
-        version: 5.102.8(react@19.3.1)
+        specifier: ^5.108.4
+        version: 5.108.4(@types/react@19.3.0)(react@19.3.1)
       '@testing-library/dom':
         specifier: ^10.4.2
         version: 10.4.2
@@ -602,13 +602,13 @@ importers:
     devDependencies:
       '@icp-sdk/core':
         specifier: ^6.1.1
-        version: 6.1.1
+        version: 6.1.2
       '@meantjs/cli':
         specifier: 0.5.1
         version: 0.5.1(@meantjs/schema@0.6.0)
       '@noble/curves':
         specifier: ^2.2.0
-        version: 2.3.0
+        version: 2.4.0
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -632,19 +632,19 @@ importers:
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.1
-        version: 6.1.1
+        version: 6.1.2
       '@meantjs/schema':
         specifier: 0.6.0
         version: 0.6.0
       '@noble/curves':
         specifier: ^2.2.0
-        version: 2.3.0
+        version: 2.4.0
       '@tanstack/query-core':
-        specifier: ^5.102.8
-        version: 5.102.8
+        specifier: ^5.108.4
+        version: 5.108.4
       '@tanstack/react-query':
-        specifier: ^5.102.8
-        version: 5.102.8(react@19.3.1)
+        specifier: ^5.108.4
+        version: 5.108.4(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: ^19.3.0
         version: 19.3.1
@@ -1027,8 +1027,8 @@ packages:
     resolution: {integrity: sha512-2UDbkHfMvSXVPLkj7VEwS9NMtu/miOOwkHGn7loA8zxUROlwpJF1UYqXfaIHIaHD4o5a80ouir6QyXbimLk9fg==}
     engines: {node: '>=14'}
 
-  '@dfinity/cbor@0.2.3':
-    resolution: {integrity: sha512-5GX+9tAf29r94Pxv8nCzrv2/t+AkOfem/c/G61+FA2Wadq7THvc5cvr/AVLH0LpukVfNSWRRHvl1fkCdiB9MMQ==}
+  '@dfinity/cbor@0.2.4':
+    resolution: {integrity: sha512-oBj/R+aGGCndLuuDxK2EW7VxVIzRfZgOdumxTysl4V5C6dhyrz6vH1lZ+wGgDecp+MeME9+SvbxphkZ3WBySBw==}
 
   '@emnapi/core@1.11.1':
     resolution: {integrity: sha512-RSvbQmHzdKzNsLYa/wHrbc3KN4sYLKAdPZxqiM2HATqv/SBk2/ENSHpvXGaLOMcsAyz0poEGqkmmKYG3OWiJEQ==}
@@ -1457,8 +1457,8 @@ packages:
     peerDependencies:
       '@icp-sdk/core': ^6
 
-  '@icp-sdk/core@6.1.1':
-    resolution: {integrity: sha512-bMRKAJg0zwJyd53feg8D6Qd+ikoxrxzsVrvzmyjxgSwn7znKxBVyCN8GR/NEQ+dYaE+yWuXV0O3C8AiHL2JUqg==}
+  '@icp-sdk/core@6.1.2':
+    resolution: {integrity: sha512-qwiaYygmVNbg9ZaCBDyIzoXg9sBPFu9N8t6gq3uzatnfQCCzwFWQHYVxeTzvGmew6vAUyY/JYB2CO3Hb0xSEcQ==}
 
   '@icp-sdk/ic-wasm-darwin-arm64@0.11.1':
     resolution: {integrity: sha512-nEh49De9U/9mOzCemrgmkcvZRB8xaUYVElEKzMDqIN5CIaxzSfRu7K1kgLJ1zIWBlibLcwyWwmOGx56BnrKiuw==}
@@ -1809,12 +1809,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@noble/curves@2.3.0':
-    resolution: {integrity: sha512-v7cY+4oWYPQszRj6ZFGzTVL7uP2TaLo1xMhWHzYC5wj0ZhOXQ5x+sBre8rF3hi8cAoi0bh1qXoovoOkdFtvqEg==}
-    engines: {node: '>= 20.19.0'}
-
-  '@noble/hashes@2.3.0':
-    resolution: {integrity: sha512-oN+QwyX7VSHotibwubG3kpzbwKrfnyR6OOO+3Nk/53ADL7FmgHHz4TgrbaYKvvOw09u6QTx0oiH1cNCIOuN0CQ==}
+  '@noble/curves@2.4.0':
+    resolution: {integrity: sha512-P4/62zrgfH33CneE3Dn4WhJVA22YUU0eR51wKIan4NVRvwsA0YnPTwWGpNbpuacSujmSFLvyzpyuR30+fbq2Ew==}
     engines: {node: '>= 20.19.0'}
 
   '@noble/hashes@2.4.0':
@@ -2255,14 +2251,14 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@scure/base@2.3.0':
-    resolution: {integrity: sha512-NsG6Y03tY6R5BUis4FdVtHVkur0U6FOzskgs9ZXNl78CUc9fkZ78HmENUle1nSOkCasDmbubmWD9qwB7mm4PZA==}
+  '@scure/base@2.4.0':
+    resolution: {integrity: sha512-thZ1TuJwFwBblOhgsjDKvvGirBxNp+wSvY/DR6tJBJOTDhdAAcHJ8Vbr2eFnqaxeca4+t0i9KBf+uHYGWwZORg==}
 
-  '@scure/bip32@2.3.0':
-    resolution: {integrity: sha512-mMPjNcXxJsvNveIgRIXrnwd4omu0wdXo4JowAUZO7/82+/bpAwVltclx6MG6nv2M3dA6IbfVv4xwWxaREm3OcA==}
+  '@scure/bip32@2.4.0':
+    resolution: {integrity: sha512-i3DS0CptAocyvqE4n3SUkpzeQK4vJMFwWLofTwRiiKo2aWojBOfyMCgfKw9HVpO6fSY5AK86sHS/Uzn8kK9Few==}
 
-  '@scure/bip39@2.3.0':
-    resolution: {integrity: sha512-qdyWuxoYwi3+YmqIsfkpz1I029m980WkVPilj+kG7VxSm+gKQ2BmQru3nv3LbMtpSUXuyZwdFT65JkpKu5OHOQ==}
+  '@scure/bip39@2.4.0':
+    resolution: {integrity: sha512-82dxFbZUYboyOf0AXiydsQrFQ5Q4h9mX+O2UkE91ROYmsc0BKMGZLwDmy96Jpa2+vrtoxomjUhy1RPIgH/r2nA==}
 
   '@shikijs/core@4.6.0':
     resolution: {integrity: sha512-bfd4OKgvoyXYiYmMRuleA656P4V7M/Du9lcTl38Ngm6KszMj7bq4J1IGZwSYR4c95Tv5UQALtYNWUwaI9UT3xw==}
@@ -2334,13 +2330,17 @@ packages:
     resolution: {integrity: sha512-w1+YvwmTkwt5n8yUqEH3IWZ9DsmorCZW/EQ3KYHnqEgIkOZpH54NvW6/Epq3Dzb8H0ifIeYX8PExvrNLIH5FIA==}
     engines: {node: '>=20.19'}
 
-  '@tanstack/query-core@5.102.8':
-    resolution: {integrity: sha512-ZNjkJ33CqvPNec/6lZBnHqLc3EVGPZ9ySLhYahU9TcuRFdmwXewuj0c4hwSWcGHqEUwcSrKeZ+oGcvPBqXcQcg==}
+  '@tanstack/query-core@5.108.4':
+    resolution: {integrity: sha512-2Ks5dlLWz4eXJrthOyG0qW3SLt3xx0RrQmAmN0rnmogiaaOYuWiAe6HAm9KE2b2v8nig+vraNz8fsfZ6fF6zFg==}
 
-  '@tanstack/react-query@5.102.8':
-    resolution: {integrity: sha512-TYBea4OuXWD7MhaSHq069TWbFe7rcwWN6kzT7JF0OKi1K6c1gTv2IzD6A6ExJsCMozdkqBWeuIUZmu4KQg0O5A==}
+  '@tanstack/react-query@5.108.4':
+    resolution: {integrity: sha512-GlTa94kfEKTVsbzXe58rFA3GZ0ZE7N1aFtbZAfOS3XxMv8YNn4C+8rsz40LorHLazdm5PsqCroWaYAR+ZkMXMQ==}
     peerDependencies:
+      '@types/react': ^18 || ^19
       react: ^18 || ^19
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   '@tanstack/react-router-ssr-query@1.167.3':
     resolution: {integrity: sha512-HA0pxuPuhU+rwoe+z1Xcbytuoo6ZbcROpgNgNSm38s3/hGLmgzOBLzDg+Vyx6ex26QilnPbZ+5Ypet5mImm9bQ==}
@@ -4779,9 +4779,6 @@ packages:
   ts-interface-checker@0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==}
 
-  tslib@2.8.1:
-    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
-
   tslib@2.9.1:
     resolution: {integrity: sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==}
 
@@ -5674,7 +5671,7 @@ snapshots:
 
   '@ctrl/tinycolor@4.3.2': {}
 
-  '@dfinity/cbor@0.2.3': {}
+  '@dfinity/cbor@0.2.4': {}
 
   '@emnapi/core@1.11.1':
     dependencies:
@@ -5967,19 +5964,19 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@icp-sdk/auth@11.2.0(@icp-sdk/core@6.1.1)':
+  '@icp-sdk/auth@11.2.0(@icp-sdk/core@6.1.2)':
     dependencies:
-      '@icp-sdk/core': 6.1.1
-      '@icp-sdk/signer': 6.1.0(@icp-sdk/core@6.1.1)
+      '@icp-sdk/core': 6.1.2
+      '@icp-sdk/signer': 6.1.0(@icp-sdk/core@6.1.2)
       idb: 8.0.4
 
-  '@icp-sdk/core@6.1.1':
+  '@icp-sdk/core@6.1.2':
     dependencies:
-      '@dfinity/cbor': 0.2.3
-      '@noble/curves': 2.3.0
-      '@noble/hashes': 2.3.0
-      '@scure/bip32': 2.3.0
-      '@scure/bip39': 2.3.0
+      '@dfinity/cbor': 0.2.4
+      '@noble/curves': 2.4.0
+      '@noble/hashes': 2.4.0
+      '@scure/bip32': 2.4.0
+      '@scure/bip39': 2.4.0
       asn1js: 3.0.10
 
   '@icp-sdk/ic-wasm-darwin-arm64@0.11.1':
@@ -6028,9 +6025,9 @@ snapshots:
       '@icp-sdk/icp-cli-linux-x64': 1.2.0
       '@icp-sdk/icp-cli-win32-x64': 1.2.0
 
-  '@icp-sdk/signer@6.1.0(@icp-sdk/core@6.1.1)':
+  '@icp-sdk/signer@6.1.0(@icp-sdk/core@6.1.2)':
     dependencies:
-      '@icp-sdk/core': 6.1.1
+      '@icp-sdk/core': 6.1.2
 
   '@img/colour@1.1.0':
     optional: true
@@ -6247,14 +6244,11 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.4.6':
     optional: true
 
-  '@noble/curves@2.3.0':
+  '@noble/curves@2.4.0':
     dependencies:
-      '@noble/hashes': 2.3.0
+      '@noble/hashes': 2.4.0
 
-  '@noble/hashes@2.3.0': {}
-
-  '@noble/hashes@2.4.0':
-    optional: true
+  '@noble/hashes@2.4.0': {}
 
   '@npmcli/config@8.3.4':
     dependencies:
@@ -6538,17 +6532,17 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
 
-  '@scure/base@2.3.0': {}
+  '@scure/base@2.4.0': {}
 
-  '@scure/bip32@2.3.0':
+  '@scure/bip32@2.4.0':
     dependencies:
-      '@noble/curves': 2.3.0
-      '@noble/hashes': 2.3.0
-      '@scure/base': 2.3.0
+      '@noble/curves': 2.4.0
+      '@noble/hashes': 2.4.0
+      '@scure/base': 2.4.0
 
-  '@scure/bip39@2.3.0':
+  '@scure/bip39@2.4.0':
     dependencies:
-      '@noble/hashes': 2.3.0
+      '@noble/hashes': 2.4.0
 
   '@shikijs/core@4.6.0':
     dependencies:
@@ -6632,19 +6626,21 @@ snapshots:
 
   '@tanstack/history@1.162.5': {}
 
-  '@tanstack/query-core@5.102.8': {}
+  '@tanstack/query-core@5.108.4': {}
 
-  '@tanstack/react-query@5.102.8(react@19.3.1)':
+  '@tanstack/react-query@5.108.4(@types/react@19.3.0)(react@19.3.1)':
     dependencies:
-      '@tanstack/query-core': 5.102.8
+      '@tanstack/query-core': 5.108.4
       react: 19.3.1
+    optionalDependencies:
+      '@types/react': 19.3.0
 
-  '@tanstack/react-router-ssr-query@1.167.3(@tanstack/query-core@5.102.8)(@tanstack/react-query@5.102.8(react@19.3.1))(@tanstack/react-router@1.170.46(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@tanstack/router-core@1.171.39)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@tanstack/react-router-ssr-query@1.167.3(@tanstack/query-core@5.108.4)(@tanstack/react-query@5.108.4(@types/react@19.3.0)(react@19.3.1))(@tanstack/react-router@1.170.46(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@tanstack/router-core@1.171.39)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@tanstack/query-core': 5.102.8
-      '@tanstack/react-query': 5.102.8(react@19.3.1)
+      '@tanstack/query-core': 5.108.4
+      '@tanstack/react-query': 5.108.4(@types/react@19.3.0)(react@19.3.1)
       '@tanstack/react-router': 1.170.46(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@tanstack/router-ssr-query-core': 1.169.3(@tanstack/query-core@5.102.8)(@tanstack/router-core@1.171.39)
+      '@tanstack/router-ssr-query-core': 1.169.3(@tanstack/query-core@5.108.4)(@tanstack/router-core@1.171.39)
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
     transitivePeerDependencies:
@@ -6789,9 +6785,9 @@ snapshots:
       - supports-color
       - unloader
 
-  '@tanstack/router-ssr-query-core@1.169.3(@tanstack/query-core@5.102.8)(@tanstack/router-core@1.171.39)':
+  '@tanstack/router-ssr-query-core@1.169.3(@tanstack/query-core@5.108.4)(@tanstack/router-core@1.171.39)':
     dependencies:
-      '@tanstack/query-core': 5.102.8
+      '@tanstack/query-core': 5.108.4
       '@tanstack/router-core': 1.171.39
 
   '@tanstack/router-utils@1.163.0':
@@ -7179,7 +7175,7 @@ snapshots:
     dependencies:
       pvtsutils: 1.3.6
       pvutils: 1.2.0
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   assertion-error@2.0.1: {}
 
@@ -9755,8 +9751,6 @@ snapshots:
       typescript: 6.0.3
 
   ts-interface-checker@0.1.13: {}
-
-  tslib@2.8.1: {}
 
   tslib@2.9.1: {}
 

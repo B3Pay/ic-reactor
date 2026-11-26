@@ -67,7 +67,7 @@
     "@meantjs/schema": "0.6.0",
     "@ic-reactor/core": "workspace:*",
     "@size-limit/preset-small-lib": "^13.0.3",
-    "@tanstack/react-query": "^5.102.8",
+    "@tanstack/react-query": "^5.108.4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.3.0",

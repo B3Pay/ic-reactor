@@ -18,7 +18,24 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### Examples (not published)
+
+- The five examples depend on TanStack Query `^5.108.4`, where they had
+  `^5.102.8`. Their code does not change.
+
+### CI (not published)
+
+- The lockfile resolves the peers at the releases npm installs for a new app
+  on 2026-11-26, where it held older ones: `@tanstack/query-core` and
+  `@tanstack/react-query` 5.108.4 (5.102.8 before), `@icp-sdk/core` 6.1.2
+  (6.1.1), and `@noble/curves`, `@noble/hashes` and the three `@scure`
+  packages 2.4.0 (2.3.0). The package tests, the e2e app and the size checks
+  run on them. No peer range changes, and the lowest-peers run still tests
+  the floors. The two app size limits are raised to 96.72 kB (96,714 B
+  measured, +499 B) and 98.03 kB (98,025 B, +495 B), the owner's decision.
+  All of it is the peers' own growth: TanStack Query +149 B and +140 B, the
+  noble packages +182 B and +209 B, `@icp-sdk/core` +168 B and +146 B. Core's
+  and react's own sizes are unchanged.
 
 ## core, react, vite-plugin, mcp 4.6.0
 
