@@ -18,8 +18,8 @@
     "@ic-reactor/core": "^4.6.0",
     "@ic-reactor/react": "^4.6.0",
     "@icp-sdk/core": "^6.1.1",
-    "@noble/curves": "^2.2.0",
-    "@tanstack/react-query": "^5.102.8",
+    "@noble/curves": "^2.4.0",
+    "@tanstack/react-query": "^5.108.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

@@ -67,7 +67,7 @@
   "devDependencies": {
     "@meantjs/cli": "0.5.1",
     "@icp-sdk/core": "^6.1.1",
-    "@noble/curves": "^2.2.0",
+    "@noble/curves": "^2.4.0",
     "@types/node": "^26.6.6",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
