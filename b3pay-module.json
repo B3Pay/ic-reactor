@@ -28,6 +28,10 @@
           "page": "migrating-from-3"
         },
         {
+          "label": "Migrating from 1.x and 2.x",
+          "page": "migrating-from-1-2"
+        },
+        {
           "label": "Versioning and support",
           "page": "versioning"
         }
@@ -183,6 +187,6 @@
   "home": "index",
   "origin": {
     "repository": "B3Pay/ic-reactor",
-    "commit": "edc35b1a76fd51091dea096f49776161b58730da"
+    "commit": "a19c68e518fe50c115df1d9be4e7da0a88e9604e"
   }
 }
