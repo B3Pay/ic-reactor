@@ -28,13 +28,13 @@
     "@icp-sdk/icp-cli": "1.2.0",
     "@tanstack/react-query": "^5.102.8",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "jsdom": "^30.0.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "typescript": "^6.0.3",
-    "vite": "^8.3.4",
-    "vitest": "^5.0.0"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
   }
 }
