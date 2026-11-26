@@ -18,6 +18,26 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+Nothing yet.
+
+## core, react, vite-plugin, mcp 4.6.0
+
+Prepared on 2026-11-26. 4.6.0 is a minor because `@ic-reactor/core` gains
+API: `client.onCall(listener)` and the type `CallEvent` (#1093). An app can
+now hear every canister call its client makes in one place, by whichever
+route the call was made, so a call log, metrics or a test's assertions no
+longer need a subscription to each of TanStack Query's caches and a wrapper
+around the canister objects. The change is in core, which is 550 B larger,
+gzipped. `@ic-reactor/react`, the Vite plugin and the MCP server change only
+their version. The release adds one `@ic-reactor/*` export and removes none
+(core 14, `@ic-reactor/core/testing` 2, react 4, vite-plugin 2; mcp has
+nothing to import), no peer range moves, the Meant peers stay
+`@meantjs/schema` 0.6.0 and `@meantjs/cli` 0.5.1, and committed modules do
+not change.
+
+An app on 4.5.0 updates with no change to its code: nothing changes for an
+app that adds no listener. The entries below have the rest.
+
 ### @ic-reactor/core
 
 #### Added
