@@ -54,7 +54,8 @@ export default [
     // With the IC's time read again when a clock changes with the page open (after a refused ingress expiry, or an answer that fails the agent's own check of its time): measured 95,017 B (94,890 B before, +127 B), so the limit moved from 94,920 B to 95.02 kB.
     // With @icp-sdk/core 6.1.1 required (95,608 B with it alone, +591 B) and ic_env cookies that differ refused on a local page too: measured 95,635 B (95,017 B before, +618 B), so the limit moved from 95,020 B to 95.64 kB.
     // With client.onCall() and the CallEvent type (#1093): measured 96,215 B (95,635 B before, +580 B), so the limit moved from 95,640 B to 96.22 kB.
-    limit: "96.22 kB",
+    // With the lockfile's peers at the versions npm installs on 2026-11-26, and no change in ic-reactor's own code (@tanstack/query-core 5.108.4 for 5.102.8, +149 B; @noble/curves and @noble/hashes 2.4.0 for 2.3.0, +182 B; @icp-sdk/core 6.1.2 for 6.1.1, +168 B): measured 96,714 B (96,215 B before, +499 B), so the limit moved from 96,220 B to 96.72 kB.
+    limit: "96.72 kB",
     gzip: true,
   },
   {
@@ -99,7 +100,8 @@ export default [
     // With the IC's time read again when a clock changes with the page open (after a refused ingress expiry, or an answer that fails the agent's own check of its time): measured 96,324 B (96,196 B before, +128 B), so the limit moved from 96,220 B to 96.34 kB.
     // With @icp-sdk/core 6.1.1 required (96,940 B with it alone, +616 B) and ic_env cookies that differ refused on a local page too: measured 96,948 B (96,324 B before, +624 B), so the limit moved from 96,340 B to 96.95 kB.
     // With client.onCall() and the CallEvent type (#1093): measured 97,530 B (96,948 B before, +582 B), so the limit moved from 96,950 B to 97.54 kB.
-    limit: "97.54 kB",
+    // With the lockfile's peers at the versions npm installs on 2026-11-26, and no change in ic-reactor's own code (@tanstack/query-core and @tanstack/react-query 5.108.4 for 5.102.8, +140 B; @noble/curves and @noble/hashes 2.4.0 for 2.3.0, +209 B; @icp-sdk/core 6.1.2 for 6.1.1, +146 B): measured 98,025 B (97,530 B before, +495 B), so the limit moved from 97,540 B to 98.03 kB.
+    limit: "98.03 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },
