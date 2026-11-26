@@ -1,6 +1,6 @@
 /**
  * Runs once before the suite, in the vitest process. It asks the `icp` CLI on
- * PATH (the 1.2.0 this package installs, under `pnpm exec`) where the local
+ * PATH (the 1.8.0 this package installs, under `pnpm exec`) where the local
  * network is and which ids the canisters of icp.yaml were deployed with, and
  * hands them to the test files through `inject("replica")`.
  */

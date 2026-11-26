@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@meantjs/cli": "0.5.1",
-    "@icp-sdk/icp-cli": "1.2.0",
+    "@icp-sdk/icp-cli": "1.8.0",
     "@types/node": "^26.6.6",
     "typescript": "^6.0.3",
     "vitest": "^5.1.1"

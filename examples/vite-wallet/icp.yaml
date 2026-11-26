@@ -1,6 +1,6 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/dfinity/icp-cli/refs/tags/v1.2.0/docs/schemas/icp-yaml-schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dfinity/icp-cli/refs/tags/v1.8.0/docs/schemas/icp-yaml-schema.json
 
-# The wallet's local canisters, for the icp-cli 1.2.0 this example installs
+# The wallet's local canisters, for the icp-cli 1.8.0 this example installs
 # (`pnpm icp:start`, `pnpm icp:deploy`, `pnpm icp:stop`).
 
 canisters:

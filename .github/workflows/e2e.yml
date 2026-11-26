@@ -18,7 +18,7 @@ permissions:
 env:
   # Pinned so a compromised release cannot run its install script in CI, and so a
   # regression is traceable to a version. Bump deliberately.
-  ICP_CLI_VERSION: 1.2.0
+  ICP_CLI_VERSION: 1.8.0
   IC_WASM_VERSION: 0.11.1
 
 jobs:
