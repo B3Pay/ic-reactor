@@ -31,20 +31,22 @@ These unions may gain a member in a minor:
 - `ReactorErrorKind`, the `kind` of a `ReactorError`.
 - `ReactorError.code`, the finer reason some errors carry.
 - `AuthState.status`, what `client.authState()` and `useAuth()` report.
+- `via` of a `CallEvent`, what made a call that `client.onCall()` reports.
 
 A `switch` over one of them needs a `default` branch. An exhaustiveness check
 that assigns the value to `never` stops compiling when a member is added.
 Treat a value you do not know as the closest one you do: an unknown error kind
-as an error, and an unknown status as not signed in.
+as an error, an unknown status as not signed in, and an unknown `via` as a
+call like any other.
 
 ## Interfaces to consume, not implement
 
-`Client`, `Canister`, `Resend` and `ReactorError` are for you to call and
-read. A minor may add members to them, so a class that implements one, or an
-object literal typed as one, may stop compiling. Get them from
-`createClient`, `client.canister()`, `client.resendOf()` and a rejected call,
-and build test doubles with `@ic-reactor/core/testing` (see
-[Testing](/docs/ic-reactor/guides/testing/)).
+`Client`, `Canister`, `Resend`, `ReactorError` and `CallEvent` are for you to
+call and read. A minor may add members to them, so a class that implements
+one, or an object literal typed as one, may stop compiling. Get them from
+`createClient`, `client.canister()`, `client.resendOf()`, a rejected call and
+a listener of `client.onCall()`, and build test doubles with
+`@ic-reactor/core/testing` (see [Testing](/docs/ic-reactor/guides/testing/)).
 
 `AuthLike` is the interface you implement, to bring an auth other than
 `@icp-sdk/auth`'s `AuthClient`. A minor adds only optional members to it.

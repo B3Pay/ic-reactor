@@ -16,6 +16,7 @@ description: Generated API reference documentation
 ## Type Aliases
 
 - [ClientOptions](/docs/ic-reactor/libs/type-aliases/clientoptions/)
+- [CallEvent](/docs/ic-reactor/libs/type-aliases/callevent/)
 - [ReactorErrorKind](/docs/ic-reactor/libs/type-aliases/reactorerrorkind/)
 - [ReactorError](/docs/ic-reactor/libs/type-aliases/reactorerror/)
 - [Network](/docs/ic-reactor/libs/type-aliases/network/)

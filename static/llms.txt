@@ -602,6 +602,48 @@ it. Canister objects that differ only in `timeoutMs` share query keys, so a
 read observed through two of them is bounded by the options TanStack Query
 was given last.
 
+## Call events
+
+`client.onCall(listener)` hears every canister call the client makes, by any
+route: a `queryOptions` read, a mutation, a direct call, a `client.func`
+function. It returns the function that removes the listener. A call log:
+
+```ts
+import type { CallEvent } from "@ic-reactor/core"
+import { client } from "./ledger"
+
+const started = new Map<number, Extract<CallEvent, { phase: "start" }>>()
+const stop = client.onCall((event) => {
+  if (event.phase === "start") {
+    started.set(event.id, event)
+    return
+  }
+  const call = started.get(event.id)
+  started.delete(event.id)
+  console.log(call?.method, call?.caller, event.phase, `${Math.round(event.ms)} ms`, `${event.sends} sent`)
+})
+// later: stop()
+```
+
+- A call is two events with one `id`: a `start`, then exactly one of
+  `success`, `error` and `cancelled`. Narrow on `phase`.
+- `start` has `via` (`"query"`, `"mutation"`, `"direct"` or `"func"`),
+  `canisterId`, `method`, `mode`, `certified`, `caller`, `args`, `resendOf`
+  and `at` (`Date.now()`). The end repeats none of them.
+- `success` has `data`, what the caller receives. `error` and `cancelled`
+  have `error`, the `ReactorError` the caller receives. `cancelled` is a call
+  that was given up (the caller changed, a query was aborted, the client was
+  disposed); a `timeoutMs` that passed is an `error`.
+- Each end has `ms` and `sends`, how many requests went out: 0 when the
+  client refused the call or the signer declined, more than 1 when the client
+  sent the call again. A retry TanStack Query makes is a new call.
+- One listener on the client hears the calls of every `useClient()` view,
+  each with its `caller`.
+- A listener only observes: it cannot change or delay a call, and what it
+  throws is dropped. The client keeps no event. `args` and `data` are the
+  app's own objects and may hold personal data: do not change them, and
+  choose what a log keeps.
+
 ## Outside React
 
 ```ts

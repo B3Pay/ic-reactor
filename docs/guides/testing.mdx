@@ -329,6 +329,12 @@ refused before sending (no `"call"` entry), and to check who signed. After
 `refuseNext(503)` on a write, the client sends the same request again: that
 entry has the refused one's `requestId`, and is not a second write.
 
+`requests` is what the replica received. For what the app called and how each
+call ended, listen on the test client as an app does:
+`client.onCall(listener)` works on it with no setup, and reports the calls
+the client refused before sending, which never reach `requests`. See
+[Call events](/docs/ic-reactor/guides/client/#call-events).
+
 ## Testing React
 
 Give the provider the test client as a borrowed one, `client={() => test.client}`,
