@@ -39,6 +39,10 @@
           "page": "migrating-from-3"
         },
         {
+          "label": "Migrating from 1.x and 2.x",
+          "page": "migrating-from-1-2"
+        },
+        {
           "label": "Versioning and support",
           "page": "versioning"
         }
