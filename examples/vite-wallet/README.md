@@ -29,7 +29,7 @@ local network does not make on demand: the tests inject them.
 
 You need Node 22.18 or later, and for the backend the Rust toolchain with the
 `wasm32-unknown-unknown` target and `ic-wasm` on your PATH (what icp-cli's
-Rust recipe calls). icp-cli 1.2.0 itself is a devDependency of this example.
+Rust recipe calls). icp-cli 1.8.0 itself is a devDependency of this example.
 From the repository root, `pnpm install` and `pnpm build`, then:
 
 ```sh

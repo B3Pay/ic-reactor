@@ -158,7 +158,7 @@ the `--memo` given or none, so the same command line is the same transfer.
 ## A real local ledger
 
 `icp.yaml` starts an icp-cli network with the NNS (the ICP ledger at its
-mainnet id) on port 8001; icp-cli is a devDependency, pinned at 1.2.0.
+mainnet id) on port 8001; icp-cli is a devDependency, pinned at 1.8.0.
 
 ```sh
 pnpm exec icp network start -d

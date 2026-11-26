@@ -6,7 +6,7 @@
 // It runs `icp token transfer` as icp-cli's anonymous identity, the default
 // identity of a fresh icp-cli, which every local network funds with ICP when
 // it starts; whatever identity is your default, it is left alone. The icp-cli
-// of this example's devDependencies (1.2.0) runs it, not one on your PATH.
+// of this example's devDependencies (1.8.0) runs it, not one on your PATH.
 import { execFileSync } from "node:child_process"
 import { createRequire } from "node:module"
 import { readFaucetArgs } from "./faucet-args.ts"

@@ -30,7 +30,7 @@
   "devDependencies": {
     "@meantjs/cli": "0.5.1",
     "@ic-reactor/vite-plugin": "^4.6.0",
-    "@icp-sdk/icp-cli": "1.2.0",
+    "@icp-sdk/icp-cli": "1.8.0",
     "@noble/curves": "^2.2.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",

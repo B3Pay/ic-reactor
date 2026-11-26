@@ -25,7 +25,7 @@
     "@meantjs/cli": "0.5.1",
     "@ic-reactor/vite-plugin": "workspace:*",
     "@icp-sdk/ic-wasm": "0.11.1",
-    "@icp-sdk/icp-cli": "1.2.0",
+    "@icp-sdk/icp-cli": "1.8.0",
     "@tanstack/react-query": "^5.108.4",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.6.6",
