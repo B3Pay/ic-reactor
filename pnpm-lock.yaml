@@ -135,8 +135,8 @@ importers:
         specifier: 0.11.1
         version: 0.11.1
       '@icp-sdk/icp-cli':
-        specifier: 1.2.0
-        version: 1.2.0
+        specifier: 1.8.0
+        version: 1.8.0
       '@meantjs/cli':
         specifier: 0.5.1
         version: 0.5.1(@meantjs/schema@0.6.0)
@@ -400,8 +400,8 @@ importers:
         version: 5.108.4
     devDependencies:
       '@icp-sdk/icp-cli':
-        specifier: 1.2.0
-        version: 1.2.0
+        specifier: 1.8.0
+        version: 1.8.0
       '@meantjs/cli':
         specifier: 0.5.1
         version: 0.5.1(@meantjs/schema@0.6.0)
@@ -446,8 +446,8 @@ importers:
         specifier: ^4.6.0
         version: link:../../packages/vite-plugin
       '@icp-sdk/icp-cli':
-        specifier: 1.2.0
-        version: 1.2.0
+        specifier: 1.8.0
+        version: 1.8.0
       '@meantjs/cli':
         specifier: 0.5.1
         version: 0.5.1(@meantjs/schema@0.6.0)
@@ -1490,33 +1490,33 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  '@icp-sdk/icp-cli-darwin-arm64@1.2.0':
-    resolution: {integrity: sha512-5SEMmQJgPlLJ6+a27H9xke+HGSpaH2ephPS0mQG+z8AVc8o2mi0OoSJVtdER3sLA1JTlSdJ5kQY8rkxi95Zv1Q==}
+  '@icp-sdk/icp-cli-darwin-arm64@1.8.0':
+    resolution: {integrity: sha512-4RO/r1p1h74wuePwat0vMPfYagzFO2CiYmAR33ZnrPfo22aGVcdwldpePZYBV8egjq7BMnI2LPY3UVLVHnSing==}
     cpu: [arm64]
     os: [darwin]
 
-  '@icp-sdk/icp-cli-darwin-x64@1.2.0':
-    resolution: {integrity: sha512-PiXB3iMTwGUlmwsm2iDJoSr+RCtMGW5M9p+0eVbmr8F6n2IKIWXTVU9HVyyoEILrIhBZrTS5jLJJtYYtXl4Q/g==}
+  '@icp-sdk/icp-cli-darwin-x64@1.8.0':
+    resolution: {integrity: sha512-+/MDaDmleZ43kY14dvMHGxxSIW7Z+brccSqy6Vr+CwvRWqJcDG6QzwYXqk+owgLcmTrF11vufMhZbWN7n/yv0g==}
     cpu: [x64]
     os: [darwin]
 
-  '@icp-sdk/icp-cli-linux-arm64@1.2.0':
-    resolution: {integrity: sha512-PY6dbkNzwcSwGTGNRKiLjClXamCh9/r9z9qYJ7pB/lS0ihnR2G1qx+DG9ok3Y8PPOV5iD+2UZoBxtmERKKxTnQ==}
+  '@icp-sdk/icp-cli-linux-arm64@1.8.0':
+    resolution: {integrity: sha512-E/unBg0Kh8jfdf9IWVdbTP5FeMMtnQSDo1Cw+qb1WfX0lYYsFndS6bLW4KujKloETPKBwUPrH9gGc2AjDDhlKQ==}
     cpu: [arm64]
     os: [linux]
 
-  '@icp-sdk/icp-cli-linux-x64@1.2.0':
-    resolution: {integrity: sha512-w66Je8K5YoUsD6xUW1LutiC0SHcBHdbnT9+Jy3Wgs5GyfRIvo+RgRbxjiIYDfxb7OIH1J5C3l33fqQIYEzTSyw==}
+  '@icp-sdk/icp-cli-linux-x64@1.8.0':
+    resolution: {integrity: sha512-f6NSdFIrr2eSmNe0JjQWedaiRkJWqCTbaS6GjZFbPtRnd52Eb+Ichrom2zmx/4CZ/DW71BfU9iE8D+OFTDsyow==}
     cpu: [x64]
     os: [linux]
 
-  '@icp-sdk/icp-cli-win32-x64@1.2.0':
-    resolution: {integrity: sha512-VID5a7kKquWX9thFcBT2vFYx/RZiil0jzixZqnoNrQuOpsRJM6F31c874Cu8xW8wm/QFrc1dmF0y5SZNU3dSfA==}
+  '@icp-sdk/icp-cli-win32-x64@1.8.0':
+    resolution: {integrity: sha512-4x3JZwLljFNK67c3ClYDbluE2Lw98q5pE+Jomn0wq8MqGV/UqtQHdKeWqB73NWdeaeuGar3Hl15i81gxJJXAGg==}
     cpu: [x64]
     os: [win32]
 
-  '@icp-sdk/icp-cli@1.2.0':
-    resolution: {integrity: sha512-fRXaVxQJLPGTNVYjhVqa+xclO42sTOqlTrbYx06zuOprBvAd+yDyf/cVnlvuUPBshLa5dAbGBG+6RvFDEmFpbA==}
+  '@icp-sdk/icp-cli@1.8.0':
+    resolution: {integrity: sha512-5wdTxakBoYKqCVvApwlEgZZat9Y0qPxvrPVO31eAem2IO3+Xu3gn/k4EAHb9K9DTfCKyJ+Ll2O8Nm5GEPUldpQ==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -6002,28 +6002,28 @@ snapshots:
       '@icp-sdk/ic-wasm-linux-x64': 0.11.1
       '@icp-sdk/ic-wasm-win32-x64': 0.11.1
 
-  '@icp-sdk/icp-cli-darwin-arm64@1.2.0':
+  '@icp-sdk/icp-cli-darwin-arm64@1.8.0':
     optional: true
 
-  '@icp-sdk/icp-cli-darwin-x64@1.2.0':
+  '@icp-sdk/icp-cli-darwin-x64@1.8.0':
     optional: true
 
-  '@icp-sdk/icp-cli-linux-arm64@1.2.0':
+  '@icp-sdk/icp-cli-linux-arm64@1.8.0':
     optional: true
 
-  '@icp-sdk/icp-cli-linux-x64@1.2.0':
+  '@icp-sdk/icp-cli-linux-x64@1.8.0':
     optional: true
 
-  '@icp-sdk/icp-cli-win32-x64@1.2.0':
+  '@icp-sdk/icp-cli-win32-x64@1.8.0':
     optional: true
 
-  '@icp-sdk/icp-cli@1.2.0':
+  '@icp-sdk/icp-cli@1.8.0':
     optionalDependencies:
-      '@icp-sdk/icp-cli-darwin-arm64': 1.2.0
-      '@icp-sdk/icp-cli-darwin-x64': 1.2.0
-      '@icp-sdk/icp-cli-linux-arm64': 1.2.0
-      '@icp-sdk/icp-cli-linux-x64': 1.2.0
-      '@icp-sdk/icp-cli-win32-x64': 1.2.0
+      '@icp-sdk/icp-cli-darwin-arm64': 1.8.0
+      '@icp-sdk/icp-cli-darwin-x64': 1.8.0
+      '@icp-sdk/icp-cli-linux-arm64': 1.8.0
+      '@icp-sdk/icp-cli-linux-x64': 1.8.0
+      '@icp-sdk/icp-cli-win32-x64': 1.8.0
 
   '@icp-sdk/signer@6.1.0(@icp-sdk/core@6.1.2)':
     dependencies:

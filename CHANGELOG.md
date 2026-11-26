@@ -18,13 +18,28 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### Docs
+
+- The Vite plugin guide and the plugin's README name icp-cli 1.8.0, where
+  they named 1.2.0, in the note on why a restarted network needs a restarted
+  dev server. On 1.8.0 too, the managed network kept its root key across
+  starts while a new deploy gave the names other canister ids.
+
 ### Examples (not published)
 
+- `vite-wallet` and `node-agent-tool` install icp-cli 1.8.0, where they
+  installed 1.2.0, and the wallet's `icp.yaml` names that release's schema.
+  Their commands, canisters and recipes and the network launcher they pin
+  (`v16.0.0-2026-09-18-03-28`) do not change.
 - The five examples depend on TanStack Query `^5.108.4`, where they had
   `^5.102.8`. Their code does not change.
 
 ### CI (not published)
 
+- The e2e suite runs on icp-cli 1.8.0, where it ran on 1.2.0. The pin moves
+  in `e2e.yml` and `e2e/package.json` together, and `e2e/icp.yaml` names
+  that release's schema. The canisters, the recipes, the pinned network
+  launcher and the twenty cases are unchanged.
 - The lockfile resolves the peers at the releases npm installs for a new app
   on 2026-11-26, where it held older ones: `@tanstack/query-core` and
   `@tanstack/react-query` 5.108.4 (5.102.8 before), `@icp-sdk/core` 6.1.2

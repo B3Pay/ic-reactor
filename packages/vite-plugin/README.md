@@ -494,7 +494,7 @@ and that page gets the answer: start `vite dev` first, then run
 moves to the network `icp` reports, the fallback included. Once detection is
 complete, page loads run no further `icp` commands, so any network restart
 (`icp network stop`, then `start` and `icp deploy`) needs a dev server
-restart, even when the root key stays the same. icp-cli 1.2.0's managed
+restart, even when the root key stays the same. icp-cli 1.8.0's managed
 network kept its root key across starts while a new deploy gave the names
 other canister IDs.
 
