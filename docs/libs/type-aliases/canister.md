@@ -7,7 +7,7 @@ prev: true
 
 > **Canister**\<`A`\> = `{ readonly [K in keyof A]: A[K] extends (args: infer P) => Promise<infer R> ? (args: P) => Promise<Unwrap<R>> : never }` & `object`
 
-Defined in: [core/src/types.ts:208](https://github.com/B3Pay/ic-reactor/blob/a19c68e518fe50c115df1d9be4e7da0a88e9604e/packages/core/src/types.ts#L208)
+Defined in: [core/src/types.ts:208](https://github.com/B3Pay/ic-reactor/blob/1cfe82c157c588f1da308550a198637a7ece8cc8/packages/core/src/types.ts#L208)
 
 A canister, as `client.canister<Actor>(actor, target)` returns it: a frozen
 object with one plain async method per Candid method of the service, typed
@@ -27,17 +27,17 @@ the first attempt never got in (reject code 2, or HTTP 429, from any
 canister but `aaaaa-aa`), at most twice; a direct read re-sends only after a
 failure the classifier marks retryable, at most twice.
 
-## Type Declaration
-
-### \[actorType\]?
-
-> `readonly` `optional` **\[actorType\]?**: `A`
-
 ## Type Parameters
 
 ### A
 
 `A`
+
+## Type Declaration
+
+### \[actorType\]?
+
+> `readonly` `optional` **\[actorType\]?**: `A`
 
 ## Example
 
