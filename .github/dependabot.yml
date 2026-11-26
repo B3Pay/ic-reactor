@@ -9,10 +9,26 @@ updates:
       day: "monday"
     open-pull-requests-limit: 10
     groups:
+      # icp-cli and ic-wasm are each pinned twice: in package.json, and in
+      # e2e.yml (ICP_CLI_VERSION, IC_WASM_VERSION), where "E2E Tests" stops when
+      # the two differ. Dependabot edits only package.json, so its bump of
+      # either one fails that check every time. In the grouped pull request it
+      # held back every other bump with it (#1091). In a pull request of their
+      # own the failed check says a new release is out, and the pins, the
+      # `$schema` lines and the docs that name the release then move together
+      # by hand, as #1101 did. The two groups below leave these packages out,
+      # so this is the only group they can join.
+      icp-tools:
+        patterns:
+          - "@icp-sdk/icp-cli"
+          - "@icp-sdk/ic-wasm"
       # Group minor and patch updates together
       dependencies:
         patterns:
           - "*"
+        exclude-patterns:
+          - "@icp-sdk/icp-cli"
+          - "@icp-sdk/ic-wasm"
         update-types:
           - "minor"
           - "patch"
@@ -20,6 +36,9 @@ updates:
       major:
         patterns:
           - "*"
+        exclude-patterns:
+          - "@icp-sdk/icp-cli"
+          - "@icp-sdk/ic-wasm"
         update-types:
           - "major"
     ignore:
@@ -30,6 +49,27 @@ updates:
       # package with zero errors -- so this unblocks once vite-plugin moves off
       # `tsup --dts`, or tsup gains TS7 support. See #225.
       - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # jsdom 31 reads the global `Iterator` while it loads
+      # (`lib/jsdom/living/helpers/dom-tree.js`). "Examples on the published
+      # packages" starts each example under a model of what StackBlitz's
+      # WebContainer lacks, and that model has no global `Iterator`
+      # (WEBCONTAINER_MODEL in scripts/test-examples-published.mjs). With jsdom
+      # 31 that step fails for vite-wallet and next-ssr, whose tests stop with
+      # "ReferenceError: Iterator is not defined" (#1075). Every other check
+      # passes on jsdom 31. This unblocks when a WebContainer has the global
+      # and the model stops removing it.
+      - dependency-name: "jsdom"
+        update-types: ["version-update:semver-major"]
+      # size-limit 14 bundles with rolldown where 13 bundles with esbuild, so
+      # the measured sizes move while the packages stay the same: on #1075 the
+      # two app checks came out 722 B and 398 B over their limits. Each limit
+      # sits just above what 13 measures (CONTRIBUTING.md, "Size budget"), so
+      # moving to 14 means setting the four limits again, in a pull request of
+      # its own.
+      - dependency-name: "size-limit"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@size-limit/preset-small-lib"
         update-types: ["version-update:semver-major"]
       # stack.json chooses the Meant release, and `pnpm sync:stack` moves
       # every pin together (CONTRIBUTING.md, "The Meant pins"). A bump of one
