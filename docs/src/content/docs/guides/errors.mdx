@@ -273,7 +273,7 @@ simpler:
 
 ### Codes
 
-`code` narrows a kind. The client sets exactly these twelve. Only
+`code` narrows a kind. The client sets exactly these thirteen. Only
 `canister_not_found` comes from the IC's answer; the client decides the others
 itself:
 
@@ -282,6 +282,7 @@ itself:
 | `canister_id_unresolved`        | `invalid_args`                                   | a `{ name }` target the `ic_env` cookie cannot give: on a server, an untrusted host, or no such entry                                                                                                                                                                                                             |
 | `no_certified_path`             | `invalid_args`                                   | a `composite_query` called on a `certified: true` canister                                                                                                                                                                                                                                                        |
 | `effective_canister_id_unknown` | `invalid_args`                                   | a management canister call that cannot be routed from its arguments                                                                                                                                                                                                                                               |
+| `page_repeated`                 | `invalid_args`                                   | a read walked through its pages whose `pages` returned variables the walk had already asked with: it would never end, and nothing more is sent                                                                                                                                                                    |
 | `arg_changed`                   | `outcome_unknown`                                | a mutation given an argument `client.resendOf()` offered, which was changed after the write it re-sends went out. Nothing was sent, and that write may have run                                                                                                                                                   |
 | `anonymous_write`               | `unauthenticated`                                | an update or oneway method by a caller who is not signed in                                                                                                                                                                                                                                                       |
 | `identity_unavailable`          | `unauthenticated`                                | the auth's `getIdentity()` rejected                                                                                                                                                                                                                                                                               |

@@ -70,6 +70,7 @@ import type {
   MutationOptionsOptions,
   OptInMethod,
   OptInQueryArgs,
+  PagedQueryArgs,
   QueryArgs,
   ReadMethod,
   Resend,
@@ -695,7 +696,7 @@ export interface Client {
    * @throws TypeError for an update or oneway method without the opt-in, a
    * method without results, a composite query of a certified canister, a
    * canister of another client, a method the service does not have, or a
-   * fourth argument other than `{ update: "idempotent" }`. An update or a
+   * fourth argument other than `{ update: "idempotent" }` or `{ pages }`. An update or a
    * oneway reaches this check only through an `Actor` that does not say the
    * method's mode.
    */
@@ -718,6 +719,55 @@ export interface Client {
     method: M,
     ...args: QueryArgs<A, M>
   ): CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>>
+  /**
+   * TanStack Query options for a read walked through its pages, with
+   * `{ pages }`: one read whose data is every page, in order, from the first
+   * to the one `pages` names no page after.
+   *
+   * ```ts
+   * useQuery({
+   *   ...client.queryOptions(shop, "list_orders", [null, 50], {
+   *     pages: (page, [, size]) =>
+   *       page.next === null ? undefined : [page.next, size],
+   *   }),
+   *   select: (pages) => pages.flatMap((page) => page.orders),
+   * })
+   * ```
+   *
+   * The variables are the first page's. `pages(page, vars)` is given a page
+   * and the variables it was asked for with, and returns the next page's, or
+   * `undefined` after the last. Every page is a call of its own, made as the
+   * caller the options were built for, verified like any read of the
+   * canister object, and given up with the read. The read fails as a whole:
+   * with the error of the page that failed, with what `pages` throws, or
+   * with `invalid_args` (code `"page_repeated"`) when `pages` returns
+   * variables the walk has asked with before, which would never end. A retry
+   * starts from the first page.
+   *
+   * The key is the first page's, then `"$pages"`: the walk and a read of the
+   * first page alone are two reads, and `client.queryKey(canister, method)`
+   * is a prefix of both, so a write to the canister invalidates both.
+   *
+   * @throws TypeError as the call without `pages`, and for a method without
+   * arguments, or a fourth argument that holds more than `pages`.
+   */
+  queryOptions<A, M extends ReadMethod<A>>(
+    canister: Canister<A>,
+    method: M,
+    ...args: PagedQueryArgs<A, M, never>
+  ): CanisterQueryOptions<DataOf<A, M>[], ErrorOf<A, M>, never>
+  /**
+   * The read walked through its pages, with variables that may be
+   * `skipToken`: its `queryFn` is `skipToken` for a skipped read. Otherwise
+   * the same as the paged call with variables that cannot be skipped.
+   *
+   * @throws TypeError as the paged call with variables that cannot be skipped.
+   */
+  queryOptions<A, M extends ReadMethod<A>>(
+    canister: Canister<A>,
+    method: M,
+    ...args: PagedQueryArgs<A, M>
+  ): CanisterQueryOptions<DataOf<A, M>[], ErrorOf<A, M>>
   /**
    * TanStack Query options for an update read like a query, with
    * `{ update: "idempotent" }`: only for an update that returns the same

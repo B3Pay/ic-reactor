@@ -388,6 +388,16 @@ Such a read is still an update, so a signed-out or `"anonymous"` client
 refuses it (`unauthenticated`) and sends nothing. Read an ICRC-21 consent
 message as the caller who will send the write: the message can depend on the
 caller (the DFINITY ICRC-1 ledger names the sender as `From`).
+A list a canister serves in pages is read to its end as one read:
+`client.queryOptions(canister, method, firstVars, { pages })`, where
+`pages: (page, vars) => nextVars | undefined` gives the variables of the page
+after `page` (asked for with `vars`), or `undefined` after the last. The data
+is the list of pages in order (flatten it in `select`); each page is a call of
+its own, made as the caller the options were built for. The read fails as a
+whole, a retry starts from the first page, and `pages` returning variables
+the walk already asked with rejects `invalid_args` (code `"page_repeated"`).
+Its key is the first page's, then `"$pages"`. `pages` comes alone: not with
+`{ update: "idempotent" }`, and not for a method without arguments.
 A method TypeScript cannot tell is a read does not compile: a type parameter
 (`M extends keyof A & string`), a union that may name an update
 (`keyof Actor & string`), or any method of a `Canister<A>` with a generic `A`.

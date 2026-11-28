@@ -466,6 +466,63 @@ export function FeeWithFallback() {
 }
 ```
 
+## A list read to its end
+
+A canister serves a long list in pages: a method takes where to start, and
+answers with one page and what the next one starts at. To read the whole list
+as one read, give `queryOptions` the first page's arguments and `pages`, a
+function from a page to the arguments of the page after it, or `undefined`
+after the last.
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icp_ledger"
+
+export function BlocksSince({ start }: { start: bigint }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const blocks = useQuery({
+    ...client.queryOptions(
+      ledger,
+      "query_blocks",
+      { start, length: 100n },
+      {
+        // The page after this one, until the chain has no block past it.
+        pages: (page, { start, length }) =>
+          start + length < page.chain_length
+            ? { start: start + length, length }
+            : undefined,
+      }
+    ),
+    select: (pages) => pages.flatMap((page) => page.blocks),
+  })
+  return <p>{blocks.data?.length ?? "…"} blocks</p>
+}
+```
+
+- **The data is the list of pages**, in order, each as a read of it alone
+  would give it. Flatten it in `select`.
+- **Every page is a call of its own**, made as the caller the options were
+  built for and checked like any read of that canister object. The read is
+  given up as a whole when the caller changes or the query is cancelled.
+- **The read fails as a whole**: with the error of the page that failed, or
+  with what `pages` throws. A retry starts again from the first page.
+- **A walk that would not end is an error.** When `pages` returns arguments
+  the walk has already asked with, the read rejects `invalid_args` with code
+  `"page_repeated"`, and sends nothing more.
+- **The key is the first page's key, then `"$pages"`.** The walk and a read of
+  the first page alone are two reads, and both sit under
+  `client.queryKey(canister, method)`, so a write to the canister invalidates
+  both.
+
+`pages` comes alone as the fourth argument: an update read with
+`{ update: "idempotent" }` has no pages. A method without arguments has no
+second page to ask for, and does not compile. To load pages one at a time as
+a person scrolls, use an infinite query instead.
+
 ## Infinite queries
 
 There is no helper for `useInfiniteQuery`: the pieces are the same as for any

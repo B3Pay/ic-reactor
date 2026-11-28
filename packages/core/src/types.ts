@@ -519,6 +519,38 @@ export interface QueryOptionsOptions {
   readonly update: "idempotent"
 }
 
+/**
+ * The fourth argument of `client.queryOptions()` for a read walked through
+ * its pages. `V` is the method's variables and `D` one page's data.
+ */
+export interface PagedQueryOptions<V, D> {
+  /**
+   * The variables of the page after `page`, which was asked for with `vars`,
+   * or `undefined` after the last page:
+   * `(page) => page.next ?? undefined` for a method that takes a cursor,
+   * `(page, [, size]) => page.next === null ? undefined : [page.next, size]`
+   * for one that takes a cursor and a page size.
+   */
+  readonly pages: (page: D, vars: V) => V | undefined
+}
+
+/**
+ * The arguments of `client.queryOptions()` after the method, for a read
+ * walked through its pages with `{ pages }`: the first page's variables of
+ * {@link QueryArgs}, then the options. A method without arguments has no
+ * second page to ask for, and does not compile.
+ */
+export type PagedQueryArgs<
+  A,
+  M extends keyof A,
+  S extends SkipToken = SkipToken,
+> = [VarsOf<A, M>] extends [void]
+  ? never
+  : [
+      vars: QueryArgs<A, M, S>[0],
+      options: PagedQueryOptions<VarsOf<A, M>, DataOf<A, M>>,
+    ]
+
 /** The fourth argument of `client.resendOf()`. */
 export interface ResendOptions<V> {
   /**

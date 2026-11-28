@@ -18,6 +18,18 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+- `client.queryOptions(canister, method, firstVars, { pages })` reads a list a
+  canister serves in pages to its end, as one read. `pages(page, vars)` gives
+  the variables of the next page, or `undefined` after the last, and the data
+  is the list of pages in order. Each page is a call of its own, made as the
+  caller the options were built for; the read fails as a whole, and rejects
+  `invalid_args` with code `"page_repeated"` when `pages` returns variables
+  it has already asked with. The key is the first page's key, then
+  `"$pages"`. No name is added to the package's exports, and a read without
+  `pages` is what it was.
+
 ### @ic-reactor/vite-plugin
 
 - The package is built with tsup 9, where it was built with tsup 8.5.1.

@@ -13,7 +13,9 @@
  *   (a generated module and `schemaFromContract` agree), and never on the order
  *   of a record's keys. Two tags take its place: `"$skip"` for `skipToken`, and
  *   `"$invalid", <text>` for arguments that do not encode, so building the key
- *   never throws. Hex never starts with `$`.
+ *   never throws. Hex never starts with `$`. `"$pages"` follows the args of a
+ *   read walked through its pages (`{ pages }`): the first page's args, so
+ *   the walk and a read of its first page alone never share a key.
  * - `"certified"` ends every full key of a certified canister, so an
  *   uncertified answer is never served where a certified one was asked for. A
  *   prefix without it matches both.
@@ -31,6 +33,9 @@ export const CERTIFIED = "certified"
 
 /** The args segment of a skipped read. */
 export const SKIP = "$skip"
+
+/** The segment after the args of a read walked through its pages. */
+export const PAGES = "$pages"
 
 /** The tag before the text of arguments that do not encode. */
 export const INVALID = "$invalid"
