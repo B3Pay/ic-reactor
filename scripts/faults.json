@@ -616,8 +616,8 @@
     "testName": "never shows one principal's data under another's key",
     "why": "a query function that reads the caller when it runs instead of using the one captured with its key, so another principal's answer lands under the key",
     "file": "src/options.ts",
-    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
-    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+    "search": "            certified: record.certified,\n            caller,\n            values,\n            encoded,",
+    "replace": "            certified: record.certified,\n            caller: internals.current(),\n            values,\n            encoded,"
   },
   {
     "id": "ir2t-no-invalidation-after-unknown-outcome",
@@ -1243,8 +1243,8 @@
     "test": "tests/traps/stale-data-across-users.test.ts",
     "why": "a query function that reads the caller when it runs instead of using the one captured with its key, so a read made for one principal goes out as another and its answer lands under the first one's key",
     "file": "src/options.ts",
-    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
-    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+    "search": "            certified: record.certified,\n            caller,\n            values,\n            encoded,",
+    "replace": "            certified: record.certified,\n            caller: internals.current(),\n            values,\n            encoded,"
   },
   {
     "id": "ir9-update-built-as-read",
@@ -1273,8 +1273,8 @@
     "testName": "once for each caller",
     "why": "an update read with the idempotent opt-in that asks who is signed in when it runs instead of using the caller captured with its key: after a switch, Alice's read is sent as Bob and Bob's answer is cached under Alice's key",
     "file": "src/options.ts",
-    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
-    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+    "search": "            certified: record.certified,\n            caller,\n            values,\n            encoded,",
+    "replace": "            certified: record.certified,\n            caller: internals.current(),\n            values,\n            encoded,"
   },
   {
     "id": "ir9-root-key-fetched-from-any-host",
@@ -1411,8 +1411,8 @@
     "testName": "cancels a read it built while someone else is current",
     "why": "a read a view built is sent as whoever is current when it runs, so the anonymous key is filled with the user's answer (D20)",
     "file": "src/options.ts",
-    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
-    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+    "search": "            certified: record.certified,\n            caller,\n            values,\n            encoded,",
+    "replace": "            certified: record.certified,\n            caller: internals.current(),\n            values,\n            encoded,"
   },
   {
     "id": "ir6b-view-read-sent-as-signed-out-caller",
@@ -1421,8 +1421,8 @@
     "testName": "cancels a read pinned to a user who is no longer signed in",
     "why": "a read built for a user is sent as nobody after the user signed out, and the user's key holds an anonymous answer (D20)",
     "file": "src/options.ts",
-    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
-    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+    "search": "            certified: record.certified,\n            caller,\n            values,\n            encoded,",
+    "replace": "            certified: record.certified,\n            caller: internals.current(),\n            values,\n            encoded,"
   },
   {
     "id": "ir6b-view-anonymous-authenticated",
@@ -2840,8 +2840,8 @@
     "testName": "is true for the errors of a read's query function and a mutation function built from the canister",
     "why": "a read's query function no longer marks its errors with the canister it was built from",
     "file": "src/options.ts",
-    "search": "          resend: false,\n          canister: canister as object,\n",
-    "replace": "          resend: false,\n"
+    "search": "            resend: false,\n            canister: canister as object,\n",
+    "replace": "            resend: false,\n"
   },
   {
     "id": "ir849-mutation-error-unmarked",
@@ -5228,8 +5228,8 @@
     "testName": "rejects a read of a canister with timeoutMs cancelled",
     "why": "a read made with queryOptions not given its canister's timeoutMs, so it waits unbounded",
     "file": "src/options.ts",
-    "search": "          timeoutMs: record.timeoutMs,\n          resend: false,",
-    "replace": "          resend: false,"
+    "search": "            timeoutMs: record.timeoutMs,\n            resend: false,",
+    "replace": "            resend: false,"
   },
   {
     "id": "875-aborted-read-waits-for-identity",
@@ -7933,5 +7933,55 @@
     "file": "src/canister.ts",
     "search": "          signing: attributesTag(++attributed),\n",
     "replace": "          signing: attributesTag(0),\n"
+  },
+  {
+    "id": "pages-walk-stops-after-the-first-page",
+    "package": "core",
+    "test": "tests/paged-read.test.ts",
+    "testName": "asks for every page in order, one call each, and gives them all",
+    "why": "a walk that returns once it has a page gives a list cut short, which reads as the whole of it",
+    "file": "src/options.ts",
+    "search": "            if (next === undefined) return all\n",
+    "replace": "            if (next === undefined || all.length > 0) return all\n"
+  },
+  {
+    "id": "pages-walk-shares-the-first-page-key",
+    "package": "core",
+    "test": "tests/paged-read.test.ts",
+    "testName": "keeps the walk under the first page's key and the tag, apart from the first page alone",
+    "why": "without the tag the walk's list of pages is cached under the key of the first page alone, and each read shows the other's data",
+    "file": "src/options.ts",
+    "search": "          ? [...argsSegments(encoded, vars), PAGES]\n",
+    "replace": "          ? argsSegments(encoded, vars)\n"
+  },
+  {
+    "id": "pages-walk-forgets-the-first-page",
+    "package": "core",
+    "test": "tests/paged-read.test.ts",
+    "testName": "rejects page_repeated, and sends nothing more, when pages names a page it has asked for",
+    "why": "a walk that does not remember the first page's variables asks for it again when a cursor comes round to it",
+    "file": "src/options.ts",
+    "search": "            if (at.encoded.ok) sent.add(toHex(at.encoded.bytes))\n",
+    "replace": "            if (at.encoded.ok && all.length > 0)\n              sent.add(toHex(at.encoded.bytes))\n"
+  },
+  {
+    "id": "pages-taken-with-other-options",
+    "package": "core",
+    "test": "tests/paged-read.test.ts",
+    "testName": "throws a TypeError for pages that is no function or does not come alone",
+    "why": "pages taken beside another option silently drops that option: { pages, update: \"idempotent\" } would read as a plain paged read",
+    "file": "src/options.ts",
+    "search": "  if (Object.keys(options).length === 1 && typeof pages === \"function\") {",
+    "replace": "  if (typeof pages === \"function\") {"
+  },
+  {
+    "id": "pages-repeat-not-marked-with-its-canister",
+    "package": "core",
+    "test": "tests/paged-read.test.ts",
+    "testName": "rejects page_repeated, and sends nothing more, when pages names a page it has asked for",
+    "why": "the walk's own page_repeated error is thrown without its canister, so isReactorError(error, canister, method) is false for it while every page's error matches",
+    "file": "src/options.ts",
+    "search": "                canister as object\n              )\n            }\n            at = { vars: next, values, encoded }\n",
+    "replace": "                undefined\n              )\n            }\n            at = { vars: next, values, encoded }\n"
   }
 ]

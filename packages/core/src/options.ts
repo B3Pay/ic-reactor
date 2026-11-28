@@ -63,6 +63,7 @@ import {
   CERTIFIED,
   INVALID,
   KEY_ROOT,
+  PAGES,
   SKIP,
   stableText,
   toHex,
@@ -96,6 +97,25 @@ const never = (): boolean => false
 const argsSegments = (encoded: EncodeResult, vars: unknown): string[] =>
   encoded.ok ? [toHex(encoded.bytes)] : [INVALID, stableText(vars)]
 
+/** What a paged read's `pages` is: the next page's variables, or `undefined` after the last. */
+type NextPage = (page: unknown, vars: unknown) => unknown
+
+/**
+ * The `pages` of the fourth argument of `queryOptions`, for a read walked
+ * through its pages; `undefined` when the argument names none.
+ */
+function readPagesArg(options: unknown): NextPage | undefined {
+  if (typeof options !== "object" || options === null || !("pages" in options))
+    return undefined
+  const { pages } = options
+  if (Object.keys(options).length === 1 && typeof pages === "function") {
+    return pages as NextPage
+  }
+  throw new TypeError(
+    `[ic-reactor] client.queryOptions(): pages comes alone, and is a function from a page to the next page's variables; got ${describe(options)}.`
+  )
+}
+
 /**
  * Checks the fourth argument of `queryOptions`, and says whether it opts an
  * update in as a read.
@@ -111,7 +131,7 @@ function readQueryOptionsArg(options: unknown): boolean {
     return true
   }
   throw new TypeError(
-    `[ic-reactor] client.queryOptions() takes { update: "idempotent" } as its fourth argument, or nothing; got ${describe(options)}.`
+    `[ic-reactor] client.queryOptions() takes { update: "idempotent" } or { pages } as its fourth argument, or nothing; got ${describe(options)}.`
   )
 }
 
@@ -411,7 +431,8 @@ export function createBuilders(
     const call = "client.queryOptions()"
     const record = recordOf(canister, internals, call)
     const prepared = methodOf(record, method, call)
-    const idempotent = readQueryOptionsArg(options)
+    const pages = readPagesArg(options)
+    const idempotent = pages === undefined && readQueryOptionsArg(options)
     if (prepared.mode === "oneway") {
       throw new TypeError(
         `[ic-reactor] ${call}: ${prepared.name} is a oneway method; it has no reply to cache. Call it directly, or through mutationOptions().`
@@ -437,6 +458,13 @@ export function createBuilders(
     if (record.certified && prepared.mode === "composite_query") {
       throw new TypeError(
         `[ic-reactor] ${call}: ${prepared.name} is a composite query, which has no certified path. Read it from the canister made without certified: true.`
+      )
+    }
+    // The next page is asked for with other arguments, and a method that
+    // takes none has no other.
+    if (pages !== undefined && prepared.args.length === 0) {
+      throw new TypeError(
+        `[ic-reactor] ${call}: ${prepared.name} takes no arguments, so it has no page after its first.`
       )
     }
     // Attributes are not in a read's key, so the answer to a read sent with
@@ -488,22 +516,62 @@ export function createBuilders(
         caller.principal,
         target,
         prepared.name,
-        argsSegments(encoded, vars)
+        pages
+          ? [...argsSegments(encoded, vars), PAGES]
+          : argsSegments(encoded, vars)
       ),
       queryFn: (context: QueryFunctionContext) => {
-        const read = invoke(internals, {
-          method: prepared,
-          target,
-          certified: record.certified,
-          caller,
-          values,
-          encoded,
-          signal: context.signal,
-          timeoutMs: record.timeoutMs,
-          resend: false,
-          canister: canister as object,
-          via: "query",
-        })
+        const send = (
+          values: readonly unknown[],
+          encoded: EncodeResult
+        ): Promise<unknown> =>
+          invoke(internals, {
+            method: prepared,
+            target,
+            certified: record.certified,
+            caller,
+            values,
+            encoded,
+            signal: context.signal,
+            timeoutMs: record.timeoutMs,
+            resend: false,
+            canister: canister as object,
+            via: "query",
+          })
+        // Every page is a call of its own, made as the same caller and under
+        // the same signal, from the first to the one `pages` names no page
+        // after: a list cut short would read as the whole of it. Arguments
+        // the walk has sent before would send it round for ever.
+        const walk = async (): Promise<unknown[]> => {
+          const all: unknown[] = []
+          const sent = new Set<string>()
+          let at = { vars, values, encoded }
+          for (;;) {
+            if (at.encoded.ok) sent.add(toHex(at.encoded.bytes))
+            const page = await send(at.values, at.encoded)
+            all.push(page)
+            const next = pages!(page, at.vars)
+            if (next === undefined) return all
+            const values = valuesOf(prepared, next)
+            const encoded = encodeArgs(prepared.args, values)
+            // Marked with the canister, as each page's own error is, so that
+            // `isReactorError(error, canister, method)` matches it.
+            if (encoded.ok && sent.has(toHex(encoded.bytes))) {
+              throw fromCanister(
+                createReactorError("invalid_args", {
+                  method: prepared.name,
+                  canisterId: slotOf(target),
+                  code: "page_repeated",
+                  reason:
+                    "pages() gave the variables of a page this read has asked for already, so it would never end",
+                }),
+                canister as object
+              )
+            }
+            at = { vars: next, values, encoded }
+          }
+        }
+        const read = pages ? walk() : send(values, encoded)
         return pinned ? keepOnRefusal(context, read) : read
       },
       ...base,

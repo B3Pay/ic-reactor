@@ -56,7 +56,8 @@ export default [
     // With client.onCall() and the CallEvent type (#1093): measured 96,215 B (95,635 B before, +580 B), so the limit moved from 95,640 B to 96.22 kB.
     // With the lockfile's peers at the versions npm installs on 2026-11-26, and no change in ic-reactor's own code (@tanstack/query-core 5.108.4 for 5.102.8, +149 B; @noble/curves and @noble/hashes 2.4.0 for 2.3.0, +182 B; @icp-sdk/core 6.1.2 for 6.1.1, +168 B): measured 96,714 B (96,215 B before, +499 B), so the limit moved from 96,220 B to 96.72 kB.
     // With identity attributes through one client (#917), which brings in @icp-sdk/core's AttributesIdentity: measured 97,923 B (96,714 B before, +1,209 B), so the limit moved from 96,720 B to 97.93 kB.
-    limit: "97.93 kB",
+    // With a read walked through its pages, queryOptions(..., { pages }): measured 98,305 B (97,923 B before, +382 B), so the limit moved from 97,930 B to 98.31 kB.
+    limit: "98.31 kB",
     gzip: true,
   },
   {
@@ -103,7 +104,8 @@ export default [
     // With client.onCall() and the CallEvent type (#1093): measured 97,530 B (96,948 B before, +582 B), so the limit moved from 96,950 B to 97.54 kB.
     // With the lockfile's peers at the versions npm installs on 2026-11-26, and no change in ic-reactor's own code (@tanstack/query-core and @tanstack/react-query 5.108.4 for 5.102.8, +140 B; @noble/curves and @noble/hashes 2.4.0 for 2.3.0, +209 B; @icp-sdk/core 6.1.2 for 6.1.1, +146 B): measured 98,025 B (97,530 B before, +495 B), so the limit moved from 97,540 B to 98.03 kB.
     // With identity attributes through one client (#917), which brings in @icp-sdk/core's AttributesIdentity: measured 99,260 B (98,025 B before, +1,235 B), so the limit moved from 98,030 B to 99.26 kB.
-    limit: "99.26 kB",
+    // With a read walked through its pages, queryOptions(..., { pages }): measured 99,646 B (99,260 B before, +386 B), so the limit moved from 99,260 B to 99.65 kB.
+    limit: "99.65 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },

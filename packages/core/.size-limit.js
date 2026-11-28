@@ -50,7 +50,8 @@ export default [
     // With @icp-sdk/core 6.1.1 required and ic_env cookies that differ refused on a local page too: measured 20,078 B (20,063 B before, +15 B), so the limit moved from 20,070 B to 20.08 kB.
     // With client.onCall() and the CallEvent type (#1093): measured 20,628 B (20,078 B before, +550 B), so the limit moved from 20,080 B to 20.63 kB.
     // With identity attributes through one client (#917: `anonymous` and `attributes` on a canister target, client.requestAttributes()): measured 21,761 B (20,628 B before, +1,133 B), so the limit moved from 20,630 B to 21.77 kB.
-    limit: "21.77 kB",
+    // With a read walked through its pages, queryOptions(..., { pages }): measured 22,129 B (21,761 B before, +368 B), so the limit moved from 21,770 B to 22.13 kB.
+    limit: "22.13 kB",
     gzip: true,
   },
 ]

@@ -469,6 +469,75 @@ export function FeeWithFallback() {
 }
 ```
 
+## A list read to its end
+
+A canister serves a long list in pages: a method takes where to start, and
+answers with one page and what the next one starts at. To read the whole list
+as one read, give `queryOptions` the first page's arguments and `pages`, a
+function from a page to the arguments of the page after it, or `undefined`
+after the last.
+
+This reads every ckBTC transaction of an account from the ckBTC index, which
+answers `get_account_transactions` newest first, a page at a time, and starts
+the next page after the transaction it is given:
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { actor, type Account, type Actor } from "./generated/icrc1_index"
+
+export function History({ account }: { account: Account }) {
+  const client = useClient()
+  const index = client.canister<Actor>(actor, {
+    id: "n5wcd-faaaa-aaaar-qaaea-cai",
+  })
+  const history = useQuery({
+    ...client.queryOptions(
+      index,
+      "get_account_transactions",
+      { account, start: null, max_results: 100n },
+      {
+        // The page after this one starts after its last transaction, until
+        // the account's oldest is in.
+        pages: (page, vars) => {
+          const last = page.transactions.at(-1)
+          return last === undefined || last.id === page.oldest_tx_id
+            ? undefined
+            : { ...vars, start: last.id }
+        },
+      }
+    ),
+    select: (pages) => pages.flatMap((page) => page.transactions),
+  })
+  return <p>{history.data?.length ?? "…"} transactions</p>
+}
+```
+
+- **The data is the list of pages**, in order, each as a read of it alone
+  would give it. Flatten it in `select`.
+- **Every page is a call of its own**, made as the caller the options were
+  built for and checked like any read of that canister object. The read is
+  given up as a whole when the caller changes or the query is cancelled.
+- **The read fails as a whole**: with the error of the page that failed, or
+  with what `pages` throws. A retry starts again from the first page.
+- **A walk that would not end is an error.** When `pages` returns arguments
+  the walk has already asked with, the read rejects `invalid_args` with code
+  `"page_repeated"`, and sends nothing more.
+- **The key is the first page's key, then `"$pages"`.** The walk and a read of
+  the first page alone are two reads, and both sit under
+  `client.queryKey(canister, method)`, so a write to the canister invalidates
+  both.
+
+`pages` comes alone as the fourth argument: an update read with
+`{ update: "idempotent" }` has no pages. A method without arguments has no
+second page to ask for, and does not compile. To load pages one at a time as
+a person scrolls, use an infinite query instead.
+
+A ledger's own `query_blocks` is no such list: for the blocks it has archived
+it answers with ranges that an archive canister serves, and a walk of its
+pages would leave those blocks out. The example under
+[Infinite queries](#infinite-queries) reads them too.
+
 ## Infinite queries
 
 There is no helper for `useInfiniteQuery`: the pieces are the same as for any
