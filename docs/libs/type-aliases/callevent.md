@@ -7,7 +7,7 @@ prev: true
 
 > **CallEvent** = \{ `phase`: `"start"`; `id`: `number`; `via`: `"query"` \| `"mutation"` \| `"direct"` \| `"func"`; `canisterId`: `string`; `method`: `string`; `mode`: `"query"` \| `"composite_query"` \| `"update"` \| `"oneway"`; `certified`: `boolean`; `caller`: `string`; `args`: readonly `unknown`[]; `resendOf`: `boolean`; `at`: `number`; \} \| \{ `phase`: `"success"`; `id`: `number`; `data`: `unknown`; `sends`: `number`; `ms`: `number`; \} \| \{ `phase`: `"error"`; `id`: `number`; `error`: [`ReactorError`](/docs/ic-reactor/libs/type-aliases/reactorerror/)\<`unknown`\>; `sends`: `number`; `ms`: `number`; \} \| \{ `phase`: `"cancelled"`; `id`: `number`; `error`: [`ReactorError`](/docs/ic-reactor/libs/type-aliases/reactorerror/)\<`unknown`\>; `sends`: `number`; `ms`: `number`; \}
 
-Defined in: [core/src/client.ts:345](https://github.com/B3Pay/ic-reactor/blob/b4478a0ac0763fba76181c81d9ab3cde18fa5b27/packages/core/src/client.ts#L345)
+Defined in: [core/src/client.ts:345](https://github.com/B3Pay/ic-reactor/blob/6ce878615e2c977957a28a7b7cd9caa1826df7c9/packages/core/src/client.ts#L345)
 
 One event of a canister call, as [Client.onCall](/docs/ic-reactor/libs/interfaces/client/#oncall) hands it to a
 listener. A call is two events with the same `id`: a `start`, and then
