@@ -18,7 +18,31 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+Nothing yet.
+
+## core, react, vite-plugin, mcp 4.7.0
+
+Prepared on 2026-11-28. 4.7.0 is a minor because `@ic-reactor/core` gains
+API. A canister target takes `anonymous` and `attributes`, and
+`client.requestAttributes({ keys, nonce })` asks the identity provider for
+verified identity attributes (#917), so an app signs in with attributes
+through the one client it already has. `client.queryOptions(..., { pages })`
+reads a list a canister serves in pages as one read. The change is in core,
+which is 1,501 B larger, gzipped (22,129 B measured, 20,628 B in 4.6.0).
+`@ic-reactor/react` and the MCP server change only their version, and the Vite
+plugin is built with tsup 9 to the same JavaScript. The release adds no
+`@ic-reactor/*` export and removes none (core 14, `@ic-reactor/core/testing`
+2, react 4, vite-plugin 2; mcp has nothing to import), no peer range moves,
+the Meant peers stay `@meantjs/schema` 0.6.0 and `@meantjs/cli` 0.5.1, and
+committed modules do not change.
+
+An app on 4.6.0 updates with no change to its code: a canister target without
+`anonymous` or `attributes`, and a read without `pages`, behave as before. The
+entries below have the rest.
+
 ### @ic-reactor/core
+
+#### Added
 
 - Verified identity attributes go through one client (#917). A canister
   target takes `anonymous`, the updates anyone may send (a sign-in nonce),
