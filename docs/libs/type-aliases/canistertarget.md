@@ -5,9 +5,9 @@ next: true
 prev: true
 ---
 
-> **CanisterTarget** = \{ `id`: `string`; `name?`: `never`; `certified?`: `boolean`; `timeoutMs?`: `number`; \} \| \{ `name`: `string`; `id?`: `never`; `certified?`: `boolean`; `timeoutMs?`: `number`; \}
+> **CanisterTarget** = (\{ `id`: `string`; `name?`: `never`; \} \| \{ `name`: `string`; `id?`: `never`; \}) & `object` & (\{ `anonymous?`: readonly `string`[]; `attributes?`: `never`; \} \| \{ `attributes`: \{ `data`: `Uint8Array`; `signature`: `Uint8Array`; `signer?`: `string`; \}; `anonymous?`: `never`; \})
 
-Defined in: [core/src/types.ts:248](https://github.com/B3Pay/ic-reactor/blob/6691e0e4594c5a4d6545be98fab41dc37c6084d9/packages/core/src/types.ts#L248)
+Defined in: [core/src/types.ts:270](https://github.com/B3Pay/ic-reactor/blob/8016f993aaae29921af08d5a54cfc05759055598/packages/core/src/types.ts#L270)
 
 Which canister `client.canister()` calls: by its id, or by the name the
 `ic_env` cookie gives it.
@@ -41,3 +41,35 @@ Which canister `client.canister()` calls: by its id, or by the name the
   `TypeError`. Another `timeoutMs` makes another canister object, with the
   same keys: a read observed through two of them is bounded by the options
   TanStack Query was given last.
+- `anonymous` names the updates anyone may send (a canister's sign-in
+  nonce, say): on the canister object it makes, each of them goes out as
+  the anonymous principal, whoever is signed in and when nobody is,
+  directly or through `mutationOptions`. `queryOptions` refuses an
+  `{ update: "idempotent" }` read of one, whose key would hold a caller it
+  is not sent as. Every other method is called as on any
+  canister object, so a write nobody named is still refused
+  (`unauthenticated`) while nobody is signed in. A name the service has no
+  method for, or one of a `query` or `composite_query` (which a signed-out
+  client sends already), throws a `TypeError` when the canister is made.
+- `attributes` makes a canister object whose calls carry signed identity
+  attributes as their `sender_info`, signed by the caller: what
+  `client.requestAttributes()` resolved with, for the canister that checks
+  them and no other. `signer` is the canister that signed them, as
+  principal text: left out, it is the network's identity provider, which on
+  mainnet is Internet Identity (`rdmx6-jaaaa-aaaaa-aaadq-cai`); where the
+  network names none, making the canister without one throws a
+  `TypeError`. Such a canister object is for direct calls and
+  `mutationOptions`: `queryOptions` refuses it, since a read made with
+  attributes would share its key with the one made without. The same
+  attributes object gives the same canister object. Not together with
+  `anonymous`.
+
+## Type Declaration
+
+### certified?
+
+> `readonly` `optional` **certified?**: `boolean`
+
+### timeoutMs?
+
+> `readonly` `optional` **timeoutMs?**: `number`

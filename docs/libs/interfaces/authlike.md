@@ -5,7 +5,7 @@ next: true
 prev: true
 ---
 
-Defined in: [core/src/client.ts:109](https://github.com/B3Pay/ic-reactor/blob/6691e0e4594c5a4d6545be98fab41dc37c6084d9/packages/core/src/client.ts#L109)
+Defined in: [core/src/client.ts:112](https://github.com/B3Pay/ic-reactor/blob/8016f993aaae29921af08d5a54cfc05759055598/packages/core/src/client.ts#L112)
 
 A sign-in the client can own: what `@icp-sdk/auth` 11's `AuthClient` and the
 `auth` of `createTestClient()` from `@ic-reactor/core/testing` both are, with
@@ -34,7 +34,7 @@ it is handed, and reads a new object for the same principal as a renewal.
 
 > **getPrincipal**(): \{ `toText`(): `string`; \} \| `undefined`
 
-Defined in: [core/src/client.ts:111](https://github.com/B3Pay/ic-reactor/blob/6691e0e4594c5a4d6545be98fab41dc37c6084d9/packages/core/src/client.ts#L111)
+Defined in: [core/src/client.ts:114](https://github.com/B3Pay/ic-reactor/blob/8016f993aaae29921af08d5a54cfc05759055598/packages/core/src/client.ts#L114)
 
 Who calls are accepted as, or `undefined` when nobody can act.
 
@@ -48,7 +48,7 @@ Who calls are accepted as, or `undefined` when nobody can act.
 
 > **getStatus**(): `object`
 
-Defined in: [core/src/client.ts:120](https://github.com/B3Pay/ic-reactor/blob/6691e0e4594c5a4d6545be98fab41dc37c6084d9/packages/core/src/client.ts#L120)
+Defined in: [core/src/client.ts:123](https://github.com/B3Pay/ic-reactor/blob/8016f993aaae29921af08d5a54cfc05759055598/packages/core/src/client.ts#L123)
 
 Who is signed in. Only `"signed-in"` makes the client call as
 [AuthLike.getPrincipal](#getprincipal); every other state calls anonymously. The
@@ -80,7 +80,7 @@ for it. It is [AuthState.expiresAt](/docs/ic-reactor/libs/interfaces/authstate/#
 
 > **getIdentity**(): `Promise`\<`Identity`\>
 
-Defined in: [core/src/client.ts:138](https://github.com/B3Pay/ic-reactor/blob/6691e0e4594c5a4d6545be98fab41dc37c6084d9/packages/core/src/client.ts#L138)
+Defined in: [core/src/client.ts:141](https://github.com/B3Pay/ic-reactor/blob/8016f993aaae29921af08d5a54cfc05759055598/packages/core/src/client.ts#L141)
 
 The identity to sign calls with while signed in.
 
@@ -94,7 +94,7 @@ The identity to sign calls with while signed in.
 
 > **subscribe**(`listener`): () => `void`
 
-Defined in: [core/src/client.ts:140](https://github.com/B3Pay/ic-reactor/blob/6691e0e4594c5a4d6545be98fab41dc37c6084d9/packages/core/src/client.ts#L140)
+Defined in: [core/src/client.ts:143](https://github.com/B3Pay/ic-reactor/blob/8016f993aaae29921af08d5a54cfc05759055598/packages/core/src/client.ts#L143)
 
 Calls `listener` after each change of who is signed in. Returns a function that stops listening.
 
@@ -114,7 +114,7 @@ Calls `listener` after each change of who is signed in. Returns a function that 
 
 > **signIn**(`options?`): `Promise`\<`unknown`\>
 
-Defined in: [core/src/client.ts:141](https://github.com/B3Pay/ic-reactor/blob/6691e0e4594c5a4d6545be98fab41dc37c6084d9/packages/core/src/client.ts#L141)
+Defined in: [core/src/client.ts:144](https://github.com/B3Pay/ic-reactor/blob/8016f993aaae29921af08d5a54cfc05759055598/packages/core/src/client.ts#L144)
 
 #### Parameters
 
@@ -132,7 +132,7 @@ Defined in: [core/src/client.ts:141](https://github.com/B3Pay/ic-reactor/blob/66
 
 > **signOut**(`options?`): `Promise`\<`unknown`\>
 
-Defined in: [core/src/client.ts:142](https://github.com/B3Pay/ic-reactor/blob/6691e0e4594c5a4d6545be98fab41dc37c6084d9/packages/core/src/client.ts#L142)
+Defined in: [core/src/client.ts:145](https://github.com/B3Pay/ic-reactor/blob/8016f993aaae29921af08d5a54cfc05759055598/packages/core/src/client.ts#L145)
 
 #### Parameters
 
@@ -146,11 +146,39 @@ Defined in: [core/src/client.ts:142](https://github.com/B3Pay/ic-reactor/blob/66
 
 ***
 
+### requestAttributes()?
+
+> `optional` **requestAttributes**(`params`): `Promise`\<\{ `data`: `Uint8Array`; `signature`: `Uint8Array`; \}\>
+
+Defined in: [core/src/client.ts:151](https://github.com/B3Pay/ic-reactor/blob/8016f993aaae29921af08d5a54cfc05759055598/packages/core/src/client.ts#L151)
+
+Asks the identity provider for signed attributes of the person (their
+verified email, say), as `AuthClient` 11 does. Optional: an auth without
+it has [Client.requestAttributes](/docs/ic-reactor/libs/interfaces/client/#requestattributes) reject.
+
+#### Parameters
+
+##### params
+
+###### keys
+
+`string`[]
+
+###### nonce
+
+() => `Promise`\<`Uint8Array`\<`ArrayBufferLike`\>\>
+
+#### Returns
+
+`Promise`\<\{ `data`: `Uint8Array`; `signature`: `Uint8Array`; \}\>
+
+***
+
 ### dispose()?
 
 > `optional` **dispose**(): `void`
 
-Defined in: [core/src/client.ts:144](https://github.com/B3Pay/ic-reactor/blob/6691e0e4594c5a4d6545be98fab41dc37c6084d9/packages/core/src/client.ts#L144)
+Defined in: [core/src/client.ts:156](https://github.com/B3Pay/ic-reactor/blob/8016f993aaae29921af08d5a54cfc05759055598/packages/core/src/client.ts#L156)
 
 Releases what the auth holds. Called once, from [Client.dispose](/docs/ic-reactor/libs/interfaces/client/#dispose).
 
