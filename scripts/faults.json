@@ -7861,8 +7861,8 @@
     "testName": "carries the attributes on the calls of that canister object, signed by the caller, and on no other call",
     "why": "the agent that adds the attributes is kept as the principal's agent, so every later call of that caller carries them to whatever canister it goes to",
     "file": "src/client.ts",
-    "search": "      attributed.set(attributes, { identity, agent })\n",
-    "replace": "      attributed.set(attributes, { identity, agent })\n      agents.set(principal, { identity, agent, asked })\n"
+    "search": "      attributed.set(attributes, { principal, identity, agent, asked })\n",
+    "replace": "      attributed.set(attributes, { principal, identity, agent, asked })\n      agents.set(principal, { identity, agent, asked })\n"
   },
   {
     "id": "917-attributes-requested-after-an-await",
@@ -7873,5 +7873,45 @@
     "file": "src/client.ts",
     "search": "      const signedIn = signIn === false ? undefined : client.signIn(signIn)\n",
     "replace": "      const signedIn = signIn === false ? undefined : client.signIn(signIn)\n      await null\n"
+  },
+  {
+    "id": "917-anonymous-update-read-keyed-as-caller",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "refuses an update read of a named method, whose key would hold a caller it is not sent as",
+    "why": "an update read of a method named in anonymous is built under the caller's key though it goes out as nobody, so its answer is cached as the caller's and served to the same read of a canister object that sends it as them",
+    "file": "src/options.ts",
+    "search": "    if (prepared.nobody) {\n      throw new TypeError(\n        `[ic-reactor] ${call}: ${prepared.name} is named in anonymous, so it goes out as nobody, which a read's key does not say. Call it directly, or through mutationOptions().`\n      )\n    }\n",
+    "replace": ""
+  },
+  {
+    "id": "917-attributes-agent-rolled-back-by-late-identity",
+    "package": "core",
+    "test": "tests/client-agents.test.ts",
+    "testName": "hands the renewed agent of a canister object's attributes to a call whose older identity arrives after the renewal",
+    "why": "an older identity answered after a renewed delegation replaces the attributes' renewed agent, so the call, and the ones after it, are signed with the old delegation",
+    "file": "src/client.ts",
+    "search": "        (kept.identity === identity || kept.asked > asked)\n",
+    "replace": "        kept.identity === identity\n"
+  },
+  {
+    "id": "917-attributes-agent-across-accounts",
+    "package": "core",
+    "test": "tests/client-agents.test.ts",
+    "testName": "never signs a call made with attributes as the account switched to and back from while its identity was asked for",
+    "why": "the attributes' kept agent is handed to any call asked for before it was built, whoever that call was made as, so a call made before a switch of account and back is signed as the account in between",
+    "file": "src/client.ts",
+    "search": "        kept.principal === principal &&\n",
+    "replace": ""
+  },
+  {
+    "id": "917-attributes-copied-by-slice",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "keeps its own copy of attributes given as Node Buffers, whose slice() shares their memory",
+    "why": "the attributes are copied with slice(), which for a Node Buffer is a view of the same memory, so what the app does to its buffers afterwards changes the sender_info that is sent",
+    "file": "src/canister.ts",
+    "search": "        data: new Uint8Array(given.data),\n        signature: new Uint8Array(given.signature),\n",
+    "replace": "        data: given.data.slice(),\n        signature: given.signature.slice(),\n"
   }
 ]

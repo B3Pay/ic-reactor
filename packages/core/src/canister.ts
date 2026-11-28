@@ -295,7 +295,8 @@ export function canisterFactory(
 
     // What every call through this canister object carries as its
     // `sender_info`: a copy, so that nothing done to the object the app holds
-    // changes what is sent.
+    // changes what is sent. `new Uint8Array(bytes)` copies where `slice()`
+    // does not for every Uint8Array: a Node Buffer's is a view of its memory.
     let attributes: SenderInfo | undefined
     if (given !== undefined) {
       const signer = given.signer ?? internals.attributesSigner()
@@ -305,8 +306,8 @@ export function canisterFactory(
         )
       }
       attributes = Object.freeze({
-        data: given.data.slice(),
-        signature: given.signature.slice(),
+        data: new Uint8Array(given.data),
+        signature: new Uint8Array(given.signature),
         signer: Principal.fromText(signer),
       })
     }

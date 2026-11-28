@@ -1097,10 +1097,9 @@ export async function signInWithAttributes(client: Client) {
     .canister<Accounts>(actor, { id: ACCOUNTS_ID, attributes })
     ._internet_identity_sign_in_finish()
 
-  // A direct call invalidates nothing, so ask the canister's reads again.
-  await client.queryClient.invalidateQueries({
-    queryKey: client.queryKey(accounts),
-  })
+  // A direct call invalidates nothing, so ask the reads again: every one, as
+  // `client` may be a view whose keys are the signed-out caller's (below).
+  await client.queryClient.invalidateQueries()
   return attributes
 }
 ```
@@ -1112,11 +1111,13 @@ passes the same `openIdProvider` to its `AuthClient`.
 - Call it straight from a click handler, with no `await` before it:
   Internet Identity's window opens only inside a click. Catch it as you catch
   `signIn()`: it rejects with the auth's own errors.
-- In a component, pass it what `useClient()` returns. After the sign-in the
-  key in the last step is the new caller's only on the client itself, so a
-  view from the render before it invalidates the anonymous caller's reads:
-  send the finish call through `mutationOptions` there, which invalidates the
-  canister's reads for every caller.
+- In a component, pass it what `useClient()` returns. That view keeps the
+  caller of its render, the signed-out one, after the sign-in: its
+  `queryKey(accounts)` is that caller's, and a write through its
+  `mutationOptions` is refused (`caller_changed`). So the last step
+  invalidates every read, and TanStack Query fetches again only those in use.
+  Handed the client itself, `{ queryKey: client.queryKey(accounts) }` narrows
+  it to the user's reads of the accounts canister.
 - That is the window transport. With `transport: "redirect"`, `AuthClient`
   asks for `signIn()` and `requestAttributes()` to be called on the page's
   load, not from a click, each flow on a route of its own (see

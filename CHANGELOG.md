@@ -29,8 +29,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   with what the identity provider signed. An app no longer builds a second
   client with an `AnonymousIdentity`, nor one with an `AttributesIdentity`,
   for it; both still work. A write no canister object names is refused while
-  nobody is signed in, as before. `AuthLike` gains an optional
-  `requestAttributes`, which `AuthClient` 11 has. No new exported name.
+  nobody is signed in, as before. `queryOptions` refuses a canister object
+  made with `attributes`, and an `{ update: "idempotent" }` read of a method
+  named in `anonymous`: neither read's key would say how it is sent.
+  `AuthLike` gains an optional `requestAttributes`, which `AuthClient` 11 has.
+  No new exported name.
 
 ### @ic-reactor/vite-plugin
 

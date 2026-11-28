@@ -213,7 +213,9 @@ export async function verifyEmail(client: Client) {
 - `anonymous` names updates only, and each goes out as the anonymous
   principal whoever is signed in, on a signed-out or `identity: "anonymous"`
   client too. A write it does not name is refused as before. A name that is
-  no method, or a query's, throws a `TypeError`.
+  no method, or a query's, throws a `TypeError`, and so does `queryOptions`
+  for an `{ update: "idempotent" }` read of a named one: its key would hold
+  a caller it is not sent as.
 - `client.requestAttributes({ keys, nonce, signIn? })` starts `signIn(signIn)`
   and the auth's `requestAttributes` in one synchronous run and resolves with
   `{ data, signature }` once both have; `signIn: false` asks for the

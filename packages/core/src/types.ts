@@ -246,9 +246,10 @@ export type Canister<A> = {
  *   TanStack Query was given last.
  * - `anonymous` names the updates anyone may send (a canister's sign-in
  *   nonce, say): on the canister object it makes, each of them goes out as
- *   the anonymous principal, whoever is signed in and when nobody is, however
- *   it is called (directly, through `mutationOptions`, or as an
- *   `{ update: "idempotent" }` read). Every other method is called as on any
+ *   the anonymous principal, whoever is signed in and when nobody is,
+ *   directly or through `mutationOptions`. `queryOptions` refuses an
+ *   `{ update: "idempotent" }` read of one, whose key would hold a caller it
+ *   is not sent as. Every other method is called as on any
  *   canister object, so a write nobody named is still refused
  *   (`unauthenticated`) while nobody is signed in. A name the service has no
  *   method for, or one of a `query` or `composite_query` (which a signed-out

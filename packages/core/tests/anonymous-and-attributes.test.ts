@@ -287,6 +287,28 @@ describe("anonymous: the updates anyone may send", () => {
     expect(() => make([1])).toThrow(/anonymous is a list of method names/)
     client.dispose()
   })
+
+  it("refuses an update read of a named method, whose key would hold a caller it is not sent as", () => {
+    const { replica } = accountsReplica()
+    const client = clientAs(replica, Ed25519KeyIdentity.generate())
+    const named = client.canister<accounts.Actor>(accounts.actor, {
+      id: ACCOUNTS,
+      anonymous: [START],
+    })
+    const plain = client.canister<accounts.Actor>(accounts.actor, {
+      id: ACCOUNTS,
+    })
+
+    expect(() =>
+      client.queryOptions(named, START, undefined, { update: "idempotent" })
+    ).toThrow(/is named in anonymous, so it goes out as nobody/)
+    // The same read of a canister object that sends it as the caller is
+    // built, under the caller's key.
+    expect(() =>
+      client.queryOptions(plain, START, undefined, { update: "idempotent" })
+    ).not.toThrow()
+    client.dispose()
+  })
 })
 
 describe("attributes: sender_info for the canister that checks it", () => {
@@ -330,6 +352,31 @@ describe("attributes: sender_info for the canister that checks it", () => {
     expect([...(info?.info ?? [])]).toEqual([...bundle().data])
     expect([...(info?.sig ?? [])]).toEqual([...bundle().signature])
     expect(senderInfoOf(sent[1])).toBeUndefined()
+    client.dispose()
+  })
+
+  it("keeps its own copy of attributes given as Node Buffers, whose slice() shares their memory", async () => {
+    const { replica } = accountsReplica()
+    const { sent, fetch } = recording(replica)
+    const client = createClient({
+      network: { host: replica.host, rootKey: replica.rootKey },
+      fetch,
+      identity: Ed25519KeyIdentity.generate(),
+    })
+    const data = Buffer.from(bundle().data)
+    const signature = Buffer.from(bundle().signature)
+    const proving = client.canister<accounts.Actor>(accounts.actor, {
+      id: ACCOUNTS,
+      attributes: { data, signature, signer: INTERNET_IDENTITY },
+    })
+    data.fill(0)
+    signature.fill(0)
+
+    await proving[FINISH]()
+
+    const info = senderInfoOf(sent[0])
+    expect([...(info?.info ?? [])]).toEqual([...bundle().data])
+    expect([...(info?.sig ?? [])]).toEqual([...bundle().signature])
     client.dispose()
   })
 

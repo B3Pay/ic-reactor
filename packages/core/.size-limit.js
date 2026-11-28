@@ -49,8 +49,8 @@ export default [
     // With the IC's time read again when a clock changes with the page open (after a refused ingress expiry, or an answer that fails the agent's own check of its time): measured 20,063 B (19,922 B before, +141 B), so the limit moved from 19,940 B to 20.07 kB.
     // With @icp-sdk/core 6.1.1 required and ic_env cookies that differ refused on a local page too: measured 20,078 B (20,063 B before, +15 B), so the limit moved from 20,070 B to 20.08 kB.
     // With client.onCall() and the CallEvent type (#1093): measured 20,628 B (20,078 B before, +550 B), so the limit moved from 20,080 B to 20.63 kB.
-    // With identity attributes through one client (#917: `anonymous` and `attributes` on a canister target, client.requestAttributes()): measured 21,654 B (20,628 B before, +1,026 B), so the limit moved from 20,630 B to 21.66 kB.
-    limit: "21.66 kB",
+    // With identity attributes through one client (#917: `anonymous` and `attributes` on a canister target, client.requestAttributes()): measured 21,706 B (20,628 B before, +1,078 B), so the limit moved from 20,630 B to 21.71 kB.
+    limit: "21.71 kB",
     gzip: true,
   },
 ]

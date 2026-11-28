@@ -1849,11 +1849,12 @@ export function createClientWith(
   >()
   /**
    * The agent of each call that carries attributes, by the attributes its
-   * canister object holds, with the identity it wraps (see `agentFor`).
+   * canister object holds, with the principal and identity it signs as and
+   * the request for that identity it was built on (see `agentFor`).
    */
   const attributed = new WeakMap<
     object,
-    { identity: Identity; agent: HttpAgent }
+    { principal: string; identity: Identity; agent: HttpAgent; asked: number }
   >()
   let identityRequests = 0
   const listeners = new Set<() => void>()
@@ -2227,11 +2228,20 @@ export function createClientWith(
 
     // A call that carries attributes is signed by the same identity, which
     // adds them to each request it signs. Its agent is kept by the attributes
-    // and serves no other call; a renewed delegation builds another.
+    // and serves no other call; a renewed delegation builds another, and an
+    // older identity answered after it gets that one, as below. The kept
+    // agent serves only its own principal: a call made before a switch of
+    // account and back is never signed as the account in between.
     const attributes = signing?.attributes
     if (attributes !== undefined) {
       const kept = attributed.get(attributes)
-      if (kept !== undefined && kept.identity === identity) return kept.agent
+      if (
+        kept !== undefined &&
+        kept.principal === principal &&
+        (kept.identity === identity || kept.asked > asked)
+      ) {
+        return kept.agent
+      }
       const agent = agentOf(
         new AttributesIdentity({
           inner: identity,
@@ -2242,7 +2252,7 @@ export function createClientWith(
           signer: { canisterId: attributes.signer },
         })
       )
-      attributed.set(attributes, { identity, agent })
+      attributed.set(attributes, { principal, identity, agent, asked })
       return agent
     }
 

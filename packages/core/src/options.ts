@@ -446,6 +446,14 @@ export function createBuilders(
         `[ic-reactor] ${call}: this canister object carries attributes, which a read's key does not. Call the method directly, or through mutationOptions().`
       )
     }
+    // A method named in `anonymous` goes out as nobody, while a read's key
+    // holds the caller: its answer would be cached as theirs, and served to
+    // the same read of a canister object that sends it as them.
+    if (prepared.nobody) {
+      throw new TypeError(
+        `[ic-reactor] ${call}: ${prepared.name} is named in anonymous, so it goes out as nobody, which a read's key does not say. Call it directly, or through mutationOptions().`
+      )
+    }
     // The read is made as the caller current now (or the one a view is
     // pinned to), and only ever as them: the key holds their principal, and
     // the query function asks for their agent, which is refused while someone
