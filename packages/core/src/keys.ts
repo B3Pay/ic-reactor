@@ -20,6 +20,18 @@
  *   uncertified answer is never served where a certified one was asked for. A
  *   prefix without it matches both.
  *
+ * Mutation keys:
+ *
+ *     ['ic-reactor', network, canisterId, method, (signing)]
+ *
+ * - `signing` is there for a write not signed as the caller: `"$anonymous"`
+ *   for a method its canister object names in `anonymous`, and
+ *   `"$attributes:<n>"` for a canister object made with `attributes`, `n` a
+ *   number of that object's own, so the attributes are never in a key.
+ *   TanStack hands a waiting run the options of a later render only under the
+ *   same key, so a write is never sent as other options sign. The options of
+ *   a view end with its caller.
+ *
  * Internal: not exported from the package entry.
  *
  * @module
@@ -42,6 +54,12 @@ export const INVALID = "$invalid"
 
 /** The canisterId segment of a `{ name }` target that did not resolve. */
 export const unresolvedSlot = (name: string): string => `$unresolved:${name}`
+
+/** The signing segment of a write sent as nobody. */
+export const NOBODY_TAG = "$anonymous"
+
+/** The signing segment of a write through the `n`th canister object made with `attributes`. */
+export const attributesTag = (n: number): string => `$attributes:${n}`
 
 /** Lower-case hex of `bytes`. */
 export const toHex = (bytes: Uint8Array): string => {

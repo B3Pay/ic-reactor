@@ -467,6 +467,21 @@ export function createBuilders(
         `[ic-reactor] ${call}: ${prepared.name} takes no arguments, so it has no page after its first.`
       )
     }
+    // Attributes are not in a read's key, so the answer to a read sent with
+    // them would be cached as the answer to the one sent without.
+    if (prepared.attributes !== undefined) {
+      throw new TypeError(
+        `[ic-reactor] ${call}: this canister object carries attributes, which a read's key does not. Call the method directly, or through mutationOptions().`
+      )
+    }
+    // A method named in `anonymous` goes out as nobody, while a read's key
+    // holds the caller: its answer would be cached as theirs, and served to
+    // the same read of a canister object that sends it as them.
+    if (prepared.nobody) {
+      throw new TypeError(
+        `[ic-reactor] ${call}: ${prepared.name} is named in anonymous, so it goes out as nobody, which a read's key does not say. Call it directly, or through mutationOptions().`
+      )
+    }
     // The read is made as the caller current now (or the one a view is
     // pinned to), and only ever as them: the key holds their principal, and
     // the query function asks for their agent, which is refused while someone
@@ -703,8 +718,9 @@ export function createBuilders(
           again
         )
       }
-      // A disposed client cancels every call itself (`client_disposed`).
-      if (caller === undefined && !internals.disposed()) {
+      // A disposed client cancels every call itself (`client_disposed`). A
+      // method sent as nobody needs no one to have started its run.
+      if (caller === undefined && !prepared.nobody && !internals.disposed()) {
         return refused(
           internals,
           fromCanister(
@@ -748,6 +764,7 @@ export function createBuilders(
         network,
         slotOf(record.resolve()),
         prepared.name,
+        ...(prepared.signing === undefined ? [] : [prepared.signing]),
       ] as const,
       // TanStack runs this first, before mutationFn, and hands what it
       // returns to onSettled. The caller it reads matters only where the
@@ -834,7 +851,9 @@ export function createBuilders(
     if (attempt === undefined || attempt.canister !== canister) {
       return undefined
     }
-    const { values, caller } = attempt
+    const { values } = attempt
+    // What went out as nobody, anyone may send again.
+    const caller = attempt.caller.nobody ? internals.current() : attempt.caller
     const arg = args.length > 1 ? values : values[0]
     if (
       typeof arg !== "object" ||
@@ -852,7 +871,7 @@ export function createBuilders(
     const sent = (attempt.encoded as { bytes: Uint8Array }).bytes
     return {
       arg,
-      from: caller.principal,
+      from: attempt.caller.principal,
       // A copy on every read: `send()` sends the attempt's own bytes, which
       // nothing outside the client can reach to change.
       get bytes() {

@@ -20,6 +20,23 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### @ic-reactor/core
 
+- Verified identity attributes go through one client (#917). A canister
+  target takes `anonymous`, the updates anyone may send (a sign-in nonce),
+  which go out as the anonymous principal whoever is signed in, and
+  `attributes`, which makes a canister object whose calls carry signed
+  attributes as their `sender_info`. `client.requestAttributes({ keys, nonce })`
+  starts the sign-in and the auth's `requestAttributes` together and resolves
+  with what the identity provider signed. An app no longer builds a second
+  client with an `AnonymousIdentity`, nor one with an `AttributesIdentity`,
+  for it; both still work. A write no canister object names is refused while
+  nobody is signed in, as before. `queryOptions` refuses a canister object
+  made with `attributes`, and an `{ update: "idempotent" }` read of a method
+  named in `anonymous`: neither read's key would say how it is sent. A
+  write's `mutationKey` does: `"$anonymous"` or `"$attributes:<n>"` after the
+  method, so TanStack Query never hands a write it holds back the options of
+  a canister object that signs it another way.
+  `AuthLike` gains an optional `requestAttributes`, which `AuthClient` 11 has.
+  No new exported name.
 - `client.queryOptions(canister, method, firstVars, { pages })` reads a list a
   canister serves in pages to its end, as one read. `pages(page, vars)` gives
   the variables of the next page, or `undefined` after the last, and the data

@@ -260,6 +260,85 @@ describe("the agent of a principal", () => {
     await expect(agentFor(client, principal)).resolves.toBe(renewed)
   })
 
+  it("hands the renewed agent of a canister object's attributes to a call whose older identity arrives after the renewal", async () => {
+    const replica = replicaWithWhoami()
+    const root = Ed25519KeyIdentity.generate()
+    const first = await delegate(root)
+    const second = await delegate(root)
+    const auth = createTestAuth({ identity: first })
+    const late = deferred()
+    let calls = 0
+    const client = clientOn(
+      replica,
+      withIdentity(auth, async () => {
+        calls += 1
+        if (calls > 1) return second
+        await late.promise
+        return first
+      })
+    )
+    const principal = client.caller()
+    // What a canister object made with attributes hands each of its calls.
+    const signing = {
+      attributes: Object.freeze({
+        data: Uint8Array.of(1, 2, 3),
+        signature: Uint8Array.of(4, 5, 6),
+        signer: root.getPrincipal(),
+      }),
+    }
+    const attributedFor = () =>
+      internalsOf(client).agentFor(principal, CALL, signing)
+
+    const slow = attributedFor()
+    const renewed = await attributedFor()
+    late.resolve()
+
+    await expect(slow).resolves.toBe(renewed)
+    await expect(attributedFor()).resolves.toBe(renewed)
+    // It is the attributes' own agent, not the principal's.
+    await expect(agentFor(client, principal)).resolves.not.toBe(renewed)
+  })
+
+  it("never signs a call made with attributes as the account switched to and back from while its identity was asked for", async () => {
+    const replica = replicaWithWhoami()
+    const alice = Ed25519KeyIdentity.generate()
+    const bob = Ed25519KeyIdentity.generate()
+    const auth = createTestAuth({ identity: alice })
+    const late = deferred()
+    let calls = 0
+    const client = clientOn(
+      replica,
+      withIdentity(auth, async () => {
+        calls += 1
+        // The first request, alice's, is answered after bob's.
+        if (calls === 1) await late.promise
+        return auth.getIdentity()
+      })
+    )
+    const signing = {
+      attributes: Object.freeze({
+        data: Uint8Array.of(1, 2, 3),
+        signature: Uint8Array.of(4, 5, 6),
+        signer: alice.getPrincipal(),
+      }),
+    }
+    const attributedFor = (principal: string) =>
+      internalsOf(client).agentFor(principal, CALL, signing)
+    const aliceText = alice.getPrincipal().toText()
+    const bobText = bob.getPrincipal().toText()
+
+    const slow = attributedFor(aliceText)
+    auth.switchTo(bob)
+    const bobs = await attributedFor(bobText)
+    auth.switchTo(alice)
+    late.resolve()
+
+    const agent = await slow
+    expect(agent).not.toBe(bobs)
+    expect((await agent.getPrincipal()).toText()).toBe(aliceText)
+    expect((await bobs.getPrincipal()).toText()).toBe(bobText)
+  })
+
   it("builds a new agent for a renewal the auth announces, without telling its own listeners", async () => {
     const replica = replicaWithWhoami()
     const root = Ed25519KeyIdentity.generate()

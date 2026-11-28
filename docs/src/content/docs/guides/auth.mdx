@@ -470,7 +470,7 @@ an id it generated or something it fetched, goes through
 result, and returns it on the return load. Call it in the same order relative
 to `signIn()` on every load, and keep the value JSON. It is a method of
 `AuthClient`, not of the client, so keep your own reference to it, as in
-[Identity attributes](#identity-attributes).
+[Your own reference to the AuthClient](#your-own-reference-to-the-authclient).
 
 `requestAttributes` keeps the nonce its callback returns by itself, so the
 canister that issues it is asked once. `@icp-sdk/auth` advises giving each
@@ -1049,34 +1049,110 @@ canister up. They pair the library with `@icp-sdk/auth` 7, whose
 `requestAttributes` takes the nonce as a promise; in 10 it takes a function
 that returns one, as below.
 
-The app's client calls every update as the signed-in user and attaches
-nothing to a call, so steps 1 and 3 each go through a second client on the
-same network, built for that one call and disposed after it:
+All three go through the app's one client:
 
-- Step 1 through a client built with `new AnonymousIdentity()` from
-  `@icp-sdk/core/agent`, which may send an update as the anonymous principal.
-  A client built with `identity: "anonymous"`, like a signed-out one, refuses
-  an update before it sends it.
-- Step 3 through a client built with an `AttributesIdentity` from
-  `@icp-sdk/core/identity`, which attaches `data` and `signature` to each call
-  it signs.
+- Step 1 through a canister object that names the nonce method in
+  `anonymous`. The client refuses an update while nobody is signed in, and
+  sends every other one as the signed-in user; a method named there goes out
+  as the anonymous principal either way. Only the methods you name do: every
+  other write of that canister object is called as before.
+- Step 2 with `client.requestAttributes()`, which starts the sign-in and the
+  request for attributes together.
+- Step 3 through a canister object made with `attributes`, whose calls carry
+  `data` and `signature` as their `sender_info`. Calls through any other
+  canister object carry nothing, so the attributes reach the canister that
+  checks them and no other.
 
-Step 2 needs the `AuthClient` itself, which the client does not hand out, so
-you keep your own reference to it.
+### Sign in with attributes
+
+```ts
+import type { Client } from "@ic-reactor/core"
+import { scopedKeys } from "@icp-sdk/auth/client"
+import { actor, type Actor as Accounts } from "./generated/accounts"
+
+const ACCOUNTS_ID = "be2us-64aaa-aaaaa-qaabq-cai"
+
+/**
+ * Signs in, has the accounts canister verify the user's name and email, and
+ * returns what Internet Identity signed.
+ */
+export async function signInWithAttributes(client: Client) {
+  // 1: the nonce is an update anyone may send, so it is named.
+  const accounts = client.canister<Accounts>(actor, {
+    id: ACCOUNTS_ID,
+    anonymous: ["_internet_identity_sign_in_start"],
+  })
+
+  // 2: the sign-in and the attributes, in the same interaction.
+  const attributes = await client.requestAttributes({
+    keys: scopedKeys({
+      openIdProvider: "google",
+      keys: ["name", "verified_email"],
+    }),
+    nonce: () => accounts._internet_identity_sign_in_start(),
+  })
+
+  // 3: the finish call, with the attributes as its sender_info.
+  await client
+    .canister<Accounts>(actor, { id: ACCOUNTS_ID, attributes })
+    ._internet_identity_sign_in_finish()
+
+  // A direct call invalidates nothing, so ask the reads again: every one, as
+  // `client` may be a view whose keys are the signed-out caller's (below).
+  await client.queryClient.invalidateQueries()
+  return attributes
+}
+```
+
+This imports `./generated/accounts`, the module `meant gen` writes for the
+accounts canister's `.did`. The client is one built with `auth`, whose factory
+passes the same `openIdProvider` to its `AuthClient`.
+
+- Call it straight from a click handler, with no `await` before it:
+  Internet Identity's window opens only inside a click. Catch it as you catch
+  `signIn()`: it rejects with the auth's own errors.
+- In a component, pass it what `useClient()` returns. That view keeps the
+  caller of its render, the signed-out one, after the sign-in: its
+  `queryKey(accounts)` is that caller's, and a write through its
+  `mutationOptions` is refused (`caller_changed`). So the last step
+  invalidates every read, and TanStack Query fetches again only those in use.
+  Handed the client itself, `{ queryKey: client.queryKey(accounts) }` narrows
+  it to the user's reads of the accounts canister.
+- That is the window transport. With `transport: "redirect"`, `AuthClient`
+  asks for `signIn()` and `requestAttributes()` to be called on the page's
+  load, not from a click, each flow on a route of its own (see
+  [Redirect sign-in](#redirect-sign-in)). So call it on each load of that
+  route: `requestAttributes()` keeps the nonce across the loads, so the
+  canister issues one.
+- For a user who is signed in already, skip the sign-in: pass
+  `signIn: false` to `client.requestAttributes()`, with a new nonce, then make
+  the finish call.
+- The attributes expire within minutes and are signed for one nonce: use them
+  at once, for the one call, and keep them nowhere.
+- A failure after the sign-in leaves the user signed in without the
+  attributes, so offer to try again.
+- `_internet_identity_sign_in_finish` answers `variant { ok; err : … }`, so
+  attributes the canister refuses reject as a `canister_err` whose `err.tag`
+  says why (see [Errors](/v4/guides/errors/)). On `Stale` or `UnknownNonce`,
+  ask for them again, with a new nonce. A signer the canister does not trust,
+  or a canister with no `trusted_attribute_signers`, traps instead: a
+  `rejected` error with reject code 5.
+- The signer is the canister that minted the sign-in: Internet Identity's,
+  `rdmx6-jaaaa-aaaaa-aaadq-cai`, on mainnet and in icp-cli's built-in one, or
+  the `identityProvider` canister the factory is handed. The client names it
+  by itself. Where your factory names another provider, or the network names
+  none, say which: `attributes: { ...attributes, signer: canisterId }`. The
+  accounts canister must list it in `trusted_attribute_signers`.
 
 ### Your own reference to the AuthClient
 
-Keep what each client's factory builds, beside the client:
+The client does not hand out its auth. For what only the `AuthClient` has
+(`memoize`, the session `getStatus()` keeps, notification consent), keep what
+each client's factory builds, beside the client:
 
 ```ts
 import { createClient, type Client } from "@ic-reactor/core"
 import { AuthClient } from "@icp-sdk/auth/client"
-
-/** The app's network, for its client and the clients built beside it. */
-export const network = "ic"
-
-/** Internet Identity's canister, where the factory is handed no provider. */
-const INTERNET_IDENTITY = "rdmx6-jaaaa-aaaaa-aaadq-cai"
 
 interface Built {
   /**
@@ -1085,8 +1161,6 @@ interface Built {
    */
   readonly client: Client
   readonly authClient: AuthClient
-  /** The canister that mints the sign-in, which signs the attributes too. */
-  readonly signer: string
 }
 
 // Keyed by the client's QueryClient, which every view of the client that
@@ -1100,14 +1174,10 @@ export const getAuthClient = (client: Client) =>
 export function createAppClient(): Client {
   let built: Built | undefined
   const client: Client = createClient({
-    network,
+    network: "ic",
     auth: (handed) => {
       const authClient = new AuthClient({ ...handed, openIdProvider: "google" })
-      built = {
-        client,
-        authClient,
-        signer: handed.identityProvider?.canisterId ?? INTERNET_IDENTITY,
-      }
+      built = { client, authClient }
       return authClient
     },
   })
@@ -1123,111 +1193,6 @@ on first use, so `getAuthClient(client)` is `undefined` on a server and until
 the client has built its auth. In a component, pass it what `useClient()`
 returns: that is a view of the provider's client, another object, but it has
 the client's `queryClient`, which the map is keyed by.
-
-### Sign in with attributes
-
-```ts
-import { createClient, type Canister, type Client } from "@ic-reactor/core"
-import { scopedKeys } from "@icp-sdk/auth/client"
-import { AnonymousIdentity, type Identity } from "@icp-sdk/core/agent"
-import { AttributesIdentity } from "@icp-sdk/core/identity"
-import { Principal } from "@icp-sdk/core/principal"
-import { getAuthClient, network } from "./auth-client"
-import { actor, type Actor as Accounts } from "./generated/accounts"
-
-const ACCOUNTS_ID = "be2us-64aaa-aaaaa-qaabq-cai"
-
-/** One call to the accounts canister as `identity`, through a client of its own. */
-async function callAs<T>(
-  identity: Identity,
-  call: (accounts: Canister<Accounts>) => Promise<T>
-): Promise<T> {
-  const client = createClient({ network, identity })
-  try {
-    return await call(client.canister<Accounts>(actor, { id: ACCOUNTS_ID }))
-  } finally {
-    client.dispose()
-  }
-}
-
-/**
- * Signs in, has the accounts canister verify the user's name and email, and
- * returns what Internet Identity signed.
- */
-export async function signInWithAttributes(app: Client) {
-  // Builds the auth if the client has not yet, and opens Internet Identity.
-  const signedIn = app.signIn()
-  const built = getAuthClient(app)
-  if (built === undefined) {
-    await signedIn // on a server it rejects, and says why
-    throw new Error("This client was not built by createAppClient")
-  }
-  const { client, authClient, signer } = built
-
-  // 1 and 2: the nonce, and the attributes in the same interaction.
-  const [, attributes] = await Promise.all([
-    signedIn,
-    authClient.requestAttributes({
-      keys: scopedKeys({
-        openIdProvider: "google",
-        keys: ["name", "verified_email"],
-      }),
-      nonce: () =>
-        callAs(new AnonymousIdentity(), (accounts) =>
-          accounts._internet_identity_sign_in_start()
-        ),
-    }),
-  ])
-
-  // 3: the finish call, with the attributes as its sender_info.
-  const identity = new AttributesIdentity({
-    inner: await authClient.getIdentity(),
-    attributes,
-    signer: { canisterId: Principal.fromText(signer) },
-  })
-  await callAs(identity, (accounts) =>
-    accounts._internet_identity_sign_in_finish()
-  )
-
-  // The app's client did not send that write, so it cannot invalidate for it.
-  // The key is the client's, for the user now signed in: `app` may be a view
-  // from a render before the sign-in, whose keys are the anonymous caller's.
-  await client.queryClient.invalidateQueries({
-    queryKey: client.queryKey(
-      client.canister<Accounts>(actor, { id: ACCOUNTS_ID })
-    ),
-  })
-  return attributes
-}
-```
-
-This imports `./auth-client`, the module above, and `./generated/accounts`,
-the module `meant gen` writes for the accounts canister's `.did`.
-
-- Call it straight from a click handler, with no `await` before it:
-  Internet Identity's window opens only inside a click. Catch it as you catch
-  `signIn()`.
-- That is the window transport. With `transport: "redirect"`, `AuthClient`
-  asks for `signIn()` and `requestAttributes()` to be called on the page's
-  load, not from a click, each flow on a route of its own (see
-  [Redirect sign-in](#redirect-sign-in)). So call it on each load of that
-  route: `requestAttributes()` keeps the nonce across the loads, so the
-  canister issues one.
-- For a user who is signed in already, skip the sign-in: call
-  `authClient.requestAttributes()` alone, with a new nonce, then the finish
-  call.
-- A failure after the sign-in leaves the user signed in without the
-  attributes, so offer to try again.
-- `_internet_identity_sign_in_finish` answers `variant { ok; err : … }`, so
-  attributes the canister refuses reject as a `canister_err` whose `err.tag`
-  says why (see [Errors](/v4/guides/errors/)). On `Stale` or `UnknownNonce`,
-  ask for them again, with a new nonce. A signer the canister does not trust,
-  or a canister with no `trusted_attribute_signers`, traps instead: a
-  `rejected` error with reject code 5.
-- The signer is the canister that minted the sign-in: Internet Identity's,
-  `rdmx6-jaaaa-aaaaa-aaadq-cai`, on mainnet and in icp-cli's built-in one, or
-  the `identityProvider` canister the factory is handed. The accounts canister
-  must list it in `trusted_attribute_signers`.
 
 ### Which attributes to ask for
 

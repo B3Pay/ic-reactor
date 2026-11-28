@@ -234,7 +234,7 @@ const badTarget = (target: unknown): TypeError =>
   )
 
 /** Validates principal text, and returns the reason it is not one. */
-const principalProblem = (text: string): string | undefined => {
+export const principalProblem = (text: string): string | undefined => {
   try {
     // `fromText` also accepts the JSON form `{"__principal__":"..."}`, which is
     // not an id: only the text it prints back is.
@@ -868,6 +868,23 @@ export interface IdentityProvider {
 export interface AuthNetwork {
   readonly agentOptions: AgentNetworkOptions
   readonly identityProvider?: IdentityProvider
+}
+
+/**
+ * The canister that signs the identity attributes of a sign-in on this
+ * network, as principal text: the identity provider {@link authNetworkFor}
+ * names, or Internet Identity's own id on mainnet, where it names none.
+ * `undefined` where nothing names one (a gap).
+ */
+export const attributesSignerFor = (
+  network: Network,
+  net: ResolvedNetwork
+): string | undefined => {
+  const resolution = authNetworkFor(network, net)
+  return (
+    resolution.network.identityProvider?.canisterId ??
+    (resolution.gap === undefined ? INTERNET_IDENTITY : undefined)
+  )
 }
 
 /** The result of {@link authNetworkFor}. */
