@@ -49,7 +49,7 @@ export default [
     // With the IC's time read again when a clock changes with the page open (after a refused ingress expiry, or an answer that fails the agent's own check of its time): measured 20,063 B (19,922 B before, +141 B), so the limit moved from 19,940 B to 20.07 kB.
     // With @icp-sdk/core 6.1.1 required and ic_env cookies that differ refused on a local page too: measured 20,078 B (20,063 B before, +15 B), so the limit moved from 20,070 B to 20.08 kB.
     // With client.onCall() and the CallEvent type (#1093): measured 20,628 B (20,078 B before, +550 B), so the limit moved from 20,080 B to 20.63 kB.
-    // With a read walked through its pages, queryOptions(..., { pages }): measured 20,983 B (20,628 B before, +355 B), so the limit moved from 20,630 B to 20.99 kB.
+    // With a read walked through its pages, queryOptions(..., { pages }): measured 20,988 B (20,628 B before, +360 B), so the limit moved from 20,630 B to 20.99 kB.
     limit: "20.99 kB",
     gzip: true,
   },

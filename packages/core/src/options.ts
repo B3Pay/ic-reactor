@@ -539,14 +539,19 @@ export function createBuilders(
             if (next === undefined) return all
             const values = valuesOf(prepared, next)
             const encoded = encodeArgs(prepared.args, values)
+            // Marked with the canister, as each page's own error is, so that
+            // `isReactorError(error, canister, method)` matches it.
             if (encoded.ok && sent.has(toHex(encoded.bytes))) {
-              throw createReactorError("invalid_args", {
-                method: prepared.name,
-                canisterId: slotOf(target),
-                code: "page_repeated",
-                reason:
-                  "pages() gave the variables of a page this read has asked for already, so it would never end",
-              })
+              throw fromCanister(
+                createReactorError("invalid_args", {
+                  method: prepared.name,
+                  canisterId: slotOf(target),
+                  code: "page_repeated",
+                  reason:
+                    "pages() gave the variables of a page this read has asked for already, so it would never end",
+                }),
+                canister as object
+              )
             }
             at = { vars: next, values, encoded }
           }

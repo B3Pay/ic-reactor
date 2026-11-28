@@ -7863,5 +7863,15 @@
     "file": "src/options.ts",
     "search": "  if (Object.keys(options).length === 1 && typeof pages === \"function\") {",
     "replace": "  if (typeof pages === \"function\") {"
+  },
+  {
+    "id": "pages-repeat-not-marked-with-its-canister",
+    "package": "core",
+    "test": "tests/paged-read.test.ts",
+    "testName": "rejects page_repeated, and sends nothing more, when pages names a page it has asked for",
+    "why": "the walk's own page_repeated error is thrown without its canister, so isReactorError(error, canister, method) is false for it while every page's error matches",
+    "file": "src/options.ts",
+    "search": "                canister as object\n              )\n            }\n            at = { vars: next, values, encoded }\n",
+    "replace": "                undefined\n              )\n            }\n            at = { vars: next, values, encoded }\n"
   }
 ]

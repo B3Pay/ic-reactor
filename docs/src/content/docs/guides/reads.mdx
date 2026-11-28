@@ -474,32 +474,39 @@ as one read, give `queryOptions` the first page's arguments and `pages`, a
 function from a page to the arguments of the page after it, or `undefined`
 after the last.
 
+This reads every ckBTC transaction of an account from the ckBTC index, which
+answers `get_account_transactions` newest first, a page at a time, and starts
+the next page after the transaction it is given:
+
 ```tsx
 import { useClient } from "@ic-reactor/react"
 import { useQuery } from "@tanstack/react-query"
-import { actor, type Actor } from "./generated/icp_ledger"
+import { actor, type Account, type Actor } from "./generated/icrc1_index"
 
-export function BlocksSince({ start }: { start: bigint }) {
+export function History({ account }: { account: Account }) {
   const client = useClient()
-  const ledger = client.canister<Actor>(actor, {
-    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  const index = client.canister<Actor>(actor, {
+    id: "n5wcd-faaaa-aaaar-qaaea-cai",
   })
-  const blocks = useQuery({
+  const history = useQuery({
     ...client.queryOptions(
-      ledger,
-      "query_blocks",
-      { start, length: 100n },
+      index,
+      "get_account_transactions",
+      { account, start: null, max_results: 100n },
       {
-        // The page after this one, until the chain has no block past it.
-        pages: (page, { start, length }) =>
-          start + length < page.chain_length
-            ? { start: start + length, length }
-            : undefined,
+        // The page after this one starts after its last transaction, until
+        // the account's oldest is in.
+        pages: (page, vars) => {
+          const last = page.transactions.at(-1)
+          return last === undefined || last.id === page.oldest_tx_id
+            ? undefined
+            : { ...vars, start: last.id }
+        },
       }
     ),
-    select: (pages) => pages.flatMap((page) => page.blocks),
+    select: (pages) => pages.flatMap((page) => page.transactions),
   })
-  return <p>{blocks.data?.length ?? "…"} blocks</p>
+  return <p>{history.data?.length ?? "…"} transactions</p>
 }
 ```
 
@@ -522,6 +529,11 @@ export function BlocksSince({ start }: { start: bigint }) {
 `{ update: "idempotent" }` has no pages. A method without arguments has no
 second page to ask for, and does not compile. To load pages one at a time as
 a person scrolls, use an infinite query instead.
+
+A ledger's own `query_blocks` is no such list: for the blocks it has archived
+it answers with ranges that an archive canister serves, and a walk of its
+pages would leave those blocks out. The example under
+[Infinite queries](#infinite-queries) reads them too.
 
 ## Infinite queries
 

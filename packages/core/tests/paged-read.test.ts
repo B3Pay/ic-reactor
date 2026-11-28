@@ -11,6 +11,7 @@ import {
   isCancelledError,
   skipToken,
 } from "@tanstack/query-core"
+import { isReactorError } from "../src/errors.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
 import {
   ARCHIVE,
@@ -221,15 +222,19 @@ describe("a read walked through its pages", () => {
         }),
       }
     )
-    await expect(
-      client.queryClient.fetchQuery({ ...walk, retry: false })
-    ).rejects.toMatchObject({
+    const repeated = await client.queryClient
+      .fetchQuery({ ...walk, retry: false })
+      .catch((error: unknown) => error)
+    expect(repeated).toMatchObject({
       kind: "invalid_args",
       code: "page_repeated",
       method: "get_blocks",
       canisterId: ARCHIVE,
       mayHaveExecuted: false,
     })
+    // Marked with the canister, as a page's own error is: the guard's
+    // three-argument form matches it.
+    expect(isReactorError(repeated, ledger, "get_blocks")).toBe(true)
     expect(requestsFor(replica, "get_blocks")).toHaveLength(2)
     // The same variables as the page before are a repeat as well.
     const still = client.queryOptions(
