@@ -1156,8 +1156,8 @@
     "testName": "is not sent again as somebody else",
     "why": "a re-send signed by whoever is signed in when it goes out, so a user who switched account during the wait pays for the first user's transfer",
     "file": "src/call.ts",
-    "search": "          internals.agentFor(caller.principal, where),",
-    "replace": "          internals.agentFor(internals.current().principal, where),"
+    "search": "          internals.agentFor(caller.principal, where, method),",
+    "replace": "          internals.agentFor(internals.current().principal, where, method),"
   },
   {
     "id": "ir9-management-reject-2-not-executed-2",
@@ -1848,8 +1848,8 @@
       },
       {
         "file": "src/call.ts",
-        "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-        "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
+        "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where, method),\n          signal\n        )\n",
+        "replace": "        agent = await internals.agentFor(caller.principal, where, method)\n"
       }
     ]
   },
@@ -5178,8 +5178,8 @@
     "testName": "still waiting for its caller's identity",
     "why": "the wait for the caller's agent not ended by the timeout, so a call whose identity never arrives waits forever",
     "file": "src/call.ts",
-    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-    "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
+    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where, method),\n          signal\n        )\n",
+    "replace": "        agent = await internals.agentFor(caller.principal, where, method)\n"
   },
   {
     "id": "875-timeout-direct-call-ignores-target",
@@ -5238,8 +5238,8 @@
     "testName": "a read aborted while it waits for its caller's identity",
     "why": "the wait for the caller's agent not ended by a read's abort signal, so an aborted read keeps waiting for an identity that may never come",
     "file": "src/call.ts",
-    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-    "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
+    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where, method),\n          signal\n        )\n",
+    "replace": "        agent = await internals.agentFor(caller.principal, where, method)\n"
   },
   {
     "id": "875-timeout-resend-loses-unknown",
@@ -7823,5 +7823,55 @@
         "replace": "        out = true\n        if (sends.count !== undefined) sends.count += 1\n        reply = await dispatch("
       }
     ]
+  },
+  {
+    "id": "917-anonymous-covers-unnamed-writes",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "sends a named update while nobody is signed in, and still refuses the writes nobody named",
+    "why": "a canister object that names one anonymous method sends every method as nobody, so a write nobody named goes out while nobody is signed in instead of being refused unauthenticated",
+    "file": "src/canister.ts",
+    "search": "              ...(nobody.has(name) ? { nobody: true as const } : {}),\n",
+    "replace": "              nobody: true as const,\n"
+  },
+  {
+    "id": "917-nobody-cancelled-by-caller-check",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "sends it as nobody through an auth that is signed in, and when the person signs in while it waits",
+    "why": "a call sent as nobody is checked against the current caller like any other, so it is cancelled caller_changed whenever somebody is signed in",
+    "file": "src/client.ts",
+    "search": "      if (nobody) return\n",
+    "replace": ""
+  },
+  {
+    "id": "917-view-refuses-nobody-write",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "sends it from a view of a caller who is no longer current, whose other writes are refused",
+    "why": "a view refuses a write of a method sent as nobody once its principal is no longer current, though that write has no caller to have changed",
+    "file": "src/client.ts",
+    "search": "          if (now !== principal && !methodOf(record, method, \"\").nobody) {\n",
+    "replace": "          if (now !== principal) {\n"
+  },
+  {
+    "id": "917-attributes-agent-serves-other-calls",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "carries the attributes on the calls of that canister object, signed by the caller, and on no other call",
+    "why": "the agent that adds the attributes is kept as the principal's agent, so every later call of that caller carries them to whatever canister it goes to",
+    "file": "src/client.ts",
+    "search": "      attributed.set(attributes, { identity, agent })\n",
+    "replace": "      attributed.set(attributes, { identity, agent })\n      agents.set(principal, { identity, agent, asked })\n"
+  },
+  {
+    "id": "917-attributes-requested-after-an-await",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "starts the sign-in and the request in one synchronous run, with the canister's nonce, and the finish call verifies as the person",
+    "why": "the request for attributes starts after an await, outside the click's synchronous run, so the identity provider opens a second window or the browser blocks it",
+    "file": "src/client.ts",
+    "search": "      const signedIn = signIn === false ? undefined : client.signIn(signIn)\n",
+    "replace": "      const signedIn = signIn === false ? undefined : client.signIn(signIn)\n      await null\n"
   }
 ]

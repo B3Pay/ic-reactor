@@ -26,6 +26,7 @@ import {
   HttpAgent,
   type Identity,
 } from "@icp-sdk/core/agent"
+import { AttributesIdentity } from "@icp-sdk/core/identity"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
 import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
 import {
@@ -41,6 +42,7 @@ import { KEY_ROOT } from "./keys.js"
 import {
   agentOptionsFor,
   agentUrlOf,
+  attributesSignerFor,
   authNetworkFor,
   checkKeys,
   resolveCanisterId,
@@ -55,6 +57,7 @@ import {
   retriedWrite,
   slotOf,
   type CallRequest,
+  type PreparedMethod,
   type Reported,
 } from "./call.js"
 import { describe, methodOf, readTarget, recordOf } from "./canister.js"
@@ -140,6 +143,15 @@ export interface AuthLike {
   subscribe(listener: () => void): () => void
   signIn(options?: unknown): Promise<unknown>
   signOut(options?: unknown): Promise<unknown>
+  /**
+   * Asks the identity provider for signed attributes of the person (their
+   * verified email, say), as `AuthClient` 11 does. Optional: an auth without
+   * it has {@link Client.requestAttributes} reject.
+   */
+  requestAttributes?(params: {
+    keys: string[]
+    nonce: () => Promise<Uint8Array>
+  }): Promise<{ data: Uint8Array; signature: Uint8Array }>
   /** Releases what the auth holds. Called once, from {@link Client.dispose}. */
   dispose?(): void
 }
@@ -512,6 +524,50 @@ export interface Client {
    * `AuthClient`'s `{ returnTo }`). Rejects like {@link Client.signIn}.
    */
   signOut(options?: unknown): Promise<void>
+  /**
+   * Signs the person in and asks the identity provider for signed attributes
+   * of them, such as `verified_email`, in one step: both requests are started
+   * in the same synchronous run, so call it from a click and the person sees
+   * one window, and the attributes are signed for the identity they pick in
+   * it. `signIn` is passed on to the auth's `signIn()` as
+   * {@link Client.signIn} passes its options; `signIn: false` asks for the
+   * attributes alone, for a person who is signed in already.
+   *
+   * `nonce` produces the 32 bytes the canister issued for this request, and
+   * runs while the window opens. The canister's nonce method is usually an
+   * update anyone may send: name it in `anonymous` on a canister object and
+   * pass `() => canister.method()`.
+   *
+   * Resolves with the signed attributes once both have: pass them as
+   * `attributes` to `client.canister()` for the canister that checks them,
+   * whose calls then carry them as `sender_info`. They are bytes the canister
+   * reads, and they expire within minutes: use them at once, keep them
+   * nowhere.
+   *
+   * Rejects like {@link Client.signIn}, with the auth's own errors, when
+   * either request fails (the sign-in's first), and with a `TypeError` when
+   * the auth has no `requestAttributes`.
+   *
+   * @example
+   * ```ts
+   * const accounts = client.canister<Actor>(actor, {
+   *   id,
+   *   anonymous: ["_internet_identity_sign_in_start"],
+   * })
+   * const attributes = await client.requestAttributes({
+   *   keys: ["verified_email"],
+   *   nonce: () => accounts._internet_identity_sign_in_start(),
+   * })
+   * await client
+   *   .canister<Actor>(actor, { id, attributes })
+   *   ._internet_identity_sign_in_finish()
+   * ```
+   */
+  requestAttributes(params: {
+    readonly keys: readonly string[]
+    readonly nonce: () => Promise<Uint8Array>
+    readonly signIn?: unknown
+  }): Promise<{ readonly data: Uint8Array; readonly signature: Uint8Array }>
   /**
    * Releases everything the client holds: it stops listening to its auth and
    * disposes it, clears the `QueryClient`, and drops its agents. Calling it
@@ -1067,6 +1123,11 @@ export interface Caller {
    * `identity: "anonymous"` never is.
    */
   readonly authenticated: boolean
+  /**
+   * Set on the one caller of the methods a canister object names in
+   * `anonymous`: the anonymous principal, sent whoever is current.
+   */
+  readonly nobody?: true
 }
 
 /** The call an agent is asked for, named in the error that cancels it. */
@@ -1085,6 +1146,12 @@ export interface ClientInternals {
   readonly maxElements: number
   /** Who calls now. Reads the auth (building it on first use, in a browser). */
   current(): Caller
+  /**
+   * The canister that signs identity attributes on this network, as principal
+   * text, or `undefined` where nothing names an identity provider: what a
+   * canister object made with `attributes` that name no `signer` is given.
+   */
+  attributesSigner(): string | undefined
   /**
    * Whether {@link Client.dispose} has run. The call path asks it before
    * anything else, so that every call made on a disposed client is cancelled
@@ -1207,8 +1274,26 @@ export interface ClientInternals {
    * agent's own check of the answer. The call path and `client.time()` have
    * the agent read the time then (`resync`).
    */
-  agentFor(principal: string, context: AgentContext): Promise<HttpAgent>
+  agentFor(
+    principal: string,
+    context: AgentContext,
+    signing?: Signing
+  ): Promise<HttpAgent>
 }
+
+/**
+ * How a call is signed when not simply as its caller: what
+ * {@link ClientInternals.agentFor} reads of the call's method.
+ *
+ * - `nobody`: as the anonymous principal, whoever is current. The agent is
+ *   the anonymous one, and the check that the caller is still current is left
+ *   out: the call has no caller to change.
+ * - `attributes`: as `principal`, with the attributes in each `call` and
+ *   `query` request as its `sender_info`. Such an agent is kept by the
+ *   attributes it carries, and built again once the principal's identity is
+ *   another object (a renewed delegation).
+ */
+export type Signing = Pick<PreparedMethod, "nobody" | "attributes">
 
 const INTERNALS = new WeakMap<Client, ClientInternals>()
 
@@ -1762,6 +1847,14 @@ export function createClientWith(
     string,
     { identity: Identity; agent: HttpAgent; asked: number }
   >()
+  /**
+   * The agent of each call that carries attributes, by the attributes its
+   * canister object holds, with the identity it wraps (see `agentFor`).
+   */
+  const attributed = new WeakMap<
+    object,
+    { identity: Identity; agent: HttpAgent }
+  >()
   let identityRequests = 0
   const listeners = new Set<() => void>()
   let auth: AuthLike | undefined
@@ -2042,73 +2135,9 @@ export function createClientWith(
     }
   }
 
-  const identityFor = (principal: string): Promise<Identity> => {
-    if (fixedIdentity !== undefined) return Promise.resolve(fixedIdentity)
-    if (principal === ANONYMOUS) return Promise.resolve(anonymousIdentity)
-    // `current()` named this principal, so the auth exists and is signed in.
-    return (auth as AuthLike).getIdentity()
-  }
-
-  const agentFor = async (
-    principal: string,
-    context: AgentContext
-  ): Promise<HttpAgent> => {
-    const where = { method: context.method, canisterId: context.canisterId }
-    const assertCurrent = (): void => {
-      if (disposed) {
-        throw createReactorError("cancelled", {
-          ...where,
-          code: "client_disposed",
-          reason: "the client was disposed before the call was sent",
-        })
-      }
-      const now = current().principal
-      if (now !== principal) {
-        throw createReactorError("cancelled", {
-          ...where,
-          code: "caller_changed",
-          reason: `the call was made as ${principal}, but the caller is now ${now}; it was not sent`,
-        })
-      }
-    }
-
-    assertCurrent()
-    const asked = ++identityRequests
-    let identity: Identity
-    try {
-      identity = await identityFor(principal)
-    } catch (cause) {
-      assertCurrent()
-      throw createReactorError("unauthenticated", {
-        ...where,
-        code: "identity_unavailable",
-        reason: `the auth could not provide the identity of ${principal}`,
-        cause,
-      })
-    }
-    // The identity took time to arrive: whoever is current now decides.
-    assertCurrent()
-    const signer = identity.getPrincipal().toText()
-    if (signer !== principal) {
-      throw createReactorError("cancelled", {
-        ...where,
-        code: "caller_changed",
-        reason: `the call was made as ${principal}, but the auth's identity is ${signer}; it was not sent`,
-      })
-    }
-
-    // The same identity object reuses the agent. A newer one (a renewed
-    // delegation) replaces it. An older one that arrives after a newer one was
-    // installed, because its request was answered late, gets the newer agent:
-    // a replaced agent is never handed out again.
-    const entry = agents.get(principal)
-    if (
-      entry !== undefined &&
-      (entry.identity === identity || entry.asked > asked)
-    ) {
-      return entry.agent
-    }
-    const agent = HttpAgent.createSync({
+  /** An agent that signs with `identity`, as every agent of the client is built. */
+  const agentOf = (identity: Identity): HttpAgent =>
+    HttpAgent.createSync({
       ...agentOptionsFor(network),
       // The agent signs outside its own error handling: a signer that fails
       // is thrown as a request that could not be signed (`notSigned`), never
@@ -2136,12 +2165,107 @@ export function createClientWith(
       // `ClientInternals.agentFor` for how the call path recovers from that.
       retryTimes: 0,
     })
+
+  const identityFor = (principal: string): Promise<Identity> => {
+    if (fixedIdentity !== undefined) return Promise.resolve(fixedIdentity)
+    if (principal === ANONYMOUS) return Promise.resolve(anonymousIdentity)
+    // `current()` named this principal, so the auth exists and is signed in.
+    return (auth as AuthLike).getIdentity()
+  }
+
+  const agentFor = async (
+    principal: string,
+    context: AgentContext,
+    signing?: Signing
+  ): Promise<HttpAgent> => {
+    const where = { method: context.method, canisterId: context.canisterId }
+    const nobody = signing?.nobody === true
+    const assertCurrent = (): void => {
+      if (disposed) {
+        throw createReactorError("cancelled", {
+          ...where,
+          code: "client_disposed",
+          reason: "the client was disposed before the call was sent",
+        })
+      }
+      // Sent as nobody: there is no caller who could have changed.
+      if (nobody) return
+      const now = current().principal
+      if (now !== principal) {
+        throw createReactorError("cancelled", {
+          ...where,
+          code: "caller_changed",
+          reason: `the call was made as ${principal}, but the caller is now ${now}; it was not sent`,
+        })
+      }
+    }
+
+    assertCurrent()
+    const asked = ++identityRequests
+    let identity: Identity
+    try {
+      identity = await (nobody ? anonymousIdentity : identityFor(principal))
+    } catch (cause) {
+      assertCurrent()
+      throw createReactorError("unauthenticated", {
+        ...where,
+        code: "identity_unavailable",
+        reason: `the auth could not provide the identity of ${principal}`,
+        cause,
+      })
+    }
+    // The identity took time to arrive: whoever is current now decides.
+    assertCurrent()
+    const signer = identity.getPrincipal().toText()
+    if (signer !== principal) {
+      throw createReactorError("cancelled", {
+        ...where,
+        code: "caller_changed",
+        reason: `the call was made as ${principal}, but the auth's identity is ${signer}; it was not sent`,
+      })
+    }
+
+    // A call that carries attributes is signed by the same identity, which
+    // adds them to each request it signs. Its agent is kept by the attributes
+    // and serves no other call; a renewed delegation builds another.
+    const attributes = signing?.attributes
+    if (attributes !== undefined) {
+      const kept = attributed.get(attributes)
+      if (kept !== undefined && kept.identity === identity) return kept.agent
+      const agent = agentOf(
+        new AttributesIdentity({
+          inner: identity,
+          attributes: {
+            data: attributes.data,
+            signature: attributes.signature,
+          },
+          signer: { canisterId: attributes.signer },
+        })
+      )
+      attributed.set(attributes, { identity, agent })
+      return agent
+    }
+
+    // The same identity object reuses the agent. A newer one (a renewed
+    // delegation) replaces it. An older one that arrives after a newer one was
+    // installed, because its request was answered late, gets the newer agent:
+    // a replaced agent is never handed out again.
+    const entry = agents.get(principal)
+    if (
+      entry !== undefined &&
+      (entry.identity === identity || entry.asked > asked)
+    ) {
+      return entry.agent
+    }
+    const agent = agentOf(identity)
     agents.set(principal, { identity, agent, asked })
     return agent
   }
 
   /** The auth a sign-in or sign-out goes through, or why there is none. */
-  const authFor = (call: "signIn" | "signOut"): AuthLike => {
+  const authFor = (
+    call: "signIn" | "signOut" | "requestAttributes"
+  ): AuthLike => {
     if (disposed) {
       throw new Error(`[ic-reactor] ${call}() on a disposed client.`)
     }
@@ -2242,6 +2366,7 @@ export function createClientWith(
     maxDepth,
     maxElements,
     current,
+    attributesSigner: () => attributesSignerFor(options.network, network),
     disposed: () => disposed,
     mutationCallers,
     ownMutationFns,
@@ -2360,12 +2485,13 @@ export function createClientWith(
           context?: unknown
         ) {
           const now = current().principal
-          if (now !== principal) {
-            const record = recordOf(
-              canister,
-              internals,
-              "client.mutationOptions()"
-            )
+          // A method sent as nobody has no caller to have changed.
+          const record = recordOf(
+            canister,
+            internals,
+            "client.mutationOptions()"
+          )
+          if (now !== principal && !methodOf(record, method, "").nobody) {
             const target = record.resolve()
             const where = {
               method: String(method),
@@ -2506,6 +2632,54 @@ export function createClientWith(
       } finally {
         onAuthChange()
       }
+    },
+    async requestAttributes(params): Promise<{
+      readonly data: Uint8Array
+      readonly signature: Uint8Array
+    }> {
+      const call = "client.requestAttributes()"
+      const source = authFor("requestAttributes")
+      if (typeof source.requestAttributes !== "function") {
+        throw new TypeError(
+          `[ic-reactor] ${call}: this client's auth has no requestAttributes().`
+        )
+      }
+      const { keys, nonce, signIn } = (
+        typeof params === "object" && params !== null ? params : {}
+      ) as Record<string, unknown>
+      if (
+        !Array.isArray(keys) ||
+        keys.length === 0 ||
+        !keys.every((key) => typeof key === "string") ||
+        typeof nonce !== "function"
+      ) {
+        throw new TypeError(
+          `[ic-reactor] ${call} takes { keys, nonce }, got ${describe(params)}.`
+        )
+      }
+      // Both take their place with the identity provider before anything is
+      // awaited: one window, and attributes signed for the identity picked
+      // in it.
+      const signedIn = signIn === false ? undefined : client.signIn(signIn)
+      const requested = source.requestAttributes({
+        keys: [...(keys as string[])],
+        nonce: nonce as () => Promise<Uint8Array>,
+      })
+      // Both settle before either is reported, so that the failure of one
+      // leaves no rejection of the other unhandled.
+      const [session, attributes] = await Promise.allSettled([
+        signedIn,
+        requested,
+      ])
+      if (session.status === "rejected") throw session.reason
+      if (attributes.status === "rejected") throw attributes.reason
+      const { data, signature } = asRecord(attributes.value)
+      if (!(data instanceof Uint8Array) || !(signature instanceof Uint8Array)) {
+        throw new TypeError(
+          `[ic-reactor] ${call}: the auth resolved with ${describe(attributes.value)}, not { data, signature } as bytes.`
+        )
+      }
+      return Object.freeze({ data, signature })
     },
     dispose(): void {
       if (disposed) return

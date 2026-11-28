@@ -14,14 +14,21 @@
  */
 import { serviceMethods, type AnyFieldSchema } from "@meantjs/schema"
 import type { ClientInternals } from "./client.js"
+import { Principal } from "@icp-sdk/core/principal"
 import {
   invoke,
+  isWrite,
   prepareMethod,
   type PreparedMethod,
   type ResolvedTarget,
+  type SenderInfo,
 } from "./call.js"
 import { unresolvedSlot } from "./keys.js"
-import { resolveCanisterId, type CanisterIdTarget } from "./network.js"
+import {
+  principalProblem,
+  resolveCanisterId,
+  type CanisterIdTarget,
+} from "./network.js"
 
 /**
  * What one run of a mutation resolved, in one synchronous step when it
@@ -143,7 +150,21 @@ export function methodOf(
   return prepared
 }
 
-const TARGET_KEYS = new Set(["id", "name", "certified", "timeoutMs"])
+const TARGET_KEYS = new Set([
+  "id",
+  "name",
+  "certified",
+  "timeoutMs",
+  "anonymous",
+  "attributes",
+])
+
+/** The `attributes` of a canister target, as the app gave them. */
+interface GivenAttributes {
+  readonly data: Uint8Array
+  readonly signature: Uint8Array
+  readonly signer?: string
+}
 
 /**
  * Whether `value` is not a `timeoutMs`: a number of milliseconds from 1 to
@@ -164,11 +185,15 @@ export function readTarget(
   readonly target: CanisterIdTarget
   readonly certified: boolean
   readonly timeoutMs?: number
+  /** The methods named `anonymous`, each once, in order. */
+  readonly anonymous: readonly string[]
+  /** The `attributes` object itself: the same one gives the same canister object. */
+  readonly attributes?: GivenAttributes
   readonly memoKey: string
 } {
   const bad = (why: string) =>
     new TypeError(
-      `[ic-reactor] ${what} takes { id } or { name }, with an optional certified: boolean and timeoutMs; ${why}, got ${describe(target)}.`
+      `[ic-reactor] ${what} takes { id } or { name }, with an optional certified: boolean, timeoutMs, and anonymous or attributes; ${why}, got ${describe(target)}.`
     )
   if (typeof target !== "object" || target === null) {
     throw bad("the target is not an object")
@@ -176,11 +201,38 @@ export function readTarget(
   const record = target as Record<string, unknown>
   const unknown = Object.keys(record).filter((key) => !TARGET_KEYS.has(key))
   if (unknown.length > 0) throw bad(`it has no option ${unknown.join(", ")}`)
-  const { id, name, certified, timeoutMs } = record
+  const { id, name, certified, timeoutMs, anonymous, attributes } = record
   if (certified !== undefined && typeof certified !== "boolean") {
     throw bad("certified is a boolean")
   }
   if (badTimeout(timeoutMs)) throw bad("timeoutMs is 1 to 2147483647 ms")
+  if (
+    anonymous !== undefined &&
+    !(
+      Array.isArray(anonymous) &&
+      anonymous.every((method) => typeof method === "string")
+    )
+  ) {
+    throw bad("anonymous is a list of method names")
+  }
+  if (attributes !== undefined) {
+    const { data, signature, signer } = (
+      typeof attributes === "object" && attributes !== null ? attributes : {}
+    ) as Record<string, unknown>
+    if (!(data instanceof Uint8Array) || !(signature instanceof Uint8Array)) {
+      throw bad("attributes is { data, signature } as bytes")
+    }
+    if (
+      signer !== undefined &&
+      (typeof signer !== "string" || principalProblem(signer) !== undefined)
+    ) {
+      throw bad("attributes.signer is principal text")
+    }
+    if (anonymous !== undefined && anonymous.length > 0) {
+      throw bad("give one of anonymous and attributes")
+    }
+  }
+  const named = [...new Set((anonymous ?? []) as string[])].sort()
   const hasId = id !== undefined
   const hasName = name !== undefined
   if (hasId === hasName) throw bad("give exactly one of id and name")
@@ -190,7 +242,11 @@ export function readTarget(
   const rest = {
     certified: flag,
     timeoutMs: timeoutMs as number | undefined,
-    memoKey: `${hasId ? "id" : "name"}\u0000${(id ?? name) as string}\u0000${flag}\u0000${timeoutMs as number}`,
+    anonymous: named,
+    attributes: attributes as GivenAttributes | undefined,
+    memoKey:
+      `${hasId ? "id" : "name"}\u0000${(id ?? name) as string}\u0000${flag}\u0000${timeoutMs as number}` +
+      (named.length > 0 ? `\u0000${JSON.stringify(named)}` : ""),
   }
   return {
     target: hasId ? { id: id as string } : { name: name as string },
@@ -207,17 +263,53 @@ export function canisterFactory(
   internals: ClientInternals
 ): (service: unknown, target: unknown) => object {
   const memo = new WeakMap<object, Map<string, object>>()
+  /** The memo of the canister objects made with each `attributes` object. */
+  const withAttributes = new WeakMap<
+    object,
+    WeakMap<object, Map<string, object>>
+  >()
 
   return (service, rawTarget) => {
-    const { target, certified, timeoutMs, memoKey } = readTarget(rawTarget)
+    const {
+      target,
+      certified,
+      timeoutMs,
+      memoKey,
+      anonymous,
+      attributes: given,
+    } = readTarget(rawTarget)
     if (typeof service !== "object" || service === null) {
       throw new TypeError(
         `[ic-reactor] client.canister() takes the service schema of a generated module (its \`actor\` export), got ${describe(service)}.`
       )
     }
-    let byTarget = memo.get(service)
+    let services = memo
+    if (given !== undefined) {
+      let made = withAttributes.get(given)
+      if (made === undefined) withAttributes.set(given, (made = new WeakMap()))
+      services = made
+    }
+    let byTarget = services.get(service)
     const hit = byTarget?.get(memoKey)
     if (hit !== undefined) return hit
+
+    // What every call through this canister object carries as its
+    // `sender_info`: a copy, so that nothing done to the object the app holds
+    // changes what is sent.
+    let attributes: SenderInfo | undefined
+    if (given !== undefined) {
+      const signer = given.signer ?? internals.attributesSigner()
+      if (signer === undefined) {
+        throw new TypeError(
+          "[ic-reactor] client.canister(): this network names no identity provider; pass attributes.signer, the canister that signed them."
+        )
+      }
+      attributes = Object.freeze({
+        data: given.data.slice(),
+        signature: given.signature.slice(),
+        signer: Principal.fromText(signer),
+      })
+    }
 
     // An `{ id }` that is not principal text is a programmer error: a
     // TypeError that names it, now, rather than a failure of some later call.
@@ -227,6 +319,7 @@ export function canisterFactory(
       fixed = { ok: true, id: target.id }
     }
 
+    const nobody = new Set(anonymous)
     let methods: ReadonlyMap<string, CanisterMethod>
     try {
       methods = new Map(
@@ -237,6 +330,19 @@ export function canisterFactory(
           ]
         )
       )
+      // How each method is signed, when not simply as the caller.
+      if (nobody.size > 0 || attributes !== undefined) {
+        methods = new Map(
+          [...methods].map(([name, method]) => [
+            name,
+            {
+              ...method,
+              ...(nobody.has(name) ? { nobody: true as const } : {}),
+              ...(attributes ? { attributes } : {}),
+            },
+          ])
+        )
+      }
     } catch (cause) {
       const error = new TypeError(
         `[ic-reactor] client.canister() takes the service schema of a generated module (its \`actor\` export), or the actor of schemaFromContract(): ${
@@ -245,6 +351,22 @@ export function canisterFactory(
       )
       Object.defineProperty(error, "cause", { value: cause })
       throw error
+    }
+
+    // Only an update anyone may send is named: a name that is no method, or
+    // that of a read, is a mistake to say now.
+    for (const name of anonymous) {
+      const method = methods.get(name)
+      if (method === undefined) {
+        throw new TypeError(
+          `[ic-reactor] client.canister(): anonymous names ${describe(name)}, which is no method of the service.`
+        )
+      }
+      if (!isWrite(method.mode)) {
+        throw new TypeError(
+          `[ic-reactor] client.canister(): anonymous names ${name}, a ${method.mode}; it is for the updates anyone may send.`
+        )
+      }
     }
 
     const resolve = (): ResolvedTarget => {
@@ -295,7 +417,7 @@ export function canisterFactory(
     RECORDS.set(canister, record)
     if (byTarget === undefined) {
       byTarget = new Map()
-      memo.set(service, byTarget)
+      services.set(service, byTarget)
     }
     byTarget.set(memoKey, canister)
     return canister

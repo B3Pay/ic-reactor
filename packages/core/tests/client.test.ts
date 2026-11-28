@@ -324,6 +324,7 @@ describe("createClient options", () => {
       "queryClient",
       "queryKey",
       "queryOptions",
+      "requestAttributes",
       "resendOf",
       "signIn",
       "signOut",

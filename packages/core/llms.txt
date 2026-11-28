@@ -132,7 +132,8 @@ in a `Uint8Array` (decode hex first), and a `host` the agent cannot call over
 Who calls (exactly one):
 
 - `identity`: a fixed `Identity` (scripts, servers, tests), or `"anonymous"`,
-  read-only: every update is refused before sending. A
+  read-only: every update is refused before sending, but one a canister
+  object names in `anonymous`. A
   `new AnonymousIdentity()` signs writes, so map one you are handed:
   `identity: id && !id.getPrincipal().isAnonymous() ? id : "anonymous"`.
 - `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth/client`, from
@@ -181,21 +182,53 @@ rejects when Internet Identity could not end the session, after the device is
 signed out and the user's reads are removed: tell the user the session lasts
 until it expires, not that the sign-out failed.
 
-Identity attributes reach a canister as a call's `sender_info`, never as
-arguments. With DFINITY's `identity-attributes` library on the canister: keep
-the `AuthClient` the factory builds, and the `identityProvider` canister it is
-handed (mainnet: `rdmx6-jaaaa-aaaaa-aaadq-cai`), per client; mint the nonce
-(`_internet_identity_sign_in_start`, an update) through a second client on the
-same network built with `identity: new AnonymousIdentity()`, since
-`identity: "anonymous"` and a signed-out client refuse updates; start
-`client.signIn()` and `requestAttributes({ keys, nonce })` together, from a
-click; then call `_internet_identity_sign_in_finish` through a client built
-with `identity: new AttributesIdentity({ inner: await authClient.getIdentity(), attributes, signer: { canisterId } })`,
-dispose both, and invalidate the app client's reads of that canister. Its
-`err` rejects as a `canister_err`; an untrusted signer traps (`rejected`, code
-5). Trust `verified_email`, never `email` (for an organization's SSO, the
-canister reads `sso:<domain>:email` for its `trusted_sso_domains`), and let
-the canister check the attributes.
+Identity attributes (a verified email, a name) reach a canister as a call's
+`sender_info`, never as arguments. With DFINITY's `identity-attributes`
+library on the canister, all of it goes through the one client, from a click:
+
+```ts
+// src/verify-email.ts
+import type { Client } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/accounts"
+
+const id = "be2us-64aaa-aaaaa-qaabq-cai"
+
+export async function verifyEmail(client: Client) {
+  // The nonce is an update anyone may send: named, it goes out as nobody.
+  const accounts = client.canister<Actor>(actor, {
+    id,
+    anonymous: ["_internet_identity_sign_in_start"],
+  })
+  // One window: the sign-in, and the attributes signed for who signed in.
+  const attributes = await client.requestAttributes({
+    keys: ["verified_email"],
+    nonce: () => accounts._internet_identity_sign_in_start(),
+  })
+  // Only calls through this canister object carry them.
+  const proving = client.canister<Actor>(actor, { id, attributes })
+  await proving._internet_identity_sign_in_finish()
+}
+```
+
+- `anonymous` names updates only, and each goes out as the anonymous
+  principal whoever is signed in, on a signed-out or `identity: "anonymous"`
+  client too. A write it does not name is refused as before. A name that is
+  no method, or a query's, throws a `TypeError`.
+- `client.requestAttributes({ keys, nonce, signIn? })` starts `signIn(signIn)`
+  and the auth's `requestAttributes` in one synchronous run and resolves with
+  `{ data, signature }` once both have; `signIn: false` asks for the
+  attributes alone, for a person signed in already. It rejects with the
+  auth's own errors, like `signIn()`: always catch it. The attributes expire
+  within minutes: use them at once and keep them nowhere.
+- `attributes` gives a canister object for direct calls and
+  `mutationOptions`, whose writes invalidate the canister's reads as any
+  write does; `queryOptions` refuses it. The signer is the network's identity
+  provider (mainnet: Internet Identity); where the auth factory names another
+  provider, pass `attributes: { ...attributes, signer: canisterId }`.
+- The canister's `err` rejects as a `canister_err`; an untrusted signer traps
+  (`rejected`, code 5). Trust `verified_email`, never `email` (for an
+  organization's SSO, the canister reads `sso:<domain>:email` for its
+  `trusted_sso_domains`), and let the canister check the attributes.
 
 Who is calling, and may they write:
 
@@ -457,7 +490,8 @@ export function Send({ arg }: { arg: TransferArg }) {
   had failed is `retried_write` whatever the failure was. On another
   `QueryClient`, keep the client's `onMutate` (spread its result into
   yours). If nobody is signed in,
-  the client refuses it (`unauthenticated`) before calling anything.
+  the client refuses it (`unauthenticated`) before calling anything, unless
+  its canister object names the method in `anonymous`.
 - The client's `mutationFn` is what keeps the two rules above. For a step of
   your own before a write, keep the client's `onMutate` and call the
   `mutationFn` of the same options from yours with the context TanStack Query
@@ -723,7 +757,11 @@ function Profile() {
 - Build agents yourself, a client per render, or one client for every user of
   a server.
 - Send a write as the anonymous identity: pass `identity: "anonymous"`, never
-  an `AnonymousIdentity` you were handed.
+  an `AnonymousIdentity` you were handed. For an update anyone may send, name
+  it in `anonymous` on its canister object.
+- Build a second client, or an `AttributesIdentity`, to send identity
+  attributes: `client.requestAttributes()` and `attributes` on the canister
+  object do it.
 - Treat every failed write as "not executed": read `mayHaveExecuted`.
 - Pay, or ask a person to approve, a value a plain query read: read
   recipients, deposit addresses, allowances and approval details through a

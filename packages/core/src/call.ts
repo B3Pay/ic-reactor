@@ -13,7 +13,9 @@
  *    (`canister_id_unresolved`); a composite query on a certified canister
  *    rejects `invalid_args` (`no_certified_path`);
  * 3. the caller: an update or a oneway by a caller who is not signed in
- *    rejects `unauthenticated` (`anonymous_write`);
+ *    rejects `unauthenticated` (`anonymous_write`), unless its canister
+ *    object names the method in `anonymous`, which is sent as {@link NOBODY}
+ *    whoever made the call;
  * 4. the arguments: Candid-encoded with the method's schemas, or
  *    `invalid_args` with the codec's `$`-rooted issues; a call to `aaaaa-aa`
  *    also needs a row of the effective canister id table (`management.ts`).
@@ -153,7 +155,39 @@ export interface PreparedMethod {
   readonly results: readonly AnyFieldSchema[]
   /** The tags of the one result when it is an `Ok`/`Err` variant, else absent. */
   readonly result?: { readonly ok: string; readonly err: string }
+  /**
+   * Set on a method its canister object names in `anonymous`
+   * (`CanisterTarget`): every call of it goes out as {@link NOBODY}.
+   */
+  readonly nobody?: true
+  /**
+   * Set on every method of a canister object made with `attributes`
+   * (`CanisterTarget`): what its calls carry as their `sender_info`.
+   */
+  readonly attributes?: SenderInfo
 }
+
+/**
+ * Signed identity attributes, as a call carries them: the bytes an identity
+ * provider signed, its signature, and the canister that signed them. A copy
+ * the canister object made, which nothing outside the client can change.
+ */
+export interface SenderInfo {
+  readonly data: Uint8Array
+  readonly signature: Uint8Array
+  readonly signer: Principal
+}
+
+/**
+ * Who sends a method its canister object names in `anonymous`: the anonymous
+ * principal, allowed to write, since the app named the method as one anyone
+ * may send. Not the caller of a signed-out client, whose writes are refused.
+ */
+export const NOBODY: Caller = Object.freeze({
+  principal: Principal.anonymous().toText(),
+  authenticated: true,
+  nobody: true,
+})
 
 /**
  * Reads what a call needs of a method once: whether its one result is a
@@ -415,8 +449,14 @@ export const retriedWrite = (
  */
 export const invoke = (
   internals: ClientInternals,
-  request: CallRequest
+  made: CallRequest
 ): Promise<unknown> => {
+  // A method named `anonymous` is sent as nobody whoever made the call, so
+  // that is who the call is reported, kept and re-sent as.
+  const request: CallRequest =
+    made.method.nobody && !made.caller.nobody
+      ? { ...made, caller: NOBODY }
+      : made
   const counted: Sent | undefined =
     internals.watchers.size > 0 ? { count: 0 } : undefined
   const settled = run(internals, request, counted).catch((error: unknown) => {
@@ -487,7 +527,7 @@ export const refused = (
           method,
           target,
           certified,
-          caller: caller ?? internals.current(),
+          caller: method.nobody ? NOBODY : (caller ?? internals.current()),
           values: valuesOf(method, vars),
           again,
           via: "mutation",
@@ -637,7 +677,7 @@ async function run(
         // Asked again before every attempt: a re-send for a caller who is no
         // longer current is cancelled, not sent as them.
         agent = await untilAborted(
-          internals.agentFor(caller.principal, where),
+          internals.agentFor(caller.principal, where, method),
           signal
         )
         synced = agent.hasSyncedTime()
@@ -651,7 +691,7 @@ async function run(
         }
         out = true
         reply = await dispatch(agent, send, call, sends, () =>
-          internals.agentFor(caller.principal, where)
+          internals.agentFor(caller.principal, where, method)
         )
         break
       } catch (error) {
