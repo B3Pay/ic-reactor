@@ -18,7 +18,7 @@ import { Cbor } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { Principal } from "@icp-sdk/core/principal"
 import { principal } from "@meantjs/schema"
-import { MutationObserver } from "@tanstack/query-core"
+import { MutationObserver, onlineManager } from "@tanstack/query-core"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { createClient, type AuthLike, type CallEvent } from "../src/client.js"
 import { createFakeReplica } from "../src/testing/fake-replica.js"
@@ -198,6 +198,44 @@ describe("anonymous: the updates anyone may send", () => {
       method: START,
       caller: ANONYMOUS,
     })
+    client.dispose()
+  })
+
+  it("never sends a write held back offline as nobody when a later render builds its options from a canister object that names it", async () => {
+    const { replica, callers } = accountsReplica()
+    const identity = Ed25519KeyIdentity.generate()
+    const client = clientAs(replica, identity)
+    const plain = client.canister<accounts.Actor>(accounts.actor, {
+      id: ACCOUNTS,
+    })
+    const named = client.canister<accounts.Actor>(accounts.actor, {
+      id: ACCOUNTS,
+      anonymous: [START],
+    })
+    const first = client.mutationOptions(plain, START)
+    const later = client.mutationOptions(named, START)
+
+    onlineManager.setOnline(false)
+    try {
+      const observer = new MutationObserver(client.queryClient, first)
+      const write = observer.mutate()
+      await vi.waitFor(() => {
+        expect(observer.getCurrentResult().isPaused).toBe(true)
+      })
+      observer.setOptions(later)
+      onlineManager.setOnline(true)
+      void client.queryClient.resumePausedMutations()
+      await write
+    } finally {
+      onlineManager.setOnline(true)
+    }
+
+    expect(callers).toEqual([
+      { method: "start", caller: identity.getPrincipal().toText() },
+    ])
+    // TanStack hands a waiting run the options of a later render only under
+    // the same key: the named method's says it goes out as nobody.
+    expect(later.mutationKey).toEqual([...first.mutationKey, "$anonymous"])
     client.dispose()
   })
 
@@ -542,6 +580,62 @@ describe("attributes: sender_info for the canister that checks it", () => {
     expect(senderInfoOf(sent[0])).toBeDefined()
     expect(client.queryClient.getQueryState(read.queryKey)?.isInvalidated).toBe(
       true
+    )
+    client.dispose()
+  })
+
+  it("never sends a write held back offline with other attributes when a later render builds its options from another canister object", async () => {
+    const { replica } = accountsReplica()
+    const { sent, fetch } = recording(replica)
+    const client = createClient({
+      network: { host: replica.host, rootKey: replica.rootKey },
+      fetch,
+      identity: Ed25519KeyIdentity.generate(),
+    })
+    const mine = { ...bundle(), signer: INTERNET_IDENTITY }
+    const other = {
+      data: Uint8Array.from([0x44, 0x49, 0x44, 0x4c, 0]),
+      signature: Uint8Array.from([9, 8, 7]),
+      signer: INTERNET_IDENTITY,
+    }
+    const make = (attributes: typeof mine) =>
+      client.canister<accounts.Actor>(accounts.actor, {
+        id: ACCOUNTS,
+        attributes,
+      })
+    const first = client.mutationOptions(make(mine), FINISH)
+    const later = client.mutationOptions(make(other), FINISH)
+
+    onlineManager.setOnline(false)
+    try {
+      const observer = new MutationObserver(client.queryClient, first)
+      const write = observer.mutate()
+      await vi.waitFor(() => {
+        expect(observer.getCurrentResult().isPaused).toBe(true)
+      })
+      observer.setOptions(later)
+      onlineManager.setOnline(true)
+      void client.queryClient.resumePausedMutations()
+      await write
+    } finally {
+      onlineManager.setOnline(true)
+    }
+
+    expect(sent).toHaveLength(1)
+    expect([...(senderInfoOf(sent[0])?.info ?? [])]).toEqual([...mine.data])
+    // Each canister object made with attributes has a key of its own, by a
+    // number and never by the attributes, and the same attributes object
+    // gives it again.
+    const plain = client.canister<accounts.Actor>(accounts.actor, {
+      id: ACCOUNTS,
+    })
+    expect(first.mutationKey).toEqual([
+      ...client.mutationOptions(plain, FINISH).mutationKey,
+      expect.stringMatching(/^\$attributes:\d+$/),
+    ])
+    expect(later.mutationKey).not.toEqual(first.mutationKey)
+    expect(client.mutationOptions(make(mine), FINISH).mutationKey).toEqual(
+      first.mutationKey
     )
     client.dispose()
   })

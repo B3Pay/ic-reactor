@@ -31,7 +31,10 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   for it; both still work. A write no canister object names is refused while
   nobody is signed in, as before. `queryOptions` refuses a canister object
   made with `attributes`, and an `{ update: "idempotent" }` read of a method
-  named in `anonymous`: neither read's key would say how it is sent.
+  named in `anonymous`: neither read's key would say how it is sent. A
+  write's `mutationKey` does: `"$anonymous"` or `"$attributes:<n>"` after the
+  method, so TanStack Query never hands a write it holds back the options of
+  a canister object that signs it another way.
   `AuthLike` gains an optional `requestAttributes`, which `AuthClient` 11 has.
   No new exported name.
 

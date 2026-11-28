@@ -23,7 +23,7 @@ import {
   type ResolvedTarget,
   type SenderInfo,
 } from "./call.js"
-import { unresolvedSlot } from "./keys.js"
+import { NOBODY_TAG, attributesTag, unresolvedSlot } from "./keys.js"
 import {
   principalProblem,
   resolveCanisterId,
@@ -58,9 +58,9 @@ export interface CanisterMethod extends PreparedMethod {
    * app's replaced the client's, and whichever render built the options
    * TanStack calls, when it built them from this canister object. (TanStack
    * hands a pending run later options only when their mutationKey, so their
-   * canister id and method, is the same. Options built from another canister
-   * object of that id, one with another `timeoutMs` or `certified`, find
-   * nothing here: their `mutationFn` resolves the run again.) Kept by the
+   * canister id, method and `signing`, is the same. Those built from another
+   * canister object of that id, one with another `timeoutMs` or `certified`,
+   * find nothing here: their `mutationFn` resolves the run again.) Kept by the
    * method of the canister and not by the client: a `mutationFn` of the app's
    * own may hand one run's context to the `mutationFn` of other options,
    * whose write goes to their canister, and whose `onSettled` refreshes the
@@ -68,7 +68,16 @@ export interface CanisterMethod extends PreparedMethod {
    * `invalidates` each of them names.
    */
   readonly runs: WeakMap<object, MutationRun>
+  /**
+   * How a write through it is signed when not as the caller, as the segment
+   * its mutationKey ends with after the method (`keys.ts`): set with
+   * `nobody`, and with `attributes`.
+   */
+  readonly signing?: string
 }
+
+/** How many canister objects have been made with `attributes`: each one's number in its mutation keys. */
+let attributed = 0
 
 /** What the builders know about a canister object. */
 export interface CanisterRecord {
@@ -331,15 +340,22 @@ export function canisterFactory(
           ]
         )
       )
-      // How each method is signed, when not simply as the caller.
+      // How each method is signed, when not simply as the caller, and the
+      // segment that says so in its mutation keys.
       if (nobody.size > 0 || attributes !== undefined) {
+        const signed = attributes && {
+          attributes,
+          signing: attributesTag(++attributed),
+        }
         methods = new Map(
           [...methods].map(([name, method]) => [
             name,
             {
               ...method,
-              ...(nobody.has(name) ? { nobody: true as const } : {}),
-              ...(attributes ? { attributes } : {}),
+              ...(nobody.has(name)
+                ? { nobody: true as const, signing: NOBODY_TAG }
+                : {}),
+              ...signed,
             },
           ])
         )

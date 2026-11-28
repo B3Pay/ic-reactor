@@ -696,6 +696,7 @@ export function createBuilders(
         network,
         slotOf(record.resolve()),
         prepared.name,
+        ...(prepared.signing === undefined ? [] : [prepared.signing]),
       ] as const,
       // TanStack runs this first, before mutationFn, and hands what it
       // returns to onSettled. The caller it reads matters only where the

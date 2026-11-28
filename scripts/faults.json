@@ -7831,8 +7831,8 @@
     "testName": "sends a named update while nobody is signed in, and still refuses the writes nobody named",
     "why": "a canister object that names one anonymous method sends every method as nobody, so a write nobody named goes out while nobody is signed in instead of being refused unauthenticated",
     "file": "src/canister.ts",
-    "search": "              ...(nobody.has(name) ? { nobody: true as const } : {}),\n",
-    "replace": "              nobody: true as const,\n"
+    "search": "              ...(nobody.has(name)\n                ? { nobody: true as const, signing: NOBODY_TAG }\n                : {}),\n",
+    "replace": "              nobody: true as const,\n              signing: NOBODY_TAG,\n"
   },
   {
     "id": "917-nobody-cancelled-by-caller-check",
@@ -7913,5 +7913,25 @@
     "file": "src/canister.ts",
     "search": "        data: new Uint8Array(given.data),\n        signature: new Uint8Array(given.signature),\n",
     "replace": "        data: given.data.slice(),\n        signature: given.signature.slice(),\n"
+  },
+  {
+    "id": "917-anonymous-write-keyed-as-the-callers",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "never sends a write held back offline as nobody when a later render builds its options from a canister object that names it",
+    "why": "a write of a method named in anonymous has the key of the same write sent as the caller, so TanStack hands a write held back offline the options of a later render that send it as nobody",
+    "file": "src/canister.ts",
+    "search": "                ? { nobody: true as const, signing: NOBODY_TAG }\n",
+    "replace": "                ? { nobody: true as const }\n"
+  },
+  {
+    "id": "917-attributes-writes-keyed-alike",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "never sends a write held back offline with other attributes when a later render builds its options from another canister object",
+    "why": "every canister object made with attributes gives its writes one key, so TanStack hands a write held back offline the options of a later render that send other attributes",
+    "file": "src/canister.ts",
+    "search": "          signing: attributesTag(++attributed),\n",
+    "replace": "          signing: attributesTag(0),\n"
   }
 ]

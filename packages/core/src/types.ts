@@ -373,9 +373,14 @@ export interface MutationTargets {
  */
 export interface CanisterMutationOptions<V, D, E> {
   /**
-   * `['ic-reactor', network, canisterId, method]`, and then the caller for
-   * the options of a view `useClient()` returned: a prefix match on the
-   * shorter key finds both.
+   * `['ic-reactor', network, canisterId, method]`; then `"$anonymous"` for a
+   * method its canister object names in `anonymous`, or `"$attributes:<n>"`
+   * for a canister object made with `attributes` (a number of that object's
+   * own, never the attributes); and then the caller for the options of a view
+   * `useClient()` returned: a prefix match on the shorter key finds them all.
+   * TanStack Query hands a mutation it holds back (offline, or behind its
+   * `scope`) the options of a later render only under the same key, so the
+   * write is never sent as options that sign another way would send it.
    *
    * A mutation under this key on the client's own `queryClient` is the
    * caller's who made it. When the caller changes (a sign-in, a sign-out, an
