@@ -207,6 +207,9 @@ export async function verifyEmail(client: Client) {
   // Only calls through this canister object carry them.
   const proving = client.canister<Actor>(actor, { id, attributes })
   await proving._internet_identity_sign_in_finish()
+  // A direct call invalidates nothing: ask every read again, since `client`
+  // may be a useClient() view whose keys are the signed-out caller's.
+  await client.queryClient.invalidateQueries()
 }
 ```
 
@@ -222,9 +225,10 @@ export async function verifyEmail(client: Client) {
   attributes alone, for a person signed in already. It rejects with the
   auth's own errors, like `signIn()`: always catch it. The attributes expire
   within minutes: use them at once and keep them nowhere.
-- `attributes` gives a canister object for direct calls and
-  `mutationOptions`, whose writes invalidate the canister's reads as any
-  write does; `queryOptions` refuses it. The signer is the network's identity
+- `attributes` gives a canister object for direct calls, which invalidate
+  nothing (hence the example's last line), and `mutationOptions`, whose
+  writes invalidate the canister's reads as any mutation does;
+  `queryOptions` refuses it. The signer is the network's identity
   provider (mainnet: Internet Identity); where the auth factory names another
   provider, pass `attributes: { ...attributes, signer: canisterId }`.
 - The canister's `err` rejects as a `canister_err`; an untrusted signer traps
@@ -423,6 +427,16 @@ Such a read is still an update, so a signed-out or `"anonymous"` client
 refuses it (`unauthenticated`) and sends nothing. Read an ICRC-21 consent
 message as the caller who will send the write: the message can depend on the
 caller (the DFINITY ICRC-1 ledger names the sender as `From`).
+A list a canister serves in pages is read to its end as one read:
+`client.queryOptions(canister, method, firstVars, { pages })`, where
+`pages: (page, vars) => nextVars | undefined` gives the variables of the page
+after `page` (asked for with `vars`), or `undefined` after the last. The data
+is the list of pages in order (flatten it in `select`); each page is a call of
+its own, made as the caller the options were built for. The read fails as a
+whole, a retry starts from the first page, and `pages` returning variables
+the walk already asked with rejects `invalid_args` (code `"page_repeated"`).
+Its key is the first page's, then `"$pages"`. `pages` comes alone: not with
+`{ update: "idempotent" }`, and not for a method without arguments.
 A method TypeScript cannot tell is a read does not compile: a type parameter
 (`M extends keyof A & string`), a union that may name an update
 (`keyof Actor & string`), or any method of a `Canister<A>` with a generic `A`.
