@@ -1156,8 +1156,8 @@
     "testName": "is not sent again as somebody else",
     "why": "a re-send signed by whoever is signed in when it goes out, so a user who switched account during the wait pays for the first user's transfer",
     "file": "src/call.ts",
-    "search": "          internals.agentFor(caller.principal, where),",
-    "replace": "          internals.agentFor(internals.current().principal, where),"
+    "search": "          internals.agentFor(caller.principal, where, method),",
+    "replace": "          internals.agentFor(internals.current().principal, where, method),"
   },
   {
     "id": "ir9-management-reject-2-not-executed-2",
@@ -1848,8 +1848,8 @@
       },
       {
         "file": "src/call.ts",
-        "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-        "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
+        "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where, method),\n          signal\n        )\n",
+        "replace": "        agent = await internals.agentFor(caller.principal, where, method)\n"
       }
     ]
   },
@@ -5178,8 +5178,8 @@
     "testName": "still waiting for its caller's identity",
     "why": "the wait for the caller's agent not ended by the timeout, so a call whose identity never arrives waits forever",
     "file": "src/call.ts",
-    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-    "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
+    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where, method),\n          signal\n        )\n",
+    "replace": "        agent = await internals.agentFor(caller.principal, where, method)\n"
   },
   {
     "id": "875-timeout-direct-call-ignores-target",
@@ -5238,8 +5238,8 @@
     "testName": "a read aborted while it waits for its caller's identity",
     "why": "the wait for the caller's agent not ended by a read's abort signal, so an aborted read keeps waiting for an identity that may never come",
     "file": "src/call.ts",
-    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
-    "replace": "        agent = await internals.agentFor(caller.principal, where)\n"
+    "search": "        agent = await untilAborted(\n          internals.agentFor(caller.principal, where, method),\n          signal\n        )\n",
+    "replace": "        agent = await internals.agentFor(caller.principal, where, method)\n"
   },
   {
     "id": "875-timeout-resend-loses-unknown",
@@ -7823,5 +7823,115 @@
         "replace": "        out = true\n        if (sends.count !== undefined) sends.count += 1\n        reply = await dispatch("
       }
     ]
+  },
+  {
+    "id": "917-anonymous-covers-unnamed-writes",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "sends a named update while nobody is signed in, and still refuses the writes nobody named",
+    "why": "a canister object that names one anonymous method sends every method as nobody, so a write nobody named goes out while nobody is signed in instead of being refused unauthenticated",
+    "file": "src/canister.ts",
+    "search": "              ...(nobody.has(name)\n                ? { nobody: true as const, signing: NOBODY_TAG }\n                : {}),\n",
+    "replace": "              nobody: true as const,\n              signing: NOBODY_TAG,\n"
+  },
+  {
+    "id": "917-nobody-cancelled-by-caller-check",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "sends it as nobody through an auth that is signed in, and when the person signs in while it waits",
+    "why": "a call sent as nobody is checked against the current caller like any other, so it is cancelled caller_changed whenever somebody is signed in",
+    "file": "src/client.ts",
+    "search": "      if (nobody) return\n",
+    "replace": ""
+  },
+  {
+    "id": "917-view-refuses-nobody-write",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "sends it from a view of a caller who is no longer current, whose other writes are refused",
+    "why": "a view refuses a write of a method sent as nobody once its principal is no longer current, though that write has no caller to have changed",
+    "file": "src/client.ts",
+    "search": "          if (now !== principal && !methodOf(record, method, \"\").nobody) {\n",
+    "replace": "          if (now !== principal) {\n"
+  },
+  {
+    "id": "917-attributes-agent-serves-other-calls",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "carries the attributes on the calls of that canister object, signed by the caller, and on no other call",
+    "why": "the agent that adds the attributes is kept as the principal's agent, so every later call of that caller carries them to whatever canister it goes to",
+    "file": "src/client.ts",
+    "search": "      attributed.set(attributes, { principal, identity, agent, asked })\n",
+    "replace": "      attributed.set(attributes, { principal, identity, agent, asked })\n      agents.set(principal, { identity, agent, asked })\n"
+  },
+  {
+    "id": "917-attributes-requested-after-an-await",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "starts the sign-in and the request in one synchronous run, with the canister's nonce, and the finish call verifies as the person",
+    "why": "the request for attributes starts after an await, outside the click's synchronous run, so the identity provider opens a second window or the browser blocks it",
+    "file": "src/client.ts",
+    "search": "      const signedIn = signIn === false ? undefined : client.signIn(signIn)\n",
+    "replace": "      const signedIn = signIn === false ? undefined : client.signIn(signIn)\n      await null\n"
+  },
+  {
+    "id": "917-anonymous-update-read-keyed-as-caller",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "refuses an update read of a named method, whose key would hold a caller it is not sent as",
+    "why": "an update read of a method named in anonymous is built under the caller's key though it goes out as nobody, so its answer is cached as the caller's and served to the same read of a canister object that sends it as them",
+    "file": "src/options.ts",
+    "search": "    if (prepared.nobody) {\n      throw new TypeError(\n        `[ic-reactor] ${call}: ${prepared.name} is named in anonymous, so it goes out as nobody, which a read's key does not say. Call it directly, or through mutationOptions().`\n      )\n    }\n",
+    "replace": ""
+  },
+  {
+    "id": "917-attributes-agent-rolled-back-by-late-identity",
+    "package": "core",
+    "test": "tests/client-agents.test.ts",
+    "testName": "hands the renewed agent of a canister object's attributes to a call whose older identity arrives after the renewal",
+    "why": "an older identity answered after a renewed delegation replaces the attributes' renewed agent, so the call, and the ones after it, are signed with the old delegation",
+    "file": "src/client.ts",
+    "search": "        (kept.identity === identity || kept.asked > asked)\n",
+    "replace": "        kept.identity === identity\n"
+  },
+  {
+    "id": "917-attributes-agent-across-accounts",
+    "package": "core",
+    "test": "tests/client-agents.test.ts",
+    "testName": "never signs a call made with attributes as the account switched to and back from while its identity was asked for",
+    "why": "the attributes' kept agent is handed to any call asked for before it was built, whoever that call was made as, so a call made before a switch of account and back is signed as the account in between",
+    "file": "src/client.ts",
+    "search": "        kept.principal === principal &&\n",
+    "replace": ""
+  },
+  {
+    "id": "917-attributes-copied-by-slice",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "keeps its own copy of attributes given as Node Buffers, whose slice() shares their memory",
+    "why": "the attributes are copied with slice(), which for a Node Buffer is a view of the same memory, so what the app does to its buffers afterwards changes the sender_info that is sent",
+    "file": "src/canister.ts",
+    "search": "        data: new Uint8Array(given.data),\n        signature: new Uint8Array(given.signature),\n",
+    "replace": "        data: given.data.slice(),\n        signature: given.signature.slice(),\n"
+  },
+  {
+    "id": "917-anonymous-write-keyed-as-the-callers",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "never sends a write held back offline as nobody when a later render builds its options from a canister object that names it",
+    "why": "a write of a method named in anonymous has the key of the same write sent as the caller, so TanStack hands a write held back offline the options of a later render that send it as nobody",
+    "file": "src/canister.ts",
+    "search": "                ? { nobody: true as const, signing: NOBODY_TAG }\n",
+    "replace": "                ? { nobody: true as const }\n"
+  },
+  {
+    "id": "917-attributes-writes-keyed-alike",
+    "package": "core",
+    "test": "tests/anonymous-and-attributes.test.ts",
+    "testName": "never sends a write held back offline with other attributes when a later render builds its options from another canister object",
+    "why": "every canister object made with attributes gives its writes one key, so TanStack hands a write held back offline the options of a later render that send other attributes",
+    "file": "src/canister.ts",
+    "search": "          signing: attributesTag(++attributed),\n",
+    "replace": "          signing: attributesTag(0),\n"
   }
 ]

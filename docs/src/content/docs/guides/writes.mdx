@@ -36,10 +36,18 @@ result: for a result `variant { Ok : T; Err : E }`, the `Ok` value. An `Err`
 rejects as kind `canister_err`.
 
 `mutationOptions` throws a `TypeError` for a method the service does not have.
-Its `mutationKey` is `["ic-reactor", network, canisterId, method]`. Built from
-the client `useClient()` returns, it ends with the caller the render shows as
-well, `["ic-reactor", network, canisterId, method, caller]`, so a filter on
-the shorter key still finds it. A mutation under either key belongs to the
+Its `mutationKey` is `["ic-reactor", network, canisterId, method]`. A write
+that is not signed as the caller says so after the method: `"$anonymous"` for
+a method its canister object names in `anonymous`, and `"$attributes:<n>"` for
+a canister object made with `attributes`, a number of that object's own and
+never the attributes (see
+[Identity attributes](/v4/guides/auth/#identity-attributes)). TanStack Query
+gives a mutation it holds back, offline or behind its `scope`, the options of a
+later render only when their key is the same, so a write is never sent as
+options that sign another way would send it. Built from the client
+`useClient()` returns, the key ends with the caller the render shows as well,
+`["ic-reactor", network, canisterId, method, caller]`, so a filter on the
+shorter key still finds it. A mutation under either key belongs to the
 caller it was made as: when the caller changes, the client starts it over
 wherever it is shown and removes it from its cache (see
 [When the caller changes](/v4/guides/auth/#when-the-caller-changes)).

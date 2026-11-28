@@ -159,6 +159,7 @@ expectTypeOf(internalsOf(client).agentFor).returns.toEqualTypeOf<
 expectTypeOf(internalsOf(client).current()).toEqualTypeOf<{
   readonly principal: string
   readonly authenticated: boolean
+  readonly nobody?: true
 }>()
 
 // The option type is usable on its own.
